@@ -32,9 +32,11 @@ export const menuConfig: MenuItem[] = [
     key: 'permission-settings',
     label: '权限设置',
     icon: <SafetyOutlined />,
-    children: [
-      { key: 'role-permission', label: '角色权限管理', icon: <TeamOutlined /> },
-    ],
+  },
+  {
+    key: 'role-permission',
+    label: '角色权限管理',
+    icon: <TeamOutlined />,
   },
   {
     key: 'blue-eagle-customer',
@@ -67,13 +69,31 @@ export const menuConfig: MenuItem[] = [
     key: 'cultural-tourism',
     label: '文旅后台管理',
     icon: <BankOutlined />,
-    children: [
-      { key: 'tourism-customer-list', label: '客户列表', icon: <UserOutlined /> },
-      { key: 'organization-management', label: '组织机构管理', icon: <BankOutlined /> },
-      { key: 'risk-model', label: '风险模型', icon: <ExperimentOutlined /> },
-      { key: 'media-list', label: '媒体清单', icon: <FileTextOutlined /> },
-      { key: 'operation-log', label: '操作日志', icon: <FileTextOutlined /> },
-    ],
+  },
+  {
+    key: 'tourism-customer-list',
+    label: '客户列表',
+    icon: <UserOutlined />,
+  },
+  {
+    key: 'organization-management',
+    label: '组织机构管理',
+    icon: <BankOutlined />,
+  },
+  {
+    key: 'risk-model',
+    label: '风险模型',
+    icon: <ExperimentOutlined />,
+  },
+  {
+    key: 'media-list',
+    label: '媒体清单',
+    icon: <FileTextOutlined />,
+  },
+  {
+    key: 'operation-log',
+    label: '操作日志',
+    icon: <FileTextOutlined />,
   },
   {
     key: 'warning-center',
@@ -140,8 +160,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, activeKey, onMenuClick }) 
   return (
     <div className={`antigravity-sider ${collapsed ? 'collapsed' : ''}`}>
       <div className="sider-logo">
-        <div className="logo-icon">数</div>
-        <span className="logo-text">数源智汇舆情管理系统</span>
+        <span className="logo-text">后台运营管理系统</span>
       </div>
       <div className="sider-menu">{menuConfig.map(renderMenuItem)}</div>
     </div>

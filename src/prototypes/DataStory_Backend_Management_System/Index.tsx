@@ -1,15 +1,22 @@
 import React, { useState, useCallback } from 'react';
 import { Sidebar, Header } from './components';
-import { Dashboard, Monitoring, Analysis, Settings, PlaceholderPage } from './pages';
+import { Dashboard, Monitoring, Analysis, Settings, CustomerList, CustomerConfig, PlaceholderPage } from './pages';
 import { menuConfig } from './components/Sidebar';
 import './style.css';
 
 /**
- * 数源智汇舆情管理系统 - 入口文件
+ * 后台运营管理系统 - 入口文件
  *
- * 使用 React 状态管理 currentPath 模拟路由跳转
- * 通过 handleMenuClick 函数切换侧边栏菜单，加载不同子页面
+ * 路由系统支持：
+ * - 侧边栏菜单点击：重置面包屑栈，进入一级页面
+ * - navigateTo：追加面包屑层级，进入子页面
+ * - goBack：回退一级面包屑
  */
+
+export interface BreadcrumbItem {
+  path: string;
+  label: string;
+}
 
 /** 根据 menuConfig 构建所有叶子节点的 key → label 映射 */
 function buildMenuMap(items: typeof menuConfig): Record<string, string> {
@@ -30,13 +37,25 @@ const menuLabelMap = buildMenuMap(menuConfig);
 
 const Index: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false);
-  const [currentPath, setCurrentPath] = useState('dashboard');
-  const [currentLabel, setCurrentLabel] = useState('Dashboard');
+  const [breadcrumbStack, setBreadcrumbStack] = useState<BreadcrumbItem[]>([
+    { path: 'dashboard', label: 'Dashboard' },
+  ]);
 
-  /** 点击侧边栏菜单时更新主内容区 */
+  const currentPath = breadcrumbStack[breadcrumbStack.length - 1].path;
+
+  /** 点击侧边栏菜单：重置面包屑栈 */
   const handleMenuClick = useCallback((key: string, label: string) => {
-    setCurrentPath(key);
-    setCurrentLabel(label);
+    setBreadcrumbStack([{ path: key, label }]);
+  }, []);
+
+  /** 进入子页面：追加面包屑层级 */
+  const navigateTo = useCallback((path: string, label: string) => {
+    setBreadcrumbStack((prev) => [...prev, { path, label }]);
+  }, []);
+
+  /** 返回上一级 */
+  const goBack = useCallback(() => {
+    setBreadcrumbStack((prev) => (prev.length > 1 ? prev.slice(0, -1) : prev));
   }, []);
 
   /** 切换侧边栏折叠 */
@@ -44,48 +63,39 @@ const Index: React.FC = () => {
     setCollapsed((prev) => !prev);
   }, []);
 
-  /** 构建面包屑 */
-  const breadcrumb = [{ label: '首页' }, { label: currentLabel }];
-
   /** 根据 currentPath 渲染对应页面 */
   const renderContent = () => {
     switch (currentPath) {
       case 'dashboard':
         return <Dashboard />;
-
+      case 'customer-list':
+        return <CustomerList onNavigate={navigateTo} />;
+      case 'customer-config':
+        return <CustomerConfig customerName="TXYY" onBack={goBack} />;
       case 'monitoring':
         return <Monitoring />;
-
       case 'analysis':
         return <Analysis />;
-
       case 'settings':
         return <Settings />;
-
       default:
-        return <PlaceholderPage title={currentLabel} />;
+        return <PlaceholderPage title={breadcrumbStack[breadcrumbStack.length - 1].label} />;
     }
   };
 
   return (
     <div className="antigravity-layout">
-      {/* 侧边栏 */}
       <Sidebar
         collapsed={collapsed}
-        activeKey={currentPath}
+        activeKey={breadcrumbStack[0].path}
         onMenuClick={handleMenuClick}
       />
-
-      {/* 主内容区域 */}
       <div className="antigravity-main">
-        {/* 顶部导航 */}
         <Header
           collapsed={collapsed}
           onToggleSider={handleToggleSider}
-          breadcrumb={breadcrumb}
+          breadcrumb={breadcrumbStack}
         />
-
-        {/* 内容区 */}
         <div className="antigravity-content">{renderContent()}</div>
       </div>
     </div>

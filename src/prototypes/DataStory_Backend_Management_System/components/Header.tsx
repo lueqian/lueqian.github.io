@@ -10,10 +10,12 @@ import {
   MenuUnfoldOutlined,
 } from '@ant-design/icons';
 
+import { BreadcrumbItem } from '../index';
+
 interface HeaderProps {
   collapsed: boolean;
   onToggleSider: () => void;
-  breadcrumb: { label: string }[];
+  breadcrumb: BreadcrumbItem[];
 }
 
 const Header: React.FC<HeaderProps> = ({ collapsed, onToggleSider, breadcrumb }) => {
