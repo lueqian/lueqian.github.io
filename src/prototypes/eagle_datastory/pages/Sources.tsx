@@ -26,7 +26,9 @@ import {
   CopyOutlined,
   ExportOutlined,
   PlayCircleOutlined,
+  CloudSyncOutlined,
 } from '@ant-design/icons';
+import CollectTaskDrawer from '../components/CollectTaskDrawer';
 
 // ============ 内容区子Tab ============
 
@@ -513,6 +515,17 @@ const DetailView: React.FC<{
   const [detailSort, setDetailSort] = useState<string>('time');
   const [detailKeyword, setDetailKeyword] = useState<string>('');
   const [detailPage, setDetailPage] = useState<number>(1);
+  const [collectDrawerOpen, setCollectDrawerOpen] = useState(false);
+  const [collectInitialValues, setCollectInitialValues] = useState<any>(null);
+
+  const handleCreateCollectTask = useCallback(function () {
+    setCollectInitialValues({
+      task_name: account.name,
+      scope_type: 'source' as const,
+      related_source: account.name,
+    });
+    setCollectDrawerOpen(true);
+  }, [account.name]);
 
   const renderStars = function (rating: number) {
     var stars = '';
@@ -724,6 +737,7 @@ const DetailView: React.FC<{
                       </div>
                       <span className="ks-post-action-link"><CopyOutlined style={{ marginRight: 3 }} />复制信息</span>
                       <span className="ks-post-action-link"><ExportOutlined style={{ marginRight: 3 }} />查看原文</span>
+                      <span className="ks-post-action-link" onClick={handleCreateCollectTask}><CloudSyncOutlined style={{ marginRight: 3 }} />创建采集任务</span>
                     </div>
                   </div>
 
@@ -798,6 +812,13 @@ const DetailView: React.FC<{
           </div>
         </div>
       </div>
+
+      {/* 创建采集任务 Drawer */}
+      <CollectTaskDrawer
+        open={collectDrawerOpen}
+        onClose={function () { setCollectDrawerOpen(false); setCollectInitialValues(null); }}
+        initialValues={collectInitialValues || undefined}
+      />
     </div>
   );
 };

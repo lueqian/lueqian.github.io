@@ -13,17 +13,17 @@
 
 import '../style.css';
 import React, { useState, useCallback, useMemo } from 'react';
-import { Table, Tag, Switch, Button, Select, Input, Space, Tooltip, Popconfirm, message, Radio, Form, InputNumber, TimePicker, Descriptions, Card } from 'antd';
+import { Table, Tag, Switch, Button, Select, Input, Space, Tooltip, Popconfirm, message, Descriptions, Card } from 'antd';
 import {
   PlusOutlined,
   SearchOutlined,
   ArrowLeftOutlined,
   InfoCircleOutlined,
-  LinkOutlined,
   BarChartOutlined,
   UnorderedListOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import CollectTaskDrawer from '../components/CollectTaskDrawer';
 
 // ============ 类型定义 ============
 
@@ -219,123 +219,6 @@ function formatCount(n: number): string {
 function formatIncrement(n: number): string {
   return '+' + formatCount(n);
 }
-
-// ============ 频率组件 ============
-
-const WEEK_DAYS = [
-  { value: '1', label: '周一' },
-  { value: '2', label: '周二' },
-  { value: '3', label: '周三' },
-  { value: '4', label: '周四' },
-  { value: '5', label: '周五' },
-  { value: '6', label: '周六' },
-  { value: '0', label: '周日' },
-];
-
-const FrequencySelector: React.FC<{
-  value?: { mode: string; value: string };
-  onChange?: (val: { mode: string; value: string }) => void;
-}> = function ({ value, onChange }) {
-  const mode = value?.mode || 'hour';
-  const val = value?.value || '';
-
-  const handleModeChange = useCallback(function (e: any) {
-    const newMode = e.target.value;
-    const defaults: Record<string, string> = {
-      hour: '2', day: '08:00', week: '1',
-    };
-    onChange?.({ mode: newMode, value: defaults[newMode] || '' });
-  }, [onChange]);
-
-  const handleValueChange = useCallback(function (v: any) {
-    onChange?.({ mode, value: typeof v === 'string' ? v : String(v) });
-  }, [mode, onChange]);
-
-  // 解析每周选中的日期（逗号分隔）
-  const weekSelected = useMemo(function () {
-    if (mode !== 'week' || !val) return [];
-    var parts = val.split('|');
-    return (parts[0] || '').split(',').filter(Boolean);
-  }, [mode, val]);
-
-  // 解析每周时间
-  const weekTime = useMemo(function () {
-    if (mode !== 'week') return '08:00';
-    var parts = val.split('|');
-    return parts[1] || '08:00';
-  }, [mode, val]);
-
-  const handleDayToggle = useCallback(function (dayValue: string) {
-    var current = weekSelected.includes(dayValue)
-      ? weekSelected.filter(function (d) { return d !== dayValue; })
-      : [...weekSelected, dayValue];
-    onChange?.({ mode: 'week', value: current.join(',') + '|' + weekTime });
-  }, [weekSelected, weekTime, onChange]);
-
-  const handleSelectAll = useCallback(function () {
-    var allDays = WEEK_DAYS.map(function (d) { return d.value; });
-    var isAllSelected = allDays.every(function (d) { return weekSelected.includes(d); });
-    var newSelected = isAllSelected ? [] : allDays;
-    onChange?.({ mode: 'week', value: newSelected.join(',') + '|' + weekTime });
-  }, [weekSelected, weekTime, onChange]);
-
-  const handleWeekTimeChange = useCallback(function (_: any, timeStr: string | null) {
-    onChange?.({ mode: 'week', value: weekSelected.join(',') + '|' + (timeStr || '08:00') });
-  }, [weekSelected, onChange]);
-
-  return (
-    <div className="ct-freq-selector">
-      <Radio.Group value={mode} onChange={handleModeChange} buttonStyle="solid" size="small">
-        <Radio.Button value="hour">每X小时</Radio.Button>
-        <Radio.Button value="day">每天</Radio.Button>
-        <Radio.Button value="week">每周</Radio.Button>
-      </Radio.Group>
-      <div className="ct-freq-value">
-        {mode === 'hour' && (
-          <Space.Compact>
-            <span className="ct-freq-label">每</span>
-            <InputNumber min={1} max={24} value={parseInt(val) || 2} onChange={handleValueChange} style={{ width: 70 }} size="small" />
-            <span className="ct-freq-label">小时</span>
-          </Space.Compact>
-        )}
-        {mode === 'day' && (
-          <Space.Compact>
-            <span className="ct-freq-label">每天</span>
-            <TimePicker value={val ? dayjs(val, 'HH:mm') : undefined} onChange={function (_, timeStr) { handleValueChange(timeStr); }} format="HH:mm" size="small" style={{ width: 110 }} />
-          </Space.Compact>
-        )}
-        {mode === 'week' && (
-          <div className="ct-freq-week">
-            <div className="ct-freq-week-days">
-                <div
-                  className={'ct-freq-week-day ct-freq-week-day--all' + (weekSelected.length === 7 ? ' ct-freq-week-day--active' : '')}
-                  onClick={handleSelectAll}
-                >
-                  全部
-                </div>
-                {WEEK_DAYS.map(function (day) {
-                var isSelected = weekSelected.includes(day.value);
-                return (
-                  <div
-                    key={day.value}
-                    className={'ct-freq-week-day' + (isSelected ? ' ct-freq-week-day--active' : '')}
-                    onClick={function () { handleDayToggle(day.value); }}
-                  >
-                    {day.label}
-                  </div>
-                );
-              })}
-            </div>
-            <div className="ct-freq-week-time">
-              <span className="ct-freq-label ct-freq-label--time">采集时间</span>
-              <TimePicker value={dayjs(weekTime, 'HH:mm')} onChange={handleWeekTimeChange} format="HH:mm" size="small" style={{ width: 120 }} />
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
 
 // ============ 列表页 ============
 
@@ -611,112 +494,6 @@ const TaskListView: React.FC<{
   );
 };
 
-// ============ 新建/修改任务页 ============
-
-const TaskFormView: React.FC<{
-  task?: TaskItem | null;
-  onBack: () => void;
-  onSubmit: () => void;
-}> = function ({ task, onBack, onSubmit }) {
-  const isEdit = !!task;
-  const [form] = Form.useForm();
-
-  const [scopeType, setScopeType] = useState<ScopeType>(task?.scope_type || 'topic');
-  const [frequency, setFrequency] = useState<{ mode: string; value: string }>({
-    mode: task?.frequency_mode || 'hour',
-    value: task?.frequency_value || '2',
-  });
-  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(task?.platforms || []);
-
-  const handleSubmit = useCallback(function () {
-    form.validateFields().then(function () {
-      message.success(isEdit ? '任务修改成功' : '任务创建成功');
-      onSubmit();
-    });
-  }, [form, isEdit, onSubmit]);
-
-  return (
-    <div className="ct-form-view">
-      <div className="ct-form-header">
-        <Button icon={<ArrowLeftOutlined />} type="text" onClick={onBack}>返回列表</Button>
-        <h2 className="ct-form-title">{isEdit ? '修改任务' : '新建任务'}</h2>
-      </div>
-
-      <div className="ct-form-card">
-        <Form
-          form={form}
-          layout="vertical"
-          initialValues={{
-            task_name: task?.task_name || '',
-            task_type: task?.task_type || 'interaction',
-            scope_type: task?.scope_type || 'topic',
-            platforms: task?.platforms || [],
-            related_topic: task?.related_topic || undefined,
-            related_source: task?.related_source || undefined,
-            link: task?.link || '',
-            title: task?.title || '',
-            info_topic: task?.info_topic || '',
-          }}
-        >
-          <Form.Item label="任务名称" name="task_name" rules={[{ required: true, message: '请输入任务名称' }]}>
-            <Input placeholder="请输入任务名称" maxLength={50} showCount />
-          </Form.Item>
-
-          <Form.Item label="采集类型" name="task_type" rules={[{ required: true, message: '请选择采集类型' }]}>
-            <Select placeholder="请选择采集类型" options={[
-              { value: 'interaction', label: '互动量更新' },
-              { value: 'comment', label: '评论区采集' },
-            ]} />
-          </Form.Item>
-
-          <Form.Item label="更新频率" required>
-            <FrequencySelector value={frequency} onChange={setFrequency} />
-          </Form.Item>
-
-          <Form.Item label="采集范围" name="scope_type" rules={[{ required: true, message: '请选择采集范围' }]}>
-            <Radio.Group onChange={function (e) { setScopeType(e.target.value); }}>
-              <Radio value="topic">全网专题</Radio>
-              <Radio value="source">重点源</Radio>
-              <Radio value="other">链接</Radio>
-            </Radio.Group>
-          </Form.Item>
-
-          {scopeType === 'topic' && (
-            <Form.Item label="关联专题" name="related_topic" rules={[{ required: true, message: '请选择关联专题' }]}>
-              <Select placeholder="请选择关联专题" options={TOPIC_OPTIONS} />
-            </Form.Item>
-          )}
-
-          {scopeType === 'source' && (
-            <Form.Item label="关联重点源" name="related_source" rules={[{ required: true, message: '请选择关联重点源' }]}>
-              <Select placeholder="请选择关联重点源" options={SOURCE_OPTIONS} />
-            </Form.Item>
-          )}
-
-          {scopeType === 'other' && (
-            <>
-              <Form.Item label="链接" name="link" rules={[{ required: true, message: '请输入链接' }]}>
-                <Input placeholder="请输入链接地址" prefix={<LinkOutlined />} />
-              </Form.Item>
-              <Form.Item label="标题" name="title" rules={[{ required: true, message: '请输入标题' }]}>
-                <Input placeholder="请输入标题" />
-              </Form.Item>
-              <Form.Item label="信息主题" name="info_topic" rules={[{ required: true, message: '请输入信息主题' }]}>
-                <Input placeholder="请输入信息主题" />
-              </Form.Item>
-            </>
-          )}
-
-          <div className="ct-form-actions">
-            <Button onClick={onBack} style={{ marginRight: 12 }}>取消</Button>
-            <Button type="primary" onClick={handleSubmit}>提交</Button>
-          </div>
-        </Form>
-      </div>
-    </div>
-  );
-};
-
 // ============ 任务详情页 ============
 
 const TaskDetailView: React.FC<{
@@ -932,12 +709,20 @@ const TaskDetailView: React.FC<{
 
 // ============ 主组件 ============
 
-type ViewType = 'list' | 'create' | 'edit' | 'detail';
+type ViewType = 'list' | 'detail';
 
 const CollectTask: React.FC = function () {
+  // 列表/详情视图切换
   const [currentView, setCurrentView] = useState<ViewType>('list');
   const [tasks, setTasks] = useState<TaskItem[]>(MOCK_DATA);
   const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
+
+  // Drawer 状态
+  const [drawerVisible, setDrawerVisible] = useState(false);
+  const [editData, setEditData] = useState<TaskItem | null>(null);
+  const [drawerInitialValues, setDrawerInitialValues] = useState<any>(null);
+
+  // ============ 列表操作 ============
 
   const handleToggle = useCallback(function (id: string, checked: boolean) {
     setTasks(function (prev) {
@@ -953,8 +738,9 @@ const CollectTask: React.FC = function () {
   }, []);
 
   const handleEdit = useCallback(function (task: TaskItem) {
-    setSelectedTask(task);
-    setCurrentView('edit');
+    setEditData(task);
+    setDrawerInitialValues(null);
+    setDrawerVisible(true);
   }, []);
 
   const handleView = useCallback(function (task: TaskItem) {
@@ -963,8 +749,9 @@ const CollectTask: React.FC = function () {
   }, []);
 
   const handleCreate = useCallback(function () {
-    setSelectedTask(null);
-    setCurrentView('create');
+    setEditData(null);
+    setDrawerInitialValues(null);
+    setDrawerVisible(true);
   }, []);
 
   const handleDelete = useCallback(function (id: string) {
@@ -972,41 +759,55 @@ const CollectTask: React.FC = function () {
     message.success('任务已删除');
   }, []);
 
-  const handleFormBack = useCallback(function () {
+  const handleDetailBack = useCallback(function () {
     setCurrentView('list');
   }, []);
 
-  const handleFormSubmit = useCallback(function () {
-    setCurrentView('list');
-  }, []);
-
-  const renderContent = function () {
-    switch (currentView) {
-      case 'list':
-        return (
-          <TaskListView
-            tasks={tasks}
-            onToggle={handleToggle}
-            onEdit={handleEdit}
-            onView={handleView}
-            onCreate={handleCreate}
-            onDelete={handleDelete}
-          />
-        );
-      case 'create':
-        return <TaskFormView onBack={handleFormBack} onSubmit={handleFormSubmit} />;
-      case 'edit':
-        return <TaskFormView task={selectedTask} onBack={handleFormBack} onSubmit={handleFormSubmit} />;
-      case 'detail':
-        return selectedTask ? <TaskDetailView task={selectedTask} onBack={handleFormBack} /> : null;
-      default:
-        return null;
-    }
-  };
+  // ============ 渲染 ============
 
   return (
     <div className="ct-page-container">
-      {renderContent()}
+      {currentView === 'list' ? (
+        <TaskListView
+          tasks={tasks}
+          onToggle={handleToggle}
+          onEdit={handleEdit}
+          onView={handleView}
+          onCreate={handleCreate}
+          onDelete={handleDelete}
+        />
+      ) : (
+        selectedTask ? <TaskDetailView task={selectedTask} onBack={handleDetailBack} /> : null
+      )}
+
+      <CollectTaskDrawer
+        open={drawerVisible}
+        onClose={function () { setDrawerVisible(false); setEditData(null); }}
+        onSubmit={function () {
+          // 刷新列表
+          if (editData) {
+            setTasks(function (prev) {
+              return prev.map(function (t) {
+                if (t.id === editData.id) return { ...t, has_activated: true };
+                return t;
+              });
+            });
+            message.success('任务修改成功');
+          } else {
+            message.success('任务创建成功，请在列表中手动开启');
+          }
+          setDrawerVisible(false);
+          setEditData(null);
+        }}
+        initialValues={editData ? {
+          task_name: editData.task_name,
+          scope_type: editData.scope_type,
+          platforms: editData.platforms,
+          link_list: editData.link ? [{ link: editData.link, title: editData.title || '', topic: editData.info_topic || '' }] : [],
+          related_topic: editData.related_topic,
+          related_source: editData.related_source,
+        } : drawerInitialValues || undefined}
+      />
     </div>
   );
 };

@@ -4968,6 +4968,276 @@
   margin-top: 8px;
 }
 
+/* ============ Drawer 表单 ============ */
+
+.ct-form-drawer .ant-drawer-header {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 16px 24px;
+}
+
+.ct-form-drawer .ant-drawer-header-title {
+  flex-direction: row-reverse;
+}
+
+.ct-form-drawer .ant-drawer-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.88);
+}
+
+.ct-form-drawer .ant-drawer-close {
+  margin-right: 0;
+  margin-inline-end: 0;
+}
+
+.ct-form-drawer .ant-drawer-body {
+  padding: 16px 24px;
+  overflow-y: auto;
+}
+
+.ct-form-drawer .ant-drawer-footer {
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 12px 24px;
+}
+
+.ct-drawer-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.ct-drawer-section {
+  margin-bottom: 4px;
+}
+
+.ct-drawer-section-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.88);
+  padding-bottom: 12px;
+  border-bottom: 2px solid #3b82f6;
+  margin-bottom: 16px;
+}
+
+/* ============ Drawer 关闭按钮 ============ */
+
+.ct-drawer-close-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #1890FF;
+  color: #ffffff;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.ct-drawer-close-btn:hover {
+  background: #40a9ff;
+}
+
+/* ============ 动态链接配置模块 ============ */
+
+.ct-link-module {
+  background: #F5F5F5;
+  border-radius: 6px;
+  padding: 16px;
+  margin-top: 4px;
+}
+
+.ct-link-module-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.ct-link-module-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.88);
+}
+
+.ct-link-empty {
+  text-align: center;
+  color: rgba(0, 0, 0, 0.25);
+  padding: 20px 0;
+  font-size: 13px;
+}
+
+.ct-link-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ct-link-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: #ffffff;
+  border-radius: 4px;
+  padding: 8px;
+  border: 1px solid #f0f0f0;
+}
+
+.ct-link-row-fields {
+  flex: 1;
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ct-link-field {
+  margin-bottom: 0 !important;
+}
+
+.ct-link-field--link {
+  flex: 3;
+  min-width: 0;
+}
+
+.ct-link-field--title {
+  flex: 2;
+  min-width: 0;
+}
+
+.ct-link-field--topic {
+  flex: 2;
+  min-width: 0;
+}
+
+.ct-link-row-action {
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+.ct-link-row-index {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #1890FF;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+}
+
+/* ============ 平台多选复选框组 ============ */
+
+.ct-platform-checkbox-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.ct-platform-checkbox-all {
+  margin-right: 8px !important;
+  font-weight: 600;
+}
+
+.ct-platform-checkbox-group .ant-checkbox-wrapper {
+  margin-right: 0 !important;
+  padding: 4px 12px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  background: #ffffff;
+  transition: all 0.2s;
+}
+
+.ct-platform-checkbox-group .ant-checkbox-wrapper:hover {
+  border-color: #1890FF;
+}
+
+.ct-platform-checkbox-group .ant-checkbox-wrapper-checked {
+  border-color: #1890FF;
+  background: #e6f7ff;
+}
+
+/* ============ 批量添加 Modal ============ */
+
+.ct-batch-modal .ct-batch-hint {
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.45);
+  margin-bottom: 12px;
+}
+
+.ct-batch-scroll-area {
+  height: 432px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.ct-batch-table-header,
+.ct-batch-table-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+  align-items: center;
+}
+
+.ct-batch-table-header {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.65);
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f0f0f0;
+  position: sticky;
+  top: 0;
+  background: #ffffff;
+  z-index: 1;
+}
+
+.ct-batch-col--link {
+  flex: 3;
+  min-width: 0;
+}
+
+.ct-batch-col--title {
+  flex: 2;
+  min-width: 0;
+}
+
+.ct-batch-col--topic {
+  flex: 2;
+  min-width: 0;
+}
+
+.ct-batch-col--action {
+  flex-shrink: 0;
+  width: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ct-batch-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 16px;
+  margin-top: 8px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.ct-batch-add-btn {
+  color: #1890FF;
+  border-color: #1890FF;
+}
+
+.ct-batch-footer-actions {
+  display: flex;
+  gap: 12px;
+}
+
 /* ============ 详情页 ============ */
 
 .ct-detail-view {

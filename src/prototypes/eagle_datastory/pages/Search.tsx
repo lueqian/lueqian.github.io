@@ -17,10 +17,6 @@ import {
   Avatar,
   Checkbox,
   Pagination,
-  Modal,
-  Form,
-  Radio,
-  InputNumber,
   Space,
   message,
 } from 'antd';
@@ -37,9 +33,9 @@ import {
   LinkOutlined,
   FileSearchOutlined,
   RightOutlined,
-  PlusOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import CollectTaskDrawer from '../components/CollectTaskDrawer';
 
 const { RangePicker } = DatePicker;
 
@@ -425,165 +421,6 @@ const PlatformIcon: React.FC<{ platform: string }> = ({ platform }) => {
   );
 };
 
-// ============ 定制采集弹窗组件 ============
-
-const CustomCollectModal: React.FC<{
-  open: boolean;
-  onCancel: () => void;
-  initialValues: {
-    url: string;
-    title: string;
-    platform: string;
-    keyword: string;
-  };
-}> = ({ open, onCancel, initialValues }) => {
-  const [form] = Form.useForm();
-  const [submitting, setSubmitting] = useState(false);
-
-  // 弹窗打开时自动填充表单
-  React.useEffect(() => {
-    if (open) {
-      form.setFieldsValue({
-        collectScope: 'other',
-        url: initialValues.url,
-        taskName: '',
-        platform: initialValues.platform,
-        topic: initialValues.keyword,
-        collectType: 'comment',
-        frequency: 2,
-        frequencyUnit: 'hours',
-      });
-    }
-  }, [open, initialValues, form]);
-
-  const handleSubmit = async () => {
-    try {
-      const values = await form.validateFields();
-      setSubmitting(true);
-      // 模拟接口调用
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      setSubmitting(false);
-      message.success('任务创建成功，已加入采集队列');
-      onCancel();
-    } catch {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <Modal
-      title={
-        <div className="cc-modal-title">
-          <PlusOutlined style={{ color: '#3b82f6', marginRight: 8 }} />
-          新建任务
-        </div>
-      }
-      open={open}
-      onCancel={onCancel}
-      width={640}
-      className="cc-modal"
-      destroyOnClose
-      footer={[
-        <Button key="cancel" onClick={onCancel}>
-          取消
-        </Button>,
-        <Button key="submit" type="primary" loading={submitting} onClick={handleSubmit}>
-          提交
-        </Button>,
-      ]}
-    >
-      <Form
-        form={form}
-        layout="vertical"
-        className="cc-form"
-        initialValues={{
-          collectScope: 'other',
-          collectType: 'comment',
-          frequency: 2,
-          frequencyUnit: 'hours',
-        }}
-      >
-        {/* 任务名称 */}
-        <Form.Item
-          label="任务名称"
-          name="taskName"
-          rules={[{ required: true, message: '请输入任务名称' }]}
-        >
-          <Input placeholder="请输入任务名称" maxLength={50} showCount />
-        </Form.Item>
-
-        {/* 采集范围 */}
-        <Form.Item label="采集范围" name="collectScope">
-          <Radio.Group>
-            <Radio value="other">其他（单链接采集）</Radio>
-          </Radio.Group>
-        </Form.Item>
-
-        {/* 链接 */}
-        <Form.Item
-          label="链接"
-          name="url"
-          rules={[{ required: true, message: '请输入链接地址' }]}
-        >
-          <Input placeholder="请输入采集链接地址" />
-        </Form.Item>
-
-        {/* 所属平台 */}
-        <Form.Item label="所属平台" name="platform">
-          <Select
-            placeholder="请选择所属平台"
-            options={[
-              { value: '微博', label: '微博' },
-              { value: '抖音', label: '抖音' },
-              { value: '今日头条', label: '今日头条' },
-              { value: '小红书', label: '小红书' },
-              { value: '微信', label: '微信' },
-              { value: '新闻', label: '新闻' },
-              { value: '论坛', label: '论坛' },
-              { value: '其他', label: '其他' },
-            ]}
-          />
-        </Form.Item>
-
-        {/* 信息主题 */}
-        <Form.Item label="信息主题" name="topic">
-          <Input placeholder="请输入信息主题关键词" />
-        </Form.Item>
-
-        {/* 采集类型 */}
-        <Form.Item label="采集类型" name="collectType">
-          <Select
-            placeholder="请选择采集类型"
-            options={[
-              { value: 'comment', label: '评论采集' },
-              { value: 'interaction', label: '互动量更新' },
-            ]}
-          />
-        </Form.Item>
-
-        {/* 更新频率 */}
-        <Form.Item label="更新频率">
-          <Space.Compact>
-            <Form.Item name="frequency" noStyle>
-              <InputNumber min={1} max={72} style={{ width: 100 }} />
-            </Form.Item>
-            <Form.Item name="frequencyUnit" noStyle>
-              <Select
-                style={{ width: 120 }}
-                options={[
-                  { value: 'minutes', label: '分钟' },
-                  { value: 'hours', label: '小时' },
-                  { value: 'days', label: '天' },
-                ]}
-              />
-            </Form.Item>
-          </Space.Compact>
-        </Form.Item>
-      </Form>
-    </Modal>
-  );
-};
-
 // ============ 搜索结果页组件 ============
 
 const SearchResultsView: React.FC<{
@@ -596,12 +433,18 @@ const SearchResultsView: React.FC<{
 }> = ({ keyword, results, platformTabs, activePlatform, onPlatformChange }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedResults, setSelectedResults] = useState<number[]>([]);
-  const [collectModalOpen, setCollectModalOpen] = useState(false);
-  const [collectItem, setCollectItem] = useState<SearchResultItem | null>(null);
+  const [collectDrawerOpen, setCollectDrawerOpen] = useState(false);
+  const [collectInitialValues, setCollectInitialValues] = useState<any>(null);
 
   const handleCustomCollect = (item: SearchResultItem) => {
-    setCollectItem(item);
-    setCollectModalOpen(true);
+    var taskName = item.content.slice(0, 50);
+    setCollectInitialValues({
+      task_name: taskName,
+      scope_type: 'other' as const,
+      platforms: [item.platform],
+      link_list: [{ link: item.url, title: '', topic: item.content || '' }],
+    });
+    setCollectDrawerOpen(true);
   };
 
   const activeTab = platformTabs.find((t) => t.key === activePlatform) || platformTabs[0];
@@ -688,7 +531,7 @@ const SearchResultsView: React.FC<{
                         <LinkOutlined style={{ fontSize: 12 }} /> 查看原文
                       </span>
                       <span className="sr-action-btn sr-action-btn--collect" onClick={() => handleCustomCollect(item)}>
-                        <CloudSyncOutlined style={{ fontSize: 12 }} /> 定制采集
+                        <CloudSyncOutlined style={{ fontSize: 12 }} /> 创建采集任务
                       </span>
                     </div>
                   </div>
@@ -772,19 +615,12 @@ const SearchResultsView: React.FC<{
           </div>
         </div>
 
-        {/* 定制采集弹窗 */}
-        {collectItem && (
-          <CustomCollectModal
-            open={collectModalOpen}
-            onCancel={() => setCollectModalOpen(false)}
-            initialValues={{
-              url: collectItem.url,
-              title: collectItem.content,
-              platform: collectItem.platform,
-              keyword: keyword,
-            }}
-          />
-        )}
+        {/* 创建采集任务 Drawer */}
+        <CollectTaskDrawer
+          open={collectDrawerOpen}
+          onClose={function () { setCollectDrawerOpen(false); setCollectInitialValues(null); }}
+          initialValues={collectInitialValues || undefined}
+        />
 
         {/* 右侧：筛选面板 */}
         <div className="sr-filter-sidebar">

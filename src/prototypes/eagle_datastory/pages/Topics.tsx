@@ -40,7 +40,9 @@ import {
   MehOutlined,
   WeiboOutlined,
   VideoCameraOutlined,
+  CloudSyncOutlined,
 } from '@ant-design/icons';
+import CollectTaskDrawer from '../components/CollectTaskDrawer';
 
 // ============ 平台筛选数据 ============
 
@@ -252,8 +254,29 @@ const Topics: React.FC = function () {
   const [topicSearchValue, setTopicSearchValue] = useState<string>('');
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(['liyutong']));
   const [activeTopic, setActiveTopic] = useState<string>('liyutong');
+  const [collectDrawerOpen, setCollectDrawerOpen] = useState(false);
+  const [collectInitialValues, setCollectInitialValues] = useState<any>(null);
 
   // ============ 回调 ============
+
+  // 获取当前专题名称
+  var activeTopicLabel = '李雨桐实名举报薛之谦重婚罪';
+  TOPIC_GROUPS.forEach(function (group) {
+    if (group.key === activeTopic) { activeTopicLabel = group.label; }
+    if (group.children) {
+      group.children.forEach(function (child) {
+        if (child.key === activeTopic) { activeTopicLabel = child.label; }
+      });
+    }
+  });
+
+  const handleCreateCollectTask = useCallback(function () {
+    setCollectInitialValues({
+      scope_type: 'topic' as const,
+      related_topic: activeTopic,
+    });
+    setCollectDrawerOpen(true);
+  }, [activeTopic]);
   const handlePlatformFilter = useCallback(function (key: string) {
     setActivePlatform(key);
   }, []);
@@ -402,6 +425,10 @@ const Topics: React.FC = function () {
             <a className="nt-article-action-link">
               <LinkOutlined style={{ marginRight: 3 }} />
               查看原文
+            </a>
+            <a className="nt-article-action-link" onClick={function (e) { e.preventDefault(); handleCreateCollectTask(); }}>
+              <CloudSyncOutlined style={{ marginRight: 3 }} />
+              创建采集任务
             </a>
             <a className="nt-article-action-link">
               <MoreOutlined />
@@ -724,6 +751,13 @@ const Topics: React.FC = function () {
           </div>
         </div>
       )}
+
+      {/* 创建采集任务 Drawer */}
+      <CollectTaskDrawer
+        open={collectDrawerOpen}
+        onClose={function () { setCollectDrawerOpen(false); setCollectInitialValues(null); }}
+        initialValues={collectInitialValues || undefined}
+      />
     </div>
   );
 };
