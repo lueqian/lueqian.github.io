@@ -433,11 +433,6 @@ const QuotaFlow: React.FC = function () {
     return result;
   }, [filterPlatform, filterTask, filterType, filterDateRange]);
 
-  // 统计
-  var totalCost = useMemo(function () {
-    return filteredData.reduce(function (sum, r) { return sum + r.cost; }, 0);
-  }, [filteredData]);
-
   // 查看详情
   var handleViewDetail = useCallback(function (record: FlowRecord) {
     setSelectedRecord(record);
@@ -607,11 +602,6 @@ const QuotaFlow: React.FC = function () {
         </div>
       </div>
 
-      {/* 统计栏 */}
-      <div className="qf-summary-bar">
-        <span>共 <strong>{filteredData.length}</strong> 条记录，总计消耗 <strong className="qf-summary-cost">{totalCost}</strong> 额度</span>
-      </div>
-
       {/* 表格 */}
       <div className="qf-table-card">
         <Table
@@ -619,9 +609,9 @@ const QuotaFlow: React.FC = function () {
           columns={columns}
           rowKey="id"
           size="middle"
-          scroll={{ x: 1270 }}
+          scroll={{ x: 1270, y: 'calc(12 * 47px)' }}
           pagination={{
-            pageSize: 20,
+            pageSize: 12,
             showSizeChanger: false,
             showTotal: function (total) { return '共 ' + total + ' 条'; },
           }}

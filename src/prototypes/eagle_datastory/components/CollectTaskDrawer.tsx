@@ -349,7 +349,6 @@ const TaskFormContent: React.FC<{
   onScopeTypeChange: (v: ScopeType) => void;
   onFrequencyChange: (v: { mode: string; value: string }) => void;
 }> = function ({ form, scopeType, frequency, submitting, onScopeTypeChange, onFrequencyChange }) {
-  const [endMode, setEndMode] = useState<'forever' | 'date'>('forever');
   const [batchModalOpen, setBatchModalOpen] = useState(false);
 
   // 动态链接列表（Form.List）
@@ -389,7 +388,6 @@ const TaskFormContent: React.FC<{
         related_source: undefined,
         link_list: [],
         track_days: 7,
-        end_mode: 'forever',
         end_date: undefined,
       }}
     >
@@ -416,18 +414,9 @@ const TaskFormContent: React.FC<{
           <InputNumber min={1} max={365} style={{ width: 160 }} addonBefore="T+" addonAfter="天" placeholder="请输入天数" />
         </Form.Item>
 
-        <Form.Item label="结束时间" name="end_mode" rules={[{ required: true }]}>
-          <Radio.Group onChange={function (e) { setEndMode(e.target.value); }}>
-            <Radio value="forever">持续采集</Radio>
-            <Radio value="date">指定日期</Radio>
-          </Radio.Group>
+        <Form.Item label="结束时间" name="end_date">
+          <DatePicker style={{ width: '100%' }} placeholder="请选择结束日期" />
         </Form.Item>
-
-        {endMode === 'date' && (
-          <Form.Item name="end_date" rules={[{ required: true, message: '请选择结束日期' }]}>
-            <DatePicker style={{ width: '100%' }} placeholder="请选择结束日期" />
-          </Form.Item>
-        )}
       </div>
 
       {/* ---- Section 2: 任务对象 ---- */}

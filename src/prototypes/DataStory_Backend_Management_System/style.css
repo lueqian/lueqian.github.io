@@ -1388,6 +1388,55 @@ thead .col-fixed-right {
   background: var(--primary-color);
 }
 
+/* ── Checkbox 复选框 ── */
+.form-hint {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  margin-bottom: 8px;
+}
+
+.checkbox-group {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.checkbox-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-main);
+  user-select: none;
+}
+
+.checkbox-box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-white);
+  transition: all var(--transition-duration) ease;
+  flex-shrink: 0;
+}
+
+.checkbox-item.checkbox-checked .checkbox-box {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.checkbox-tick {
+  font-size: 11px;
+  color: #fff;
+  line-height: 1;
+  font-weight: 700;
+}
+
 /* ── 步进器 ── */
 .stepper {
   display: inline-flex;

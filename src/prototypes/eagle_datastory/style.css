@@ -4798,13 +4798,25 @@
   font-size: 12px;
   color: rgba(0, 0, 0, 0.45);
   flex-shrink: 0;
+  width: 68px;
 }
 
 .ct-total-main {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 12px;
   color: rgba(0, 0, 0, 0.88);
   font-variant-numeric: tabular-nums;
+}
+
+.ct-total-sub {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.55);
+  font-variant-numeric: tabular-nums;
+}
+
+.ct-total-empty {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.25);
+  font-style: italic;
 }
 
 .ct-total-increment {
@@ -5808,6 +5820,37 @@
   border-radius: 8px;
   padding: 16px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03), 0 1px 6px -1px rgba(0, 0, 0, 0.02);
+  display: flex;
+  flex-direction: column;
+}
+
+/* 表格内部滚动 + 分页器固定底部 */
+.qf-table-card .ant-spin-nested-loading,
+.qf-table-card .ant-spin-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.qf-table-card .ant-table {
+  flex: 1;
+  overflow: hidden;
+}
+
+.qf-table-card .ant-table-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.qf-table-card .ant-table-body {
+  overflow-y: auto !important;
+}
+
+.qf-table-card .ant-pagination {
+  margin: 16px 0 0 0;
+  padding-top: 12px;
+  flex-shrink: 0;
 }
 
 /* 帖子ID */

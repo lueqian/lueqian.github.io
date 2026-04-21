@@ -178,6 +178,10 @@ const CustomerConfig: React.FC<CustomerConfigProps> = ({ customerName, onBack })
   const [domainMaxCount, setDomainMaxCount] = useState(10);
   const [domainMaxLength, setDomainMaxLength] = useState(50);
 
+  // ── 采集平台限制 ──
+  const platforms = ['小红书', '抖音', '微博', '今日头条', '百度贴吧'];
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([...platforms]);
+
   // ── 搜索配置表单状态 ──
   const [searchDefaultDays, setSearchDefaultDays] = useState(7);
   const [searchLongestDays, setSearchLongestDays] = useState(90);
@@ -375,6 +379,50 @@ const CustomerConfig: React.FC<CustomerConfigProps> = ({ customerName, onBack })
                 <span className="combo-label" style={{ marginLeft: 16 }}>长度</span>
                 <Stepper value={domainMaxLength} onChange={setDomainMaxLength} />
                 <span className="combo-unit">字</span>
+              </div>
+            </div>
+
+            {/* 采集平台限制 */}
+            <div className="form-row">
+              <label className="form-label">
+                采集平台限制
+                <span className="required-star">*</span>
+              </label>
+              <div className="form-control">
+                <span className="combo-label">允许客户采集的平台</span>
+                <div className="checkbox-group">
+                  <label
+                    className={`checkbox-item ${selectedPlatforms.length === platforms.length ? 'checkbox-checked' : ''}`}
+                    onClick={() => {
+                      if (selectedPlatforms.length === platforms.length) {
+                        setSelectedPlatforms([]);
+                      } else {
+                        setSelectedPlatforms([...platforms]);
+                      }
+                    }}
+                  >
+                    <span className="checkbox-box">
+                      {selectedPlatforms.length === platforms.length && <span className="checkbox-tick">✓</span>}
+                    </span>
+                    <span>全部</span>
+                  </label>
+                  {platforms.map((p) => (
+                    <label
+                      key={p}
+                      className={`checkbox-item ${selectedPlatforms.includes(p) ? 'checkbox-checked' : ''}`}
+                      onClick={() => {
+                        setSelectedPlatforms((prev) =>
+                          prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]
+                        );
+                      }}
+                    >
+                      <span className="checkbox-box">
+                        {selectedPlatforms.includes(p) && <span className="checkbox-tick">✓</span>}
+                      </span>
+                      <span>{p}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
             </div>
           </div>

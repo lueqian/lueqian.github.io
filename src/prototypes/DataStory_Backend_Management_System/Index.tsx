@@ -16,6 +16,7 @@ import './style.css';
 export interface BreadcrumbItem {
   path: string;
   label: string;
+  params?: Record<string, string>;
 }
 
 /** 根据 menuConfig 构建所有叶子节点的 key → label 映射 */
@@ -49,8 +50,8 @@ const Index: React.FC = () => {
   }, []);
 
   /** 进入子页面：追加面包屑层级 */
-  const navigateTo = useCallback((path: string, label: string) => {
-    setBreadcrumbStack((prev) => [...prev, { path, label }]);
+  const navigateTo = useCallback((path: string, label: string, params?: Record<string, string>) => {
+    setBreadcrumbStack((prev) => [...prev, { path, label, params }]);
   }, []);
 
   /** 返回上一级 */
@@ -70,8 +71,10 @@ const Index: React.FC = () => {
         return <Dashboard />;
       case 'customer-list':
         return <CustomerList onNavigate={navigateTo} />;
-      case 'customer-config':
-        return <CustomerConfig customerName="TXYY" onBack={goBack} />;
+      case 'customer-config': {
+        const name = breadcrumbStack[breadcrumbStack.length - 1].params?.customerName || 'TXYY';
+        return <CustomerConfig customerName={name} onBack={goBack} />;
+      }
       case 'monitoring':
         return <Monitoring />;
       case 'analysis':

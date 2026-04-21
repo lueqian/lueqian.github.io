@@ -31,6 +31,13 @@ type TaskType = 'interaction' | 'comment';
 type ScopeType = 'topic' | 'source' | 'other';
 type TaskStatus = 'active' | 'inactive';
 
+type InteractionData = {
+  likes: number;
+  favorites: number;
+  reposts: number;
+  comments: number;
+};
+
 type TaskItem = {
   id: string;
   task_name: string;
@@ -54,6 +61,14 @@ type TaskItem = {
   // 关联项
   related_topic?: string;
   related_source?: string;
+  // 互动量更新 - 累计互动量
+  interaction_total?: InteractionData;
+  // 互动量更新 - 最近1次更新互动量
+  interaction_last?: InteractionData;
+  // 评论区采集 - 累计评论数
+  comment_total?: number;
+  // 评论区采集 - 最近1次采集评论数
+  comment_last?: number;
 };
 
 // ============ 常量 ============
@@ -180,7 +195,7 @@ function generateMockData(): TaskItem[] {
     data.push(task);
   }
 
-  // 随机选取50条赋予真实数据，其余55条清零
+  // 随机选取50条作为开启状态，其余55条关闭
   const indices = Array.from({ length: 105 }, function (_, i) { return i; });
   // Fisher-Yates 洗牌
   for (let i = indices.length - 1; i > 0; i--) {
@@ -190,14 +205,40 @@ function generateMockData(): TaskItem[] {
   const activeIndices = new Set(indices.slice(0, 50));
 
   return data.map(function (t, i) {
-    if (activeIndices.has(i)) {
-      // 有数据的任务：累计总量 > 最近1小时增量
-      var total = Math.floor(Math.random() * 200000) + 5000;
-      var hourly = Math.floor(Math.random() * (total * 0.1)) + 10;
-      return { ...t, total_count: total, hourly_increment: hourly, status: 'active' as TaskStatus, has_activated: true };
+    var isActive = activeIndices.has(i);
+    if (t.task_type === 'interaction') {
+      // 互动量更新：生成点赞/收藏/转发/评论的累计和最近1次数据
+      var totalLikes = Math.floor(Math.random() * 50000) + 1000;
+      var totalFavorites = Math.floor(Math.random() * 10000) + 200;
+      var totalReposts = Math.floor(Math.random() * 5000) + 100;
+      var totalComments = Math.floor(Math.random() * 8000) + 50;
+      // 最近1次数据一定小于等于累计数据
+      var lastLikes = Math.floor(Math.random() * totalLikes * 0.15) + 10;
+      var lastFavorites = Math.floor(Math.random() * totalFavorites * 0.15) + 5;
+      var lastReposts = Math.floor(Math.random() * totalReposts * 0.15) + 2;
+      var lastComments = Math.floor(Math.random() * totalComments * 0.15) + 1;
+      return {
+        ...t,
+        total_count: isActive ? totalLikes + totalFavorites + totalReposts + totalComments : 0,
+        hourly_increment: isActive ? lastLikes + lastFavorites + lastReposts + lastComments : 0,
+        status: isActive ? 'active' as TaskStatus : 'inactive' as TaskStatus,
+        has_activated: isActive,
+        interaction_total: isActive ? { likes: totalLikes, favorites: totalFavorites, reposts: totalReposts, comments: totalComments } : undefined,
+        interaction_last: isActive ? { likes: lastLikes, favorites: lastFavorites, reposts: lastReposts, comments: lastComments } : undefined,
+      };
     } else {
-      // 无数据的任务：总量和增量清零，状态关闭，修改按钮启用
-      return { ...t, total_count: 0, hourly_increment: 0, status: 'inactive' as TaskStatus, has_activated: false };
+      // 评论区采集：生成累计评论数和最近1次评论数
+      var cTotal = Math.floor(Math.random() * 20000) + 500;
+      var cLast = Math.floor(Math.random() * cTotal * 0.1) + 5;
+      return {
+        ...t,
+        total_count: isActive ? cTotal : 0,
+        hourly_increment: isActive ? cLast : 0,
+        status: isActive ? 'active' as TaskStatus : 'inactive' as TaskStatus,
+        has_activated: isActive,
+        comment_total: isActive ? cTotal : undefined,
+        comment_last: isActive ? cLast : undefined,
+      };
     }
   });
 }
@@ -262,14 +303,14 @@ const TaskListView: React.FC<{
       title: '任务名称',
       dataIndex: 'task_name',
       key: 'task_name',
-      width: 220,
+      width: 180,
       ellipsis: true,
     },
     {
       title: '类型',
       dataIndex: 'task_type',
       key: 'task_type',
-      width: 110,
+      width: 100,
       render: function (val: TaskType) {
         return val === 'interaction' ? <Tag color="blue">互动量更新</Tag> : <Tag color="purple">评论区采集</Tag>;
       },
@@ -293,7 +334,7 @@ const TaskListView: React.FC<{
       title: '平台',
       dataIndex: 'platforms',
       key: 'platforms',
-      width: 180,
+      width: 160,
       render: function (platforms: string[]) {
         return (
           <Space size={[0, 4]} wrap>
@@ -309,13 +350,13 @@ const TaskListView: React.FC<{
       title: '频率',
       dataIndex: 'frequency',
       key: 'frequency',
-      width: 110,
+      width: 100,
     },
     {
-      title: '追踪天数',
+      title: '追踪',
       dataIndex: 'track_days',
       key: 'track_days',
-      width: 90,
+      width: 70,
       render: function (val: number) {
         return 'T+' + val;
       },
@@ -323,27 +364,64 @@ const TaskListView: React.FC<{
     {
       title: '总量',
       key: 'total',
-      width: 140,
+      width: 280,
       render: function (_: any, record: TaskItem) {
-        return (
-          <div className="ct-total-cell">
-            <div className="ct-total-row">
-              <span className="ct-total-label">累计总量：</span>
-              <span className="ct-total-main">{formatCount(record.total_count)}</span>
+        // 关闭状态统一显示暂无数据
+        if (record.status === 'inactive') {
+          return (
+            <div className="ct-total-cell">
+              <div className="ct-total-row">
+                <span className="ct-total-label">累计总量:</span>
+                <span className="ct-total-empty">暂无数据</span>
+              </div>
+              <div className="ct-total-row">
+                <span className="ct-total-label">最近1次:</span>
+                <span className="ct-total-empty">暂无数据</span>
+              </div>
             </div>
-            <div className="ct-total-row">
-              <span className="ct-total-label">最近1小时：</span>
-              <span className="ct-total-increment">{formatIncrement(record.hourly_increment)}</span>
+          );
+        }
+        // 开启状态：根据任务类型展示数据
+        if (record.task_type === 'interaction') {
+          var total = record.interaction_total;
+          var last = record.interaction_last;
+          return (
+            <div className="ct-total-cell">
+              <div className="ct-total-row">
+                <span className="ct-total-label">累计总量:</span>
+                <span className="ct-total-main">
+                  赞:{formatCount(total?.likes ?? 0)} 藏:{formatCount(total?.favorites ?? 0)} 转:{formatCount(total?.reposts ?? 0)} 评:{formatCount(total?.comments ?? 0)}
+                </span>
+              </div>
+              <div className="ct-total-row">
+                <span className="ct-total-label">最近1次:</span>
+                <span className="ct-total-sub">
+                  赞:{formatCount(last?.likes ?? 0)} 藏:{formatCount(last?.favorites ?? 0)} 转:{formatCount(last?.reposts ?? 0)} 评:{formatCount(last?.comments ?? 0)}
+                </span>
+              </div>
             </div>
-          </div>
-        );
+          );
+        } else {
+          return (
+            <div className="ct-total-cell">
+              <div className="ct-total-row">
+                <span className="ct-total-label">累计总量:</span>
+                <span className="ct-total-main">{formatCount(record.comment_total ?? 0)}</span>
+              </div>
+              <div className="ct-total-row">
+                <span className="ct-total-label">最近1次:</span>
+                <span className="ct-total-sub">{formatCount(record.comment_last ?? 0)}</span>
+              </div>
+            </div>
+          );
+        }
       },
     },
     {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
-      width: 80,
+      width: 70,
       render: function (val: TaskStatus, record: TaskItem) {
         return (
           <Switch
@@ -358,7 +436,7 @@ const TaskListView: React.FC<{
       title: '最近更新',
       dataIndex: 'last_updated',
       key: 'last_updated',
-      width: 150,
+      width: 140,
       sorter: true,
       sortOrder: sortOrder as any,
       render: function (val: string) {
@@ -368,8 +446,7 @@ const TaskListView: React.FC<{
     {
       title: '操作',
       key: 'action',
-      width: 170,
-      fixed: 'right' as const,
+      width: 150,
       render: function (_: any, record: TaskItem) {
         // 总量和增量都为0时允许修改，否则禁用
         var canEdit = record.total_count === 0 && record.hourly_increment === 0;
@@ -485,7 +562,7 @@ const TaskListView: React.FC<{
         rowKey="id"
         pagination={{ pageSize: 20, showSizeChanger: false, showTotal: function (total) { return '共 ' + total + ' 条'; } }}
         size="middle"
-        scroll={{ x: 1300 }}
+        scroll={{ x: 1160 }}
         onChange={function (_pagination, _filters, sorter: any) {
           setSortOrder(sorter?.columnKey === 'last_updated' ? (sorter.order || '') : '');
         }}
@@ -526,8 +603,27 @@ const TaskDetailView: React.FC<{
           </Descriptions.Item>
           <Descriptions.Item label="更新频率">{task.frequency}</Descriptions.Item>
           <Descriptions.Item label="追踪天数">T+{task.track_days}</Descriptions.Item>
-          <Descriptions.Item label="累计总量">{formatCount(task.total_count)}</Descriptions.Item>
-          <Descriptions.Item label="近1小时增量">{formatIncrement(task.hourly_increment)}</Descriptions.Item>
+          <Descriptions.Item label="累计总量" span={task.task_type === 'interaction' ? 2 : 1}>
+            {task.task_type === 'interaction' ? (
+              task.interaction_total
+                ? '赞：' + formatCount(task.interaction_total.likes) + '、藏：' + formatCount(task.interaction_total.favorites) + '、转：' + formatCount(task.interaction_total.reposts) + '、评：' + formatCount(task.interaction_total.comments)
+                : '暂无数据'
+            ) : (
+              formatCount(task.comment_total || 0)
+            )}
+          </Descriptions.Item>
+          {task.task_type === 'comment' && (
+            <Descriptions.Item label="最近1次增量">
+              {formatCount(task.comment_last || 0)}
+            </Descriptions.Item>
+          )}
+          {task.task_type === 'interaction' && (
+            <Descriptions.Item label="最近1次增量" span={2}>
+              {task.interaction_last
+                ? '赞：' + formatCount(task.interaction_last.likes) + '、藏：' + formatCount(task.interaction_last.favorites) + '、转：' + formatCount(task.interaction_last.reposts) + '、评：' + formatCount(task.interaction_last.comments)
+                : '暂无数据'}
+            </Descriptions.Item>
+          )}
           <Descriptions.Item label="状态">
             <Tag color={task.status === 'active' ? 'success' : 'default'}>{task.status === 'active' ? '开启' : '关闭'}</Tag>
           </Descriptions.Item>
@@ -728,9 +824,54 @@ const CollectTask: React.FC = function () {
     setTasks(function (prev) {
       return prev.map(function (t) {
         if (t.id === id) {
-          const newStatus: TaskStatus = checked ? 'active' : 'inactive';
-          message.success(checked ? '任务已开启' : '任务已关闭');
-          return { ...t, status: newStatus, has_activated: checked ? true : t.has_activated };
+          if (checked) {
+            // 开启任务：生成模拟数据
+            message.success('任务已开启');
+            if (t.task_type === 'interaction') {
+              var totalLikes = Math.floor(Math.random() * 50000) + 1000;
+              var totalFavorites = Math.floor(Math.random() * 10000) + 200;
+              var totalReposts = Math.floor(Math.random() * 5000) + 100;
+              var totalComments = Math.floor(Math.random() * 8000) + 50;
+              var lastLikes = Math.floor(Math.random() * totalLikes * 0.15) + 10;
+              var lastFavorites = Math.floor(Math.random() * totalFavorites * 0.15) + 5;
+              var lastReposts = Math.floor(Math.random() * totalReposts * 0.15) + 2;
+              var lastComments = Math.floor(Math.random() * totalComments * 0.15) + 1;
+              return {
+                ...t,
+                status: 'active' as TaskStatus,
+                has_activated: true,
+                total_count: totalLikes + totalFavorites + totalReposts + totalComments,
+                hourly_increment: lastLikes + lastFavorites + lastReposts + lastComments,
+                interaction_total: { likes: totalLikes, favorites: totalFavorites, reposts: totalReposts, comments: totalComments },
+                interaction_last: { likes: lastLikes, favorites: lastFavorites, reposts: lastReposts, comments: lastComments },
+              };
+            } else {
+              var cTotal = Math.floor(Math.random() * 20000) + 500;
+              var cLast = Math.floor(Math.random() * cTotal * 0.1) + 5;
+              return {
+                ...t,
+                status: 'active' as TaskStatus,
+                has_activated: true,
+                total_count: cTotal,
+                hourly_increment: cLast,
+                comment_total: cTotal,
+                comment_last: cLast,
+              };
+            }
+          } else {
+            // 关闭任务：清空数据
+            message.success('任务已关闭');
+            return {
+              ...t,
+              status: 'inactive' as TaskStatus,
+              total_count: 0,
+              hourly_increment: 0,
+              interaction_total: undefined,
+              interaction_last: undefined,
+              comment_total: undefined,
+              comment_last: undefined,
+            };
+          }
         }
         return t;
       });

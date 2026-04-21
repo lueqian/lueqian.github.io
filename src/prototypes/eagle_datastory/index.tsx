@@ -1,5 +1,5 @@
 /**
- * @name 蓝鹰舆情数据故事系统 (Eagle DataStory)
+ * @name Eagle DataStory
  * @mode axure
  * @description 统一的原型系统入口，整合搜索、专题、重点源、采集任务、额度明细等模块
  *

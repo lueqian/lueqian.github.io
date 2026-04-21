@@ -24,7 +24,7 @@ const mockData = [
 ];
 
 interface CustomerListProps {
-  onNavigate?: (path: string, label: string) => void;
+  onNavigate?: (path: string, label: string, params?: Record<string, string>) => void;
 }
 
 const CustomerList: React.FC<CustomerListProps> = ({ onNavigate }) => {
@@ -184,7 +184,7 @@ const CustomerList: React.FC<CustomerListProps> = ({ onNavigate }) => {
                         <EditOutlined />
                         <span>编辑</span>
                       </button>
-                      <button className="action-btn" title="配置" onClick={() => onNavigate?.('customer-config', '客户配置')}>
+                      <button className="action-btn" title="配置" onClick={() => onNavigate?.('customer-config', '客户配置', { customerName: row.name })}>
                         <SettingOutlined />
                         <span>配置</span>
                       </button>

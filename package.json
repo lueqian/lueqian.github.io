@@ -67,5 +67,8 @@
     "motion": "^12.38.0",
     "papaparse": "^5.5.3",
     "uuid": "^13.0.0"
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-arm64-gnu": "^4.60.1"
   }
 }
