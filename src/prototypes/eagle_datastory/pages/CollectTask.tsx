@@ -137,7 +137,7 @@ function generateMockData(): TaskItem[] {
     week: ['每周一 09:00', '每周二 16:00', '每周三 10:00', '每周四 14:30', '每周五 08:00'],
     month: ['每4小时', '每周三', '每8小时'],
   };
-  const trackDaysMap: Record<string, number[]> = { hour: [1, 3, 7, 14, 30], day: [3, 7, 14, 30, 60, 90], week: [7, 14, 30, 60, 90], month: [30, 60, 90, 180, 365] };
+  const trackDaysMap: Record<string, number[]> = { hour: [1, 3, 5, 7], day: [3, 5, 7], week: [7], month: [7] };
 
   for (let i = 0; i < 105; i++) {
     const taskType = types[i % 2];

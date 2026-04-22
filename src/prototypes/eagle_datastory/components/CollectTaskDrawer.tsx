@@ -6,7 +6,7 @@
 import '../style.css';
 import React, { useState, useCallback, useEffect } from 'react';
 import { Button, Input, Select, Radio, Form, InputNumber, TimePicker, DatePicker, Drawer, Divider, Modal, Checkbox, message, Space } from 'antd';
-import { PlusOutlined, LinkOutlined, DeleteOutlined, DoubleRightOutlined } from '@ant-design/icons';
+import { PlusOutlined, LinkOutlined, DeleteOutlined, DoubleRightOutlined, LoadingOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
 // ============ 类型定义 ============
@@ -348,11 +348,26 @@ const TaskFormContent: React.FC<{
   submitting: boolean;
   onScopeTypeChange: (v: ScopeType) => void;
   onFrequencyChange: (v: { mode: string; value: string }) => void;
-}> = function ({ form, scopeType, frequency, submitting, onScopeTypeChange, onFrequencyChange }) {
+  shakeTrackDays: boolean;
+  onShakeTrackDays: (v: boolean) => void;
+}> = function ({ form, scopeType, frequency, submitting, onScopeTypeChange, onFrequencyChange, shakeTrackDays, onShakeTrackDays }) {
   const [batchModalOpen, setBatchModalOpen] = useState(false);
+  const [trackDaysError, setTrackDaysError] = useState(false);
+  const [linkValidation, setLinkValidation] = useState<'idle' | 'loading' | 'success'>('idle');
+  const [invalidLinks, setInvalidLinks] = useState<Set<number>>(new Set());
 
   // 动态链接列表（Form.List）
   const linkList = Form.useWatch('link_list', form) || [];
+  const trackDaysValue = Form.useWatch('track_days', form);
+
+  // 追踪天数动态校验
+  useEffect(function () {
+    if (trackDaysValue !== undefined && trackDaysValue !== null) {
+      setTrackDaysError(trackDaysValue > 7);
+    } else {
+      setTrackDaysError(false);
+    }
+  }, [trackDaysValue]);
 
   const handleBatchConfirm = useCallback(function (newLinks: Array<{ link: string; title: string; topic: string }>) {
     setBatchModalOpen(false);
@@ -410,8 +425,23 @@ const TaskFormContent: React.FC<{
           <FrequencySelector value={frequency} onChange={onFrequencyChange} />
         </Form.Item>
 
-        <Form.Item label="追踪天数" name="track_days" rules={[{ required: true, message: '请输入追踪天数' }]}>
-          <InputNumber min={1} max={365} style={{ width: 160 }} addonBefore="T+" addonAfter="天" placeholder="请输入天数" />
+        <Form.Item label="追踪天数" required>
+          <div className={'ct-track-days-wrapper' + (shakeTrackDays ? ' ct-shake' : '')}>
+            <InputNumber
+              min={0}
+              max={7}
+              value={trackDaysValue}
+              onChange={function (v) { form.setFieldValue('track_days', v); }}
+              style={{ width: 160, borderColor: trackDaysError ? '#FF4D4F' : undefined }}
+              addonBefore="T+"
+              addonAfter="天"
+              placeholder="请输入0～7之间的数字"
+              status={trackDaysError ? 'error' : undefined}
+            />
+          </div>
+          {trackDaysError && (
+            <div className="ct-track-days-error">允许追踪的天数不超过7天，请重新输入</div>
+          )}
         </Form.Item>
 
         <Form.Item label="结束时间" name="end_date">
@@ -473,9 +503,9 @@ const TaskFormContent: React.FC<{
                       <div className="ct-link-empty">暂无链接，请点击上方按钮添加</div>
                     )}
                     {fields.map(function (field, idx) {
-                      var canRemove = fields.length > 1;
+                      var isInvalid = invalidLinks.has(idx);
                       return (
-                        <div key={field.key} className="ct-link-row">
+                        <div key={field.key} className={'ct-link-row' + (isInvalid ? ' ct-link-row--invalid' : '')}>
                           <div className="ct-link-row-index">{idx + 1}</div>
                           <div className="ct-link-row-fields">
                             <Form.Item
@@ -484,7 +514,7 @@ const TaskFormContent: React.FC<{
                               rules={[{ required: true, message: '请输入链接' }]}
                               className="ct-link-field ct-link-field--link"
                             >
-                              <Input placeholder="链接地址" prefix={<LinkOutlined />} size="small" />
+                              <Input placeholder="链接地址" prefix={<LinkOutlined />} size="small" status={isInvalid ? 'error' : undefined} />
                             </Form.Item>
                             <Form.Item
                               {...field}
@@ -500,19 +530,29 @@ const TaskFormContent: React.FC<{
                             >
                               <Input placeholder="主题（选填）" size="small" />
                             </Form.Item>
+                            {isInvalid && (
+                              <div className="ct-link-invalid-hint">该链接无效，请手动删除</div>
+                            )}
                           </div>
                           <div className="ct-link-row-action">
-                            {canRemove ? (
-                              <Button
-                                type="text"
-                                danger
-                                size="small"
-                                icon={<DeleteOutlined />}
-                                onClick={function () { remove(field.name); }}
-                              />
-                            ) : (
-                              <Button type="text" size="small" icon={<DeleteOutlined />} disabled />
-                            )}
+                            <Button
+                              type="text"
+                              danger
+                              size="small"
+                              icon={<DeleteOutlined />}
+                              onClick={function () {
+                                remove(field.name);
+                                // 同步清理 invalidLinks，避免索引漂移
+                                setInvalidLinks(function (prev) {
+                                  var next = new Set<number>();
+                                  prev.forEach(function (i) {
+                                    if (i < idx) next.add(i);
+                                    else if (i > idx) next.add(i - 1);
+                                  });
+                                  return next;
+                                });
+                              }}
+                            />
                           </div>
                         </div>
                       );
@@ -520,10 +560,51 @@ const TaskFormContent: React.FC<{
                   </div>
                 )}
               </Form.List>
+
+              {/* 链接校验按钮 */}
+              <div className="ct-link-validate-wrapper">
+                <Button
+                  type="link"
+                  size="small"
+                  className="ct-link-validate-btn"
+                  disabled={linkValidation === 'loading' || linkList.length === 0}
+                  onClick={function () {
+                    setInvalidLinks(new Set());
+                    setLinkValidation('loading');
+                    setTimeout(function () {
+                      // 模拟校验：检查链接格式
+                      var currentLinks = form.getFieldValue('link_list') || [];
+                      var invalidSet = new Set<number>();
+                      var urlPattern = /^https?:\/\/.+/i;
+                      currentLinks.forEach(function (item: any, idx: number) {
+                        if (item && item.link && !urlPattern.test(item.link.trim())) {
+                          invalidSet.add(idx);
+                        }
+                      });
+                      setInvalidLinks(invalidSet);
+                      if (invalidSet.size === 0) {
+                        setLinkValidation('success');
+                        setTimeout(function () {
+                          setLinkValidation('idle');
+                        }, 2000);
+                      } else {
+                        setLinkValidation('idle');
+                      }
+                    }, 1500);
+                  }}
+                >
+                  {linkValidation === 'loading' && <><LoadingOutlined style={{ marginRight: 4 }} />校验中...</>}
+                  {linkValidation === 'success' && <><CheckCircleOutlined style={{ marginRight: 4 }} />校验通过</>}
+                  {linkValidation === 'idle' && '链接校验'}
+                </Button>
+              </div>
             </div>
 
-            <Form.Item label="采集页数" name="collect_pages" rules={[{ required: true, message: '请输入采集页数' }]}>
-              <InputNumber min={0} max={200} style={{ width: 160 }} addonBefore="前" addonAfter="页" placeholder="请输入页数" />
+            <Form.Item label="采集页数" name="collect_pages" initialValue="10" required>
+              <Radio.Group>
+                <Radio value="10">前10页</Radio>
+                <Radio value="max">最大采集</Radio>
+              </Radio.Group>
             </Form.Item>
           </>
         )}
@@ -549,6 +630,7 @@ const CollectTaskDrawer: React.FC<CollectTaskDrawerProps> = function ({ open, on
     mode: 'hour',
     value: '2',
   });
+  const [shakeTrackDays, setShakeTrackDays] = useState(false);
 
   // open 变为 true 时，如果有 initialValues 则填充
   useEffect(function () {
@@ -590,6 +672,14 @@ const CollectTaskDrawer: React.FC<CollectTaskDrawerProps> = function ({ open, on
   }, [onClose]);
 
   const handleSubmit = useCallback(function () {
+    // 追踪天数校验拦截
+    var trackDays = form.getFieldValue('track_days');
+    if (trackDays === undefined || trackDays === null || trackDays > 7) {
+      setShakeTrackDays(true);
+      setTimeout(function () { setShakeTrackDays(false); }, 600);
+      message.error('请检查追踪天数，允许范围 0-7 天');
+      return;
+    }
     form.validateFields().then(function () {
       setSubmitting(true);
       setTimeout(function () {
@@ -632,6 +722,8 @@ const CollectTaskDrawer: React.FC<CollectTaskDrawerProps> = function ({ open, on
         submitting={submitting}
         onScopeTypeChange={setDrawerScopeType}
         onFrequencyChange={setDrawerFrequency}
+        shakeTrackDays={shakeTrackDays}
+        onShakeTrackDays={setShakeTrackDays}
       />
     </Drawer>
   );

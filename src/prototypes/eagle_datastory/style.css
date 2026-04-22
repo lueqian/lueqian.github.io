@@ -5058,6 +5058,7 @@
   border-radius: 6px;
   padding: 16px;
   margin-top: 4px;
+  margin-bottom: 16px;
 }
 
 .ct-link-module-header {
@@ -5175,6 +5176,78 @@
 }
 
 /* ============ 批量添加 Modal ============ */
+
+/* ============ 追踪天数校验 ============ */
+
+.ct-track-days-wrapper {
+  display: inline-block;
+}
+
+.ct-track-days-wrapper.ct-shake {
+  animation: ct-shake 0.5s ease-in-out;
+}
+
+@keyframes ct-shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+  20%, 40%, 60%, 80% { transform: translateX(4px); }
+}
+
+.ct-track-days-error {
+  color: #FF4D4F;
+  font-size: 12px;
+  margin-top: 4px;
+  line-height: 1.5;
+}
+
+/* ============ 链接校验 ============ */
+
+.ct-link-validate-wrapper {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.ct-link-validate-btn {
+  color: #1890FF !important;
+  padding: 0 !important;
+  font-size: 13px !important;
+}
+
+.ct-link-validate-btn.ant-btn-link:disabled {
+  color: rgba(0, 0, 0, 0.25) !important;
+}
+
+.ct-link-validate-btn--success {
+  color: #52C41A !important;
+}
+
+.ct-link-row--invalid {
+  border-color: #FF4D4F !important;
+  background: #fff1f0;
+  flex-wrap: wrap;
+}
+
+.ct-link-invalid-hint {
+  color: #FF4D4F;
+  font-size: 12px;
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+/* ============ 采集页数 Radio ============ */
+
+.ct-drawer-section .ant-radio-group {
+  display: flex;
+  gap: 16px;
+}
+
+.ct-drawer-section .ant-radio-wrapper {
+  color: rgba(0, 0, 0, 0.88);
+  font-size: 14px;
+}
+
+/* ============ 批量添加 Modal 内容 ============ */
 
 .ct-batch-modal .ct-batch-hint {
   font-size: 13px;
