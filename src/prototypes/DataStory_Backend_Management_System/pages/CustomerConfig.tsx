@@ -6,6 +6,9 @@ import {
   DatabaseOutlined,
   PlusOutlined,
   QuestionCircleOutlined,
+  CloseOutlined,
+  ExclamationCircleOutlined,
+  ClockCircleOutlined,
 } from '@ant-design/icons';
 
 interface CustomerConfigProps {
@@ -26,9 +29,49 @@ const tabs = [
  *  费用统计 Tab 页
  * ═══════════════════════════════════════════════════════ */
 
-const CostStatisticsTab: React.FC = () => {
+/** 二级 Tab 定义 */
+const costSubTabs = [
+  { key: 'rows', label: '数据包额度（条）' },
+  { key: 'times', label: '采集任务额度（次）' },
+];
+
+/** ── 共享状态栏组件 ── */
+const CostStatusBar: React.FC = () => {
   const [statsEnabled, setStatsEnabled] = useState(true);
   const [smallLibEnabled, setSmallLibEnabled] = useState(false);
+
+  return (
+    <div className="cost-status-bar">
+      <div className="cost-status-left">
+        <label className="cost-switch-label">
+          统计数据
+          <QuestionCircleOutlined className="cost-help-icon" />
+        </label>
+        <div className={`status-toggle ${statsEnabled ? 'toggle-on' : 'toggle-off'}`} onClick={() => setStatsEnabled(!statsEnabled)}>
+          <span className="toggle-dot" />
+        </div>
+
+        <label className="cost-switch-label" style={{ marginLeft: 24 }}>
+          小库进数
+        </label>
+        <div className={`status-toggle ${smallLibEnabled ? 'toggle-on' : 'toggle-off'}`} onClick={() => setSmallLibEnabled(!smallLibEnabled)}>
+          <span className="toggle-dot" />
+        </div>
+
+        <span className="cost-status-text" style={{ marginLeft: 24 }}>
+          启用时间: 2024-10-16 09:41:41
+        </span>
+      </div>
+      <div className="cost-status-right">
+        <span className="cost-status-text">有效期: 2027-01-01</span>
+        <span className="cost-status-remain">剩余 256 日</span>
+      </div>
+    </div>
+  );
+};
+
+/** ── 数据包额度（条）子 Tab 内容 ── */
+const DataPackageTab: React.FC = () => {
   const [pkgLimitEnabled, setPkgLimitEnabled] = useState(true);
 
   const packages = [
@@ -45,37 +88,9 @@ const CostStatisticsTab: React.FC = () => {
   ];
 
   return (
-    <div className="cost-tab">
-      {/* ── Section 1: 顶层状态栏 ── */}
-      <div className="cost-status-bar">
-        <div className="cost-status-left">
-          <label className="cost-switch-label">
-            统计数据
-            <QuestionCircleOutlined className="cost-help-icon" />
-          </label>
-          <div className={`status-toggle ${statsEnabled ? 'toggle-on' : 'toggle-off'}`} onClick={() => setStatsEnabled(!statsEnabled)}>
-            <span className="toggle-dot" />
-          </div>
-
-          <label className="cost-switch-label" style={{ marginLeft: 24 }}>
-            小库进数
-          </label>
-          <div className={`status-toggle ${smallLibEnabled ? 'toggle-on' : 'toggle-off'}`} onClick={() => setSmallLibEnabled(!smallLibEnabled)}>
-            <span className="toggle-dot" />
-          </div>
-
-          <span className="cost-status-text" style={{ marginLeft: 24 }}>
-            启用时间: 2024-10-16 09:41:41
-          </span>
-        </div>
-        <div className="cost-status-right">
-          <span className="cost-status-text">有效期: 2027-01-01</span>
-          <span className="cost-status-remain">剩余 256 日</span>
-        </div>
-      </div>
-
-      {/* ── Section 2: 指标卡片 ── */}
-      <div className="metric-cards">
+    <>
+      {/* ── 指标卡片 ── */}
+      <div className="metric-cards metric-cards-5">
         {metrics.map((m) => (
           <div key={m.title} className={`metric-card metric-${m.theme}`}>
             <div className="metric-title">{m.title}</div>
@@ -87,7 +102,7 @@ const CostStatisticsTab: React.FC = () => {
         ))}
       </div>
 
-      {/* ── Section 3: 数据包管理 ── */}
+      {/* ── 数据包管理 ── */}
       <div className="pkg-section">
         <div className="pkg-header">
           <div className="pkg-header-left">
@@ -150,6 +165,404 @@ const CostStatisticsTab: React.FC = () => {
           </div>
           <span className="pkg-page-size">20 条/页</span>
         </div>
+      </div>
+    </>
+  );
+};
+
+/** ── 采集任务额度（次）子 Tab 内容 ── */
+const CollectTaskQuotaTab: React.FC = () => {
+  // ── 弹窗模式：add | reduce | extend | null ──
+  const [modalMode, setModalMode] = useState<'add' | 'reduce' | 'extend' | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
+  const [editTarget, setEditTarget] = useState<number | null>(null);
+
+  // ── 弹窗表单 ──
+  const [formAmount, setFormAmount] = useState('');
+  const [formDate, setFormDate] = useState('');
+
+  // ── 模拟额度包数据 ──
+  const [quotaPackages, setQuotaPackages] = useState([
+    { id: 1, expiry: '2027-06-30', record: '额度包', total: 500000, used: 387200, status: '已启用' },
+    { id: 2, expiry: '2026-03-15', record: '额度包', total: 200000, used: 200000, status: '已停用' },
+    { id: 3, expiry: '2027-12-31', record: '额度包', total: 1000000, used: 125600, status: '已启用' },
+  ]);
+
+  // ── 模拟使用日志 ──
+  const usageLogs = [
+    { time: '2026-04-22 14:32:18', type: '互动量更新', consumed: 320, remaining: 487400 },
+    { time: '2026-04-22 13:15:07', type: '评论区采集', consumed: 156, remaining: 487720 },
+    { time: '2026-04-22 11:08:45', type: '互动量更新', consumed: 89, remaining: 487876 },
+    { time: '2026-04-21 17:42:33', type: '评论区采集', consumed: 245, remaining: 487965 },
+    { time: '2026-04-21 15:20:11', type: '互动量更新', consumed: 178, remaining: 488210 },
+    { time: '2026-04-21 10:05:29', type: '评论区采集', consumed: 412, remaining: 488388 },
+  ];
+
+  // ── 计算仪表盘指标 ──
+  const totalQuota = quotaPackages.reduce((sum, p) => sum + p.total, 0);
+  const availableQuota = quotaPackages
+    .filter((p) => p.status === '已启用' && p.used < p.total)
+    .reduce((sum, p) => sum + (p.total - p.used), 0);
+  const usageRate = totalQuota > 0 ? Math.round((availableQuota / totalQuota) * 100) : 0;
+  const isLowBalance = usageRate < 10;
+
+  // ── 打开弹窗 ──
+  const openModal = (mode: 'add' | 'reduce' | 'extend', pkgId?: number) => {
+    setModalMode(mode);
+    setEditTarget(pkgId ?? null);
+    if (mode === 'add') {
+      setFormAmount('');
+      setFormDate('');
+    } else if (mode === 'reduce' && pkgId != null) {
+      const pkg = quotaPackages.find((p) => p.id === pkgId);
+      setFormAmount(String(pkg?.total ?? ''));
+      setFormDate(pkg?.expiry ?? '');
+    } else if (mode === 'extend' && pkgId != null) {
+      const pkg = quotaPackages.find((p) => p.id === pkgId);
+      setFormAmount(String(pkg?.total ?? ''));
+      setFormDate(pkg?.expiry ?? '');
+    }
+  };
+
+  const closeModal = () => {
+    setModalMode(null);
+    setEditTarget(null);
+    setFormAmount('');
+    setFormDate('');
+  };
+
+  // ── 弹窗提交 ──
+  const handleModalSubmit = () => {
+    if (modalMode === 'add') {
+      if (!formAmount || !formDate) return;
+      const newPkg = {
+        id: Date.now(),
+        expiry: formDate,
+        record: '额度包',
+        total: parseInt(formAmount, 10),
+        used: 0,
+        status: '已启用',
+      };
+      setQuotaPackages((prev) => [newPkg, ...prev]);
+    } else if (modalMode === 'reduce' && editTarget != null) {
+      if (!formAmount) return;
+      const newTotal = parseInt(formAmount, 10);
+      const pkg = quotaPackages.find((p) => p.id === editTarget);
+      if (pkg && newTotal > 0 && newTotal <= pkg.total) {
+        setQuotaPackages((prev) =>
+          prev.map((p) => (p.id === editTarget ? { ...p, total: newTotal } : p))
+        );
+      }
+    } else if (modalMode === 'extend' && editTarget != null) {
+      if (!formDate) return;
+      setQuotaPackages((prev) =>
+        prev.map((p) => (p.id === editTarget ? { ...p, expiry: formDate } : p))
+      );
+    }
+    closeModal();
+  };
+
+  // ── 减量校验：不允许超过当前数据量 ──
+  const getReduceMax = () => {
+    if (editTarget == null) return Infinity;
+    const pkg = quotaPackages.find((p) => p.id === editTarget);
+    return pkg?.total ?? Infinity;
+  };
+
+  // ── 删除额度包 ──
+  const handleDeletePackage = () => {
+    if (deleteTarget === null) return;
+    setQuotaPackages((prev) => prev.filter((p) => p.id !== deleteTarget));
+    setShowDeleteConfirm(false);
+    setDeleteTarget(null);
+  };
+
+  const formatNum = (n: number) => n.toLocaleString();
+
+  // ── 弹窗标题映射 ──
+  const modalTitleMap = { add: '新增额度包', reduce: '额度包减量', extend: '额度包延期' };
+  const isAmountDisabled = modalMode === 'extend';
+  const isDateDisabled = modalMode === 'reduce';
+
+  return (
+    <>
+      {/* ── 仪表盘：3 张指标卡片 ── */}
+      <div className="metric-cards metric-cards-3">
+        {/* 总量 */}
+        <div className="metric-card metric-blue">
+          <div className="metric-title">总量</div>
+          <div className="metric-value-row">
+            <span className="metric-value">{formatNum(totalQuota)}</span>
+            <span className="metric-unit">次</span>
+          </div>
+        </div>
+
+        {/* 可用数据量（低于 10% 变红预警） */}
+        <div className={`metric-card ${isLowBalance ? 'metric-red' : 'metric-green'}`}>
+          <div className="metric-title">
+            可用数据量
+            {isLowBalance && <ExclamationCircleOutlined className="metric-warning-icon" />}
+          </div>
+          <div className="metric-value-row">
+            <span className="metric-value">{formatNum(availableQuota)}</span>
+            <span className="metric-unit">次</span>
+          </div>
+        </div>
+
+        {/* 占比（含进度条） */}
+        <div className="metric-card metric-orange">
+          <div className="metric-title">占比</div>
+          <div className="metric-value-row">
+            <span className="metric-value">{usageRate} %</span>
+          </div>
+          <div className="metric-progress">
+            <div
+              className={`metric-progress-bar ${isLowBalance ? 'progress-danger' : 'progress-normal'}`}
+              style={{ width: `${Math.min(usageRate, 100)}%` }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* ── 额度包列表 ── */}
+      <div className="pkg-section">
+        <div className="pkg-header">
+          <div className="pkg-header-left">
+            <DatabaseOutlined className="pkg-icon" />
+            <span className="pkg-title">额度包</span>
+          </div>
+          <button className="btn-add-pkg" onClick={() => openModal('add')}>
+            <PlusOutlined />
+            <span>添加额度包</span>
+          </button>
+        </div>
+
+        <div className="pkg-table-wrapper">
+          <table className="pkg-table">
+            <thead>
+              <tr>
+                <th>有效期</th>
+                <th>操作记录</th>
+                <th>数据量</th>
+                <th>使用量</th>
+                <th>状态</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {quotaPackages.map((pkg, idx) => (
+                <tr key={pkg.id} className={idx % 2 === 1 ? 'row-odd' : ''}>
+                  <td>{pkg.expiry}</td>
+                  <td>{pkg.record}</td>
+                  <td className="pkg-num">{formatNum(pkg.total)}</td>
+                  <td className="pkg-num">{formatNum(pkg.used)}</td>
+                  <td>
+                    <span className={pkg.status === '已启用' ? 'pkg-status-enabled' : 'pkg-status-disabled'}>
+                      {pkg.status}
+                    </span>
+                  </td>
+                  <td>
+                    <div className="pkg-actions">
+                      <span className="pkg-action-link" onClick={() => openModal('reduce', pkg.id)}>减量</span>
+                      <span className="pkg-action-link" onClick={() => openModal('extend', pkg.id)}>延期</span>
+                      <span
+                        className="pkg-action-link pkg-action-danger"
+                        onClick={() => {
+                          setDeleteTarget(pkg.id);
+                          setShowDeleteConfirm(true);
+                        }}
+                      >
+                        删除
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="pkg-pagination">
+          <span className="pagination-total">共 {quotaPackages.length} 条</span>
+          <div className="pagination-pages">
+            <button className="page-btn page-prev" disabled>&lt;</button>
+            <button className="page-btn page-active">1</button>
+            <button className="page-btn page-next" disabled>&gt;</button>
+          </div>
+          <span className="pkg-page-size">20 条/页</span>
+        </div>
+      </div>
+
+      {/* ── 额度使用日志 ── */}
+      <div className="pkg-section log-section">
+        <div className="pkg-header">
+          <div className="pkg-header-left">
+            <ClockCircleOutlined className="pkg-icon" />
+            <span className="pkg-title">额度使用日志</span>
+          </div>
+        </div>
+
+        <div className="pkg-table-wrapper">
+          <table className="pkg-table">
+            <thead>
+              <tr>
+                <th>操作时间</th>
+                <th>操作类型</th>
+                <th>消耗量</th>
+                <th>余量</th>
+              </tr>
+            </thead>
+            <tbody>
+              {usageLogs.map((log, idx) => (
+                <tr key={idx} className={idx % 2 === 1 ? 'row-odd' : ''}>
+                  <td className="pkg-num">{log.time}</td>
+                  <td>
+                    <span className={`log-type-badge log-type-${log.type === '互动量更新' ? 'interact' : 'comment'}`}>
+                      {log.type}
+                    </span>
+                  </td>
+                  <td className="pkg-num log-consumed">-{formatNum(log.consumed)}</td>
+                  <td className="pkg-num">{formatNum(log.remaining)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="pkg-pagination">
+          <span className="pagination-total">共 {usageLogs.length} 条</span>
+          <div className="pagination-pages">
+            <button className="page-btn page-prev" disabled>&lt;</button>
+            <button className="page-btn page-active">1</button>
+            <button className="page-btn page-next" disabled>&gt;</button>
+          </div>
+          <span className="pkg-page-size">20 条/页</span>
+        </div>
+      </div>
+
+      {/* ═══════ 通用额度包弹窗（新增 / 减量 / 延期） ═══════ */}
+      {modalMode && (
+        <div className="modal-overlay" onClick={closeModal}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">{modalTitleMap[modalMode]}</span>
+              <CloseOutlined className="modal-close" onClick={closeModal} />
+            </div>
+            <div className="modal-body">
+              {/* 数据量字段 */}
+              <div className="modal-form-row">
+                <label className="modal-label">
+                    数据量 <span className="required-star">*</span>
+                  </label>
+                  <div className="modal-control modal-input-group">
+                    <input
+                      className="modal-input modal-input-group-inner"
+                      type="number"
+                      min="1"
+                      max={modalMode === 'reduce' ? getReduceMax() : undefined}
+                      step="1"
+                      placeholder="请输入正整数"
+                      value={formAmount}
+                      disabled={isAmountDisabled}
+                      onChange={(e) => {
+                        let val = e.target.value;
+                        if (modalMode === 'reduce') {
+                          const n = parseInt(val, 10);
+                          if (!isNaN(n) && n > getReduceMax()) {
+                            val = String(getReduceMax());
+                          }
+                        }
+                        setFormAmount(val);
+                      }}
+                    />
+                  <span className="modal-input-addon">次</span>
+                </div>
+              </div>
+              {/* 有效期字段 */}
+              <div className="modal-form-row">
+                <label className="modal-label">
+                  有效期 <span className="required-star">*</span>
+                </label>
+                <div className="modal-control">
+                  <input
+                    className="modal-input"
+                    type="date"
+                    value={formDate}
+                    disabled={isDateDisabled}
+                    onChange={(e) => setFormDate(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn-modal-cancel" onClick={closeModal}>取消</button>
+              <button
+                className="btn-modal-confirm"
+                disabled={
+                  modalMode === 'add'
+                    ? !formAmount || !formDate
+                    : modalMode === 'reduce'
+                      ? !formAmount
+                      : !formDate
+                }
+                onClick={handleModalSubmit}
+              >
+                确定
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════ 删除确认弹窗 ═══════ */}
+      {showDeleteConfirm && (
+        <div className="modal-overlay" onClick={() => setShowDeleteConfirm(false)}>
+          <div className="modal-container modal-confirm" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <ExclamationCircleOutlined className="modal-confirm-icon" />
+              <span className="modal-title">确认删除</span>
+            </div>
+            <div className="modal-body">
+              <p className="modal-confirm-text">删除后该额度包数据将不再计入仪表盘"总量"，此操作不可撤销。确定要删除吗？</p>
+            </div>
+            <div className="modal-footer">
+              <button className="btn-modal-cancel" onClick={() => setShowDeleteConfirm(false)}>取消</button>
+              <button className="btn-modal-danger" onClick={handleDeletePackage}>删除</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
+
+/** ── 费用统计主 Tab ── */
+const CostStatisticsTab: React.FC = () => {
+  const [activeCostTab, setActiveCostTab] = useState('rows');
+
+  return (
+    <div className="cost-tab">
+      {/* ── 二级 Tabs ── */}
+      <div className="cost-sub-tabs">
+        {costSubTabs.map((tab) => (
+          <div
+            key={tab.key}
+            className={`cost-sub-tab-item ${activeCostTab === tab.key ? 'cost-sub-tab-active' : ''}`}
+            onClick={() => setActiveCostTab(tab.key)}
+          >
+            {tab.label}
+          </div>
+        ))}
+      </div>
+
+      {/* ── 共享状态栏 ── */}
+      <CostStatusBar />
+
+      {/* ── 二级 Tab 内容 ── */}
+      <div className="cost-sub-tab-content">
+        {activeCostTab === 'rows' && <DataPackageTab />}
+        {activeCostTab === 'times' && <CollectTaskQuotaTab />}
       </div>
     </div>
   );
