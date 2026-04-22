@@ -75,7 +75,7 @@ const CONSUMPTION_DATA: ConsumptionData[] = [
   {
     label: '账户余额',
     value: '5,000,000',
-    unit: '条',
+    unit: '次',
     theme: 'blue',
   },
   {
