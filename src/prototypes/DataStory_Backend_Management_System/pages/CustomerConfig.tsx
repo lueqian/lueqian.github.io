@@ -38,7 +38,6 @@ const costSubTabs = [
 /** ── 共享状态栏组件 ── */
 const CostStatusBar: React.FC = () => {
   const [statsEnabled, setStatsEnabled] = useState(true);
-  const [smallLibEnabled, setSmallLibEnabled] = useState(false);
 
   return (
     <div className="cost-status-bar">
@@ -48,13 +47,6 @@ const CostStatusBar: React.FC = () => {
           <QuestionCircleOutlined className="cost-help-icon" />
         </label>
         <div className={`status-toggle ${statsEnabled ? 'toggle-on' : 'toggle-off'}`} onClick={() => setStatsEnabled(!statsEnabled)}>
-          <span className="toggle-dot" />
-        </div>
-
-        <label className="cost-switch-label" style={{ marginLeft: 24 }}>
-          小库进数
-        </label>
-        <div className={`status-toggle ${smallLibEnabled ? 'toggle-on' : 'toggle-off'}`} onClick={() => setSmallLibEnabled(!smallLibEnabled)}>
           <span className="toggle-dot" />
         </div>
 
