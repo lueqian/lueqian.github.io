@@ -174,6 +174,39 @@ const CollectTaskQuotaTab: React.FC = () => {
   const [formAmount, setFormAmount] = useState('');
   const [formDate, setFormDate] = useState('');
 
+  // ── 采集平台限制 ──
+  const platforms = ['小红书', '抖音', '微博', '今日头条'];
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([...platforms]);
+  const [platformFactors, setPlatformFactors] = useState<Record<string, { interaction: string; comment: string }>>({
+    '小红书': { interaction: '1.00', comment: '1.00' },
+    '抖音': { interaction: '1.00', comment: '1.00' },
+    '微博': { interaction: '1.00', comment: '1.00' },
+    '今日头条': { interaction: '1.00', comment: '1.00' },
+  });
+
+  const togglePlatform = (p: string) => {
+    setSelectedPlatforms((prev) =>
+      prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]
+    );
+  };
+
+  const toggleAllPlatforms = () => {
+    if (selectedPlatforms.length === platforms.length) {
+      setSelectedPlatforms([]);
+    } else {
+      setSelectedPlatforms([...platforms]);
+    }
+  };
+
+  const updateFactor = (platform: string, field: 'interaction' | 'comment', value: string) => {
+    // 限制 0~100 的两位小数
+    const clamped = value === '' ? '' : Math.min(100, Math.max(0, parseFloat(value) || 0)).toFixed(2);
+    setPlatformFactors((prev) => ({
+      ...prev,
+      [platform]: { ...prev[platform], [field]: clamped },
+    }));
+  };
+
   // ── 模拟额度包数据 ──
   const [quotaPackages, setQuotaPackages] = useState([
     { id: 1, expiry: '2027-06-30', record: '额度包', total: 500000, used: 387200, status: '已启用' },
@@ -314,6 +347,75 @@ const CollectTaskQuotaTab: React.FC = () => {
               style={{ width: `${Math.min(usageRate, 100)}%` }}
             />
           </div>
+        </div>
+      </div>
+
+      {/* ── 采集平台限制 ── */}
+      <div className="platform-limit-section">
+        <div className="platform-limit-header">
+          <span className="platform-limit-title">采集平台限制</span>
+        </div>
+        <div className="platform-limit-body">
+          <div className="platform-checkbox-row">
+            <label
+              className={`checkbox-item ${selectedPlatforms.length === platforms.length ? 'checkbox-checked' : ''}`}
+              onClick={toggleAllPlatforms}
+            >
+              <span className="checkbox-box">
+                {selectedPlatforms.length === platforms.length && <span className="checkbox-tick">✓</span>}
+              </span>
+              <span>全部</span>
+            </label>
+            {platforms.map((p) => (
+              <label
+                key={p}
+                className={`checkbox-item ${selectedPlatforms.includes(p) ? 'checkbox-checked' : ''}`}
+                onClick={() => togglePlatform(p)}
+              >
+                <span className="checkbox-box">
+                  {selectedPlatforms.includes(p) && <span className="checkbox-tick">✓</span>}
+                </span>
+                <span>{p}</span>
+              </label>
+            ))}
+          </div>
+
+          {/* 选中具体平台后展示关联字段 */}
+          {selectedPlatforms.length > 0 && (
+            <div className="platform-factor-list">
+              {selectedPlatforms.map((p) => (
+                <div key={p} className="platform-factor-item">
+                  <div className="platform-factor-name">{p}</div>
+                  <div className="platform-factor-fields">
+                    <div className="platform-factor-field">
+                      <label className="platform-factor-label">互动量更新计费基数</label>
+                      <input
+                        type="number"
+                        className="platform-factor-input"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        value={platformFactors[p]?.interaction ?? '1.00'}
+                        onChange={(e) => updateFactor(p, 'interaction', e.target.value)}
+                      />
+                    </div>
+                    <div className="platform-factor-field">
+                      <label className="platform-factor-label">评论区采集计费基数</label>
+                      <input
+                        type="number"
+                        className="platform-factor-input"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        value={platformFactors[p]?.comment ?? '1.00'}
+                        onChange={(e) => updateFactor(p, 'comment', e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -583,10 +685,6 @@ const CustomerConfig: React.FC<CustomerConfigProps> = ({ customerName, onBack })
   const [domainMaxCount, setDomainMaxCount] = useState(10);
   const [domainMaxLength, setDomainMaxLength] = useState(50);
 
-  // ── 采集平台限制 ──
-  const platforms = ['小红书', '抖音', '微博', '今日头条', '百度贴吧'];
-  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([...platforms]);
-
   // ── 搜索配置表单状态 ──
   const [searchDefaultDays, setSearchDefaultDays] = useState(7);
   const [searchLongestDays, setSearchLongestDays] = useState(90);
@@ -787,49 +885,6 @@ const CustomerConfig: React.FC<CustomerConfigProps> = ({ customerName, onBack })
               </div>
             </div>
 
-            {/* 采集平台限制 */}
-            <div className="form-row">
-              <label className="form-label">
-                采集平台限制
-                <span className="required-star">*</span>
-              </label>
-              <div className="form-control">
-                <span className="combo-label">允许客户采集的平台</span>
-                <div className="checkbox-group">
-                  <label
-                    className={`checkbox-item ${selectedPlatforms.length === platforms.length ? 'checkbox-checked' : ''}`}
-                    onClick={() => {
-                      if (selectedPlatforms.length === platforms.length) {
-                        setSelectedPlatforms([]);
-                      } else {
-                        setSelectedPlatforms([...platforms]);
-                      }
-                    }}
-                  >
-                    <span className="checkbox-box">
-                      {selectedPlatforms.length === platforms.length && <span className="checkbox-tick">✓</span>}
-                    </span>
-                    <span>全部</span>
-                  </label>
-                  {platforms.map((p) => (
-                    <label
-                      key={p}
-                      className={`checkbox-item ${selectedPlatforms.includes(p) ? 'checkbox-checked' : ''}`}
-                      onClick={() => {
-                        setSelectedPlatforms((prev) =>
-                          prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]
-                        );
-                      }}
-                    >
-                      <span className="checkbox-box">
-                        {selectedPlatforms.includes(p) && <span className="checkbox-tick">✓</span>}
-                      </span>
-                      <span>{p}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            </div>
           </div>
         </div>
 

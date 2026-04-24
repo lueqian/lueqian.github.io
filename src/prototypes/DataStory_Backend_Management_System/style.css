@@ -1606,6 +1606,108 @@ thead .col-fixed-right {
   grid-template-columns: repeat(3, 1fr);
 }
 
+/* ── 采集平台限制 ── */
+.platform-limit-section {
+  margin: 20px 0;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-base);
+  overflow: hidden;
+}
+
+.platform-limit-header {
+  padding: 12px 20px;
+  background: #fafafa;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.platform-limit-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-main);
+}
+
+.platform-limit-body {
+  padding: 16px 20px;
+}
+
+.platform-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.platform-factor-list {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.platform-factor-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 10px 14px;
+  background: #f9fbff;
+  border-radius: var(--radius-sm);
+  border: 1px solid #e8eef7;
+}
+
+.platform-factor-name {
+  min-width: 70px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--primary-color);
+  line-height: 32px;
+}
+
+.platform-factor-fields {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.platform-factor-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.platform-factor-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.platform-factor-input {
+  width: 90px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--text-main);
+  text-align: center;
+  outline: none;
+  transition: border-color var(--transition-duration) ease;
+  -moz-appearance: textfield;
+}
+
+.platform-factor-input::-webkit-outer-spin-button,
+.platform-factor-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.platform-factor-input:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
+}
+
 /* ── 5 列卡片布局（保留条 Tab 原有） ── */
 .metric-cards-5 {
   grid-template-columns: repeat(5, 1fr);
