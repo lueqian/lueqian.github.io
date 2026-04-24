@@ -5,8 +5,8 @@
 
 import '../style.css';
 import React, { useState, useCallback, useEffect } from 'react';
-import { Button, Input, Select, Radio, Form, InputNumber, TimePicker, DatePicker, Drawer, Divider, Modal, Checkbox, message, Space } from 'antd';
-import { PlusOutlined, LinkOutlined, DeleteOutlined, DoubleRightOutlined, LoadingOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { Button, Input, Select, Radio, Form, InputNumber, TimePicker, DatePicker, Drawer, Divider, Checkbox, message, Space, Tooltip } from 'antd';
+import { DoubleRightOutlined, LoadingOutlined, CheckCircleOutlined, WarningOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
 // ============ 类型定义 ============
@@ -176,115 +176,108 @@ const FrequencySelector: React.FC<{
   );
 };
 
-// ============ 批量添加链接 Modal ============
+// ============ 专题/重点源 - 目标平台选项 ============
 
-const BatchAddModal: React.FC<{
-  open: boolean;
-  onCancel: () => void;
-  onConfirm: (links: Array<{ link: string; title: string; topic: string }>) => void;
-}> = function ({ open, onCancel, onConfirm }) {
-  const [rows, setRows] = useState<Array<{ link: string; title: string; topic: string }>>([
-    { link: '', title: '', topic: '' },
-    { link: '', title: '', topic: '' },
-    { link: '', title: '', topic: '' },
-    { link: '', title: '', topic: '' },
-    { link: '', title: '', topic: '' },
-  ]);
+const SCOPE_PLATFORM_OPTIONS = [
+  { value: '抖音', label: '抖音' },
+  { value: '微博', label: '微博' },
+  { value: '小红书', label: '小红书' },
+  { value: '快手', label: '快手' },
+  { value: 'B站', label: 'B站' },
+  { value: '知乎', label: '知乎' },
+];
 
-  const handleRowChange = useCallback(function (index: number, field: string, value: string) {
-    setRows(function (prev) {
-      var next = [...prev];
-      next[index] = { ...next[index], [field]: value };
-      return next;
-    });
-  }, []);
+// ============ 额度预估看板 ============
 
-  const handleRemoveRow = useCallback(function (index: number) {
-    setRows(function (prev) { return prev.filter(function (_, i) { return i !== index; }); });
-  }, []);
+const COLLECT_PAGE_OPTIONS = [
+  { value: '1', label: '前1页' },
+  { value: '5', label: '前5页' },
+  { value: '10', label: '前10页' },
+  { value: 'max', label: '最大采集' },
+];
 
-  const handleAddRow = useCallback(function () {
-    setRows(function (prev) { return [...prev, { link: '', title: '', topic: '' }]; });
-  }, []);
+const PAGE_MULTIPLIER: Record<string, number> = {
+  '1': 1,
+  '5': 3,
+  '10': 8,
+  'max': 30,
+};
 
-  const handleConfirm = useCallback(function () {
-    var validRows = rows.filter(function (r) { return r.link.trim() !== ''; });
-    onConfirm(validRows);
-  }, [rows, onConfirm]);
+const QuotaEstimatePanel: React.FC<{
+  scopeLabel: string;
+  platformPageConfig: Record<string, string>;
+}> = function ({ scopeLabel, platformPageConfig }) {
+  const [loading, setLoading] = useState(false);
+  const [postData, setPostData] = useState(0);
+  const [estimatedQuota, setEstimatedQuota] = useState(0);
+
+  // 将 platformPageConfig 对象序列化为字符串，用于触发重算
+  var configKey = JSON.stringify(platformPageConfig);
+
+  // 生成随机数
+  var generateRandom = useCallback(function () {
+    var posts = Math.floor(Math.random() * 4001) + 1000;
+    var median = Math.floor(Math.random() * 151) + 50;
+    var totalQuota = 0;
+    for (var platform in platformPageConfig) {
+      var pages = platformPageConfig[platform];
+      var multiplier = PAGE_MULTIPLIER[pages] || 1;
+      totalQuota += median * multiplier;
+    }
+    return { posts, quota: totalQuota };
+  }, [configKey]);
+
+  // 初始化 + 选项变更时重新计算
+  useEffect(function () {
+    setLoading(true);
+    var timer = setTimeout(function () {
+      var result = generateRandom();
+      setPostData(result.posts);
+      setEstimatedQuota(result.quota);
+      setLoading(false);
+    }, 1000);
+    return function () { clearTimeout(timer); };
+  }, [configKey, generateRandom]);
+
+  // 判断是否有任一平台选择了"最大采集"
+  var hasMaxCollect = Object.values(platformPageConfig).some(function (v) { return v === 'max'; });
+  var quotaColor = hasMaxCollect ? '#FA8C16' : '#1890FF';
 
   return (
-    <Modal
-      title="批量添加链接"
-      open={open}
-      onCancel={onCancel}
-      footer={null}
-      width={720}
-      destroyOnClose
-      className="ct-batch-modal"
-    >
-      <div className="ct-batch-hint">每行一个链接，链接为必填项，标题和主题选填。</div>
-      <div className="ct-batch-scroll-area">
-        <div className="ct-batch-table-header">
-          <span className="ct-batch-col ct-batch-col--link">链接 *</span>
-          <span className="ct-batch-col ct-batch-col--title">标题</span>
-          <span className="ct-batch-col ct-batch-col--topic">主题</span>
-          <span className="ct-batch-col ct-batch-col--action">操作</span>
-        </div>
-        {rows.map(function (row, idx) {
-          return (
-            <div key={idx} className="ct-batch-table-row">
-              <Input
-                className="ct-batch-col ct-batch-col--link"
-                placeholder="请输入链接地址"
-                value={row.link}
-                onChange={function (e) { handleRowChange(idx, 'link', e.target.value); }}
-                size="small"
-              />
-              <Input
-                className="ct-batch-col ct-batch-col--title"
-                placeholder="选填"
-                value={row.title}
-                onChange={function (e) { handleRowChange(idx, 'title', e.target.value); }}
-                size="small"
-              />
-              <Input
-                className="ct-batch-col ct-batch-col--topic"
-                placeholder="选填"
-                value={row.topic}
-                onChange={function (e) { handleRowChange(idx, 'topic', e.target.value); }}
-                size="small"
-              />
-              <div className="ct-batch-col ct-batch-col--action">
-                <Button
-                  type="text"
-                  danger
-                  size="small"
-                  icon={<DeleteOutlined />}
-                  onClick={function () { handleRemoveRow(idx); }}
-                />
-              </div>
+    <div className={'ct-quota-panel' + (hasMaxCollect ? ' ct-quota-panel--warning' : '')}>
+      <div className="ct-quota-panel-title">
+        <span>额度预估</span>
+      </div>
+      <div className="ct-quota-panel-body">
+        {loading ? (
+          <div className="ct-quota-loading">
+            <div className="ct-quota-loading-bar">
+              <div className="ct-quota-loading-bar-inner" />
             </div>
-          );
-        })}
+            <span className="ct-quota-loading-text">正在计算预估额度...</span>
+          </div>
+        ) : (
+          <>
+            <div className="ct-quota-info">
+              <span className="ct-quota-info-text">
+                该{scopeLabel}近7天累计收录 <strong>{postData.toLocaleString()}</strong> 条帖子，基于各平台采集页数配置，当前配置预计：
+              </span>
+            </div>
+            <div className="ct-quota-result">
+              <span className="ct-quota-result-label">预计消耗额度：</span>
+              <span className="ct-quota-result-value" style={{ color: quotaColor }}>
+                {estimatedQuota.toLocaleString()} 次/天
+              </span>
+              {hasMaxCollect && (
+                <Tooltip title="最大采集将尝试抓取所有历史评论，可能导致额度快速消耗">
+                  <WarningOutlined className="ct-quota-warning-icon" />
+                </Tooltip>
+              )}
+            </div>
+          </>
+        )}
       </div>
-      <div className="ct-batch-footer">
-        <Button
-          type="dashed"
-          size="small"
-          icon={<PlusOutlined />}
-          onClick={handleAddRow}
-          className="ct-batch-add-btn"
-        >
-          添加链接
-        </Button>
-        <div className="ct-batch-footer-actions">
-          <Button onClick={onCancel}>取消</Button>
-          <Button type="primary" onClick={handleConfirm} style={{ backgroundColor: '#1890FF', borderColor: '#1890FF' }}>
-            提交
-          </Button>
-        </div>
-      </div>
-    </Modal>
+    </div>
   );
 };
 
@@ -351,14 +344,27 @@ const TaskFormContent: React.FC<{
   shakeTrackDays: boolean;
   onShakeTrackDays: (v: boolean) => void;
 }> = function ({ form, scopeType, frequency, submitting, onScopeTypeChange, onFrequencyChange, shakeTrackDays, onShakeTrackDays }) {
-  const [batchModalOpen, setBatchModalOpen] = useState(false);
   const [trackDaysError, setTrackDaysError] = useState(false);
-  const [linkValidation, setLinkValidation] = useState<'idle' | 'loading' | 'success'>('idle');
-  const [invalidLinks, setInvalidLinks] = useState<Set<number>>(new Set());
+  const [linkText, setLinkText] = useState('');
+  const [linkValidation, setLinkValidation] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [validateResult, setValidateResult] = useState<{ validCount: number; platforms: string[]; invalidList: string[] } | null>(null);
 
-  // 动态链接列表（Form.List）
-  const linkList = Form.useWatch('link_list', form) || [];
+  // 专题/重点源二级配置状态
+  const [scopePlatforms, setScopePlatforms] = useState<string[]>([]);
+  const [scopePlatformPages, setScopePlatformPages] = useState<Record<string, string>>({});
+
+  // 链接模式按平台采集页数状态
+  const [linkPlatformPages, setLinkPlatformPages] = useState<Record<string, string>>({});
+
   const trackDaysValue = Form.useWatch('track_days', form);
+  const taskTypeValue = Form.useWatch('task_type', form);
+  const relatedTopicValue = Form.useWatch('related_topic', form);
+  const relatedSourceValue = Form.useWatch('related_source', form);
+  const linkPlatformsValue = Form.useWatch('platforms', form);
+
+  // 判断是否已选定专题/重点源（用于展示二级配置区）
+  var hasSelectedScopeItem = (scopeType === 'topic' && relatedTopicValue) || (scopeType === 'source' && relatedSourceValue);
+  var scopeLabel = scopeType === 'topic' ? '专题' : '重点源';
 
   // 追踪天数动态校验
   useEffect(function () {
@@ -369,26 +375,13 @@ const TaskFormContent: React.FC<{
     }
   }, [trackDaysValue]);
 
-  const handleBatchConfirm = useCallback(function (newLinks: Array<{ link: string; title: string; topic: string }>) {
-    setBatchModalOpen(false);
-    var current = form.getFieldValue('link_list') || [];
-    var merged = [...current];
-    newLinks.forEach(function (nl) {
-      merged.push({ link: nl.link, title: nl.title, topic: nl.topic });
-    });
-    form.setFieldValue('link_list', merged);
-  }, [form]);
-
-  // 切换采集范围时，若切到"链接"且当前无链接记录，自动添加1条空行
+  // 切换采集范围时重置链接文本
   var handleScopeTypeChange = useCallback(function (v: ScopeType) {
     onScopeTypeChange(v);
-    if (v === 'other') {
-      var current = form.getFieldValue('link_list') || [];
-      if (current.length === 0) {
-        form.setFieldValue('link_list', [{ link: '', title: '', topic: '' }]);
-      }
-    }
-  }, [form, onScopeTypeChange]);
+    setLinkText('');
+    setValidateResult(null);
+    setLinkValidation('idle');
+  }, [onScopeTypeChange]);
 
   return (
     <Form
@@ -473,149 +466,242 @@ const TaskFormContent: React.FC<{
           </Form.Item>
         )}
 
+        {/* 专题/重点源 - 二级配置区 */}
+        {hasSelectedScopeItem && (
+          <div className="ct-scope-secondary">
+            <div className="ct-scope-secondary-title">采集配置</div>
+
+            <Form.Item label="采集来源" required>
+              <div className="ct-scope-platform-group">
+                <Checkbox
+                  indeterminate={scopePlatforms.length > 0 && scopePlatforms.length < SCOPE_PLATFORM_OPTIONS.length}
+                  checked={scopePlatforms.length === SCOPE_PLATFORM_OPTIONS.length}
+                  onChange={function (e) {
+                    var newPlatforms = e.target.checked ? SCOPE_PLATFORM_OPTIONS.map(function (o) { return o.value; }) : [];
+                    setScopePlatforms(newPlatforms);
+                    // 重置页数配置：保留仍选中的平台，移除取消的
+                    setScopePlatformPages(function (prev) {
+                      var next: Record<string, string> = {};
+                      newPlatforms.forEach(function (p) {
+                        next[p] = prev[p] || '1';
+                      });
+                      return next;
+                    });
+                  }}
+                  className="ct-scope-platform-all"
+                >
+                  全部
+                </Checkbox>
+                {SCOPE_PLATFORM_OPTIONS.map(function (opt) {
+                  return (
+                    <Checkbox
+                      key={opt.value}
+                      checked={scopePlatforms.includes(opt.value)}
+                      onChange={function () {
+                        setScopePlatforms(function (prev) {
+                          var next = prev.includes(opt.value)
+                            ? prev.filter(function (v) { return v !== opt.value; })
+                            : [...prev, opt.value];
+                          // 同步页数配置
+                          setScopePlatformPages(function (pp) {
+                            var updated: Record<string, string> = {};
+                            next.forEach(function (p) {
+                              updated[p] = pp[p] || '1';
+                            });
+                            return updated;
+                          });
+                          return next;
+                        });
+                      }}
+                    >
+                      {opt.label}
+                    </Checkbox>
+                  );
+                })}
+              </div>
+            </Form.Item>
+
+            {/* 评论区采集时，按平台配置采集页数 */}
+            {taskTypeValue === 'comment' && scopePlatforms.length > 0 && (
+              <div className="ct-platform-page-config">
+                <div className="ct-platform-page-config-title">各平台采集页数</div>
+                {scopePlatforms.map(function (platform) {
+                  return (
+                    <div key={platform} className="ct-platform-page-row">
+                      <span className="ct-platform-page-label">{platform}</span>
+                      <Radio.Group
+                        value={scopePlatformPages[platform] || '1'}
+                        onChange={function (e) {
+                          setScopePlatformPages(function (prev) {
+                            return { ...prev, [platform]: e.target.value };
+                          });
+                        }}
+                        size="small"
+                      >
+                        {COLLECT_PAGE_OPTIONS.map(function (opt) {
+                          return <Radio key={opt.value} value={opt.value}>{opt.label}</Radio>;
+                        })}
+                      </Radio.Group>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* 额度预估看板（仅评论区采集时显示） */}
+            {taskTypeValue === 'comment' && (
+              <QuotaEstimatePanel
+                scopeLabel={scopeLabel}
+                platformPageConfig={scopePlatformPages}
+              />
+            )}
+          </div>
+        )}
+
         {scopeType === 'other' && (
-          <>
-            <Form.Item label="目标平台" name="platforms">
+          <div className="ct-scope-secondary">
+            <div className="ct-scope-secondary-title">采集配置</div>
+
+            <Form.Item label="采集来源" name="platforms">
               <PlatformCheckboxGroup />
             </Form.Item>
 
-            {/* 动态链接配置模块 */}
-            <div className="ct-link-module">
-              <div className="ct-link-module-header">
-                <span className="ct-link-module-title">链接配置</span>
-                <Space size={8}>
-                  <Button type="link" size="small" icon={<PlusOutlined />} onClick={function () {
-                    var current = form.getFieldValue('link_list') || [];
-                    form.setFieldValue('link_list', [...current, { link: '', title: '', topic: '' }]);
-                  }}>
-                    添加单个
+            {/* 流式批量链接录入 */}
+            <Form.Item label="链接地址" required>
+              <div className="ct-link-textarea-wrapper">
+                <Input.TextArea
+                  value={linkText}
+                  onChange={function (e) {
+                    setLinkText(e.target.value);
+                    // 输入时清除上次校验结果
+                    if (validateResult) {
+                      setValidateResult(null);
+                      setLinkValidation('idle');
+                    }
+                  }}
+                  placeholder="支持批量粘贴链接，每行一个或以换行分隔"
+                  autoSize={{ minRows: 4, maxRows: 10 }}
+                  className="ct-link-textarea"
+                />
+                <div className="ct-link-textarea-footer">
+                  <span />
+                  <Button
+                    type="link"
+                    size="small"
+                    className="ct-link-validate-btn"
+                    disabled={linkValidation === 'loading' || !linkText.trim()}
+                    onClick={function () {
+                      setValidateResult(null);
+                      setLinkValidation('loading');
+                      setTimeout(function () {
+                        var lines = linkText.split('\n').map(function (l) { return l.trim(); }).filter(Boolean);
+                        var urlPattern = /^https?:\/\/.+/i;
+                        var validLines: string[] = [];
+                        var invalidList: string[] = [];
+                        var platformSet = new Set<string>();
+                        // 平台关键词识别
+                        var platformKeywords: Record<string, string[]> = {
+                          '抖音': ['douyin', 'iesdouyin'],
+                          '微博': ['weibo'],
+                          '小红书': ['xiaohongshu', 'xhslink'],
+                          '快手': ['kuaishou', 'v.kuaishou'],
+                          'B站': ['bilibili', 'b23.tv'],
+                          '知乎': ['zhihu'],
+                        };
+                        lines.forEach(function (line) {
+                          if (urlPattern.test(line)) {
+                            validLines.push(line);
+                            // 识别平台
+                            var lowerLine = line.toLowerCase();
+                            for (var platform in platformKeywords) {
+                              var keywords = platformKeywords[platform];
+                              if (keywords.some(function (kw) { return lowerLine.includes(kw); })) {
+                                platformSet.add(platform);
+                                break;
+                              }
+                            }
+                          } else {
+                            invalidList.push(line);
+                          }
+                        });
+                        setValidateResult({
+                          validCount: validLines.length,
+                          platforms: Array.from(platformSet),
+                          invalidList: invalidList,
+                        });
+                        setLinkValidation(invalidList.length === 0 ? 'success' : 'error');
+                      }, 1000);
+                    }}
+                  >
+                    {linkValidation === 'loading' && <><LoadingOutlined style={{ marginRight: 4 }} />校验中...</>}
+                    {linkValidation === 'success' && <><CheckCircleOutlined style={{ marginRight: 4 }} />校验通过</>}
+                    {(linkValidation === 'idle' || linkValidation === 'error') && '链接校验'}
                   </Button>
-                  <Button type="link" size="small" icon={<PlusOutlined />} onClick={function () { setBatchModalOpen(true); }}>
-                    批量添加
-                  </Button>
-                </Space>
+                </div>
               </div>
-
-              <Form.List name="link_list">
-                {(fields, { remove }) => (
-                  <div className="ct-link-list">
-                    {fields.length === 0 && (
-                      <div className="ct-link-empty">暂无链接，请点击上方按钮添加</div>
-                    )}
-                    {fields.map(function (field, idx) {
-                      var isInvalid = invalidLinks.has(idx);
-                      return (
-                        <div key={field.key} className={'ct-link-row' + (isInvalid ? ' ct-link-row--invalid' : '')}>
-                          <div className="ct-link-row-index">{idx + 1}</div>
-                          <div className="ct-link-row-fields">
-                            <Form.Item
-                              {...field}
-                              name={[field.name, 'link']}
-                              rules={[{ required: true, message: '请输入链接' }]}
-                              className="ct-link-field ct-link-field--link"
-                            >
-                              <Input placeholder="链接地址" prefix={<LinkOutlined />} size="small" status={isInvalid ? 'error' : undefined} />
-                            </Form.Item>
-                            <Form.Item
-                              {...field}
-                              name={[field.name, 'title']}
-                              className="ct-link-field ct-link-field--title"
-                            >
-                              <Input placeholder="标题（选填）" size="small" />
-                            </Form.Item>
-                            <Form.Item
-                              {...field}
-                              name={[field.name, 'topic']}
-                              className="ct-link-field ct-link-field--topic"
-                            >
-                              <Input placeholder="主题（选填）" size="small" />
-                            </Form.Item>
-                            {isInvalid && (
-                              <div className="ct-link-invalid-hint">该链接无效，请手动删除</div>
-                            )}
-                          </div>
-                          <div className="ct-link-row-action">
-                            <Button
-                              type="text"
-                              danger
-                              size="small"
-                              icon={<DeleteOutlined />}
-                              onClick={function () {
-                                remove(field.name);
-                                // 同步清理 invalidLinks，避免索引漂移
-                                setInvalidLinks(function (prev) {
-                                  var next = new Set<number>();
-                                  prev.forEach(function (i) {
-                                    if (i < idx) next.add(i);
-                                    else if (i > idx) next.add(i - 1);
-                                  });
-                                  return next;
-                                });
-                              }}
-                            />
-                          </div>
-                        </div>
-                      );
+              {/* 校验结果区 */}
+              {validateResult && linkValidation === 'success' && (
+                <div className="ct-link-validate-result ct-link-validate-result--success">
+                  <CheckCircleOutlined style={{ marginRight: 6 }} />
+                  已识别 {validateResult.validCount} 条有效链接
+                  {validateResult.platforms.length > 0 && (
+                    <span>（{validateResult.platforms.join('、')}）</span>
+                  )}
+                </div>
+              )}
+              {validateResult && linkValidation === 'error' && (
+                <div className="ct-link-validate-result ct-link-validate-result--error">
+                  <span>
+                    已识别 {validateResult.validCount} 条有效链接，无法识别以下内容：
+                  </span>
+                  <div className="ct-link-validate-error-list">
+                    {validateResult.invalidList.map(function (item, idx) {
+                      return <span key={idx} className="ct-link-validate-error-item">{item}</span>;
                     })}
                   </div>
-                )}
-              </Form.List>
-
-              {/* 链接校验按钮 */}
-              <div className="ct-link-validate-wrapper">
-                <Button
-                  type="link"
-                  size="small"
-                  className="ct-link-validate-btn"
-                  disabled={linkValidation === 'loading' || linkList.length === 0}
-                  onClick={function () {
-                    setInvalidLinks(new Set());
-                    setLinkValidation('loading');
-                    setTimeout(function () {
-                      // 模拟校验：检查链接格式
-                      var currentLinks = form.getFieldValue('link_list') || [];
-                      var invalidSet = new Set<number>();
-                      var urlPattern = /^https?:\/\/.+/i;
-                      currentLinks.forEach(function (item: any, idx: number) {
-                        if (item && item.link && !urlPattern.test(item.link.trim())) {
-                          invalidSet.add(idx);
-                        }
-                      });
-                      setInvalidLinks(invalidSet);
-                      if (invalidSet.size === 0) {
-                        setLinkValidation('success');
-                        setTimeout(function () {
-                          setLinkValidation('idle');
-                        }, 2000);
-                      } else {
-                        setLinkValidation('idle');
-                      }
-                    }, 1500);
-                  }}
-                >
-                  {linkValidation === 'loading' && <><LoadingOutlined style={{ marginRight: 4 }} />校验中...</>}
-                  {linkValidation === 'success' && <><CheckCircleOutlined style={{ marginRight: 4 }} />校验通过</>}
-                  {linkValidation === 'idle' && '链接校验'}
-                </Button>
-              </div>
-            </div>
-
-            <Form.Item label="采集页数" name="collect_pages" initialValue="10" required>
-              <Radio.Group>
-                <Radio value="10">前10页</Radio>
-                <Radio value="max">最大采集</Radio>
-              </Radio.Group>
+                  <span>将在提交后自动剔除</span>
+                </div>
+              )}
             </Form.Item>
-          </>
+
+            {/* 评论区采集时，按平台配置采集页数 */}
+            {taskTypeValue === 'comment' && linkPlatformsValue && linkPlatformsValue.length > 0 && (
+              <div className="ct-platform-page-config">
+                <div className="ct-platform-page-config-title">各平台采集页数</div>
+                {linkPlatformsValue.map(function (platform: string) {
+                  return (
+                    <div key={platform} className="ct-platform-page-row">
+                      <span className="ct-platform-page-label">{platform}</span>
+                      <Radio.Group
+                        value={linkPlatformPages[platform] || '1'}
+                        onChange={function (e) {
+                          setLinkPlatformPages(function (prev) {
+                            return { ...prev, [platform]: e.target.value };
+                          });
+                        }}
+                        size="small"
+                      >
+                        {COLLECT_PAGE_OPTIONS.map(function (opt) {
+                          return <Radio key={opt.value} value={opt.value}>{opt.label}</Radio>;
+                        })}
+                      </Radio.Group>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* 额度预估看板（仅评论区采集时显示） */}
+            {taskTypeValue === 'comment' && linkPlatformsValue && linkPlatformsValue.length > 0 && (
+              <QuotaEstimatePanel
+                scopeLabel="链接"
+                platformPageConfig={linkPlatformPages}
+              />
+            )}
+          </div>
         )}
       </div>
 
-      {/* 批量添加 Modal */}
-      <BatchAddModal
-        open={batchModalOpen}
-        onCancel={function () { setBatchModalOpen(false); }}
-        onConfirm={handleBatchConfirm}
-      />
     </Form>
   );
 };

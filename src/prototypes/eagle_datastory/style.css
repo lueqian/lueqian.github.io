@@ -4741,7 +4741,7 @@
 /* 内容区 */
 .ly-content {
   flex: 1;
-  overflow: auto;
+  overflow: hidden;
   background: #f0f2f5;
   padding: 20px;
   color: rgba(0, 0, 0, 0.88);
@@ -4750,7 +4750,10 @@
 /* ============ 采集任务页面容器 ============ */
 
 .ct-page-container {
-  min-height: 100%;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ============ 列表页 ============ */
@@ -4760,6 +4763,11 @@
   border-radius: 8px;
   padding: 20px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03), 0 1px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px rgba(0, 0, 0, 0.02);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 /* 筛选区 */
@@ -4770,6 +4778,7 @@
   margin-bottom: 16px;
   flex-wrap: wrap;
   gap: 12px;
+  flex-shrink: 0;
 }
 
 .ct-filter-left {
@@ -5051,7 +5060,69 @@
   background: #40a9ff;
 }
 
-/* ============ 动态链接配置模块 ============ */
+/* ============ 流式批量链接录入 ============ */
+
+.ct-link-textarea-wrapper {
+  width: 100%;
+}
+
+.ct-link-textarea {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.ct-link-textarea-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+
+/* ============ 链接校验结果区 ============ */
+
+.ct-link-validate-result {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.ct-link-validate-result--success {
+  background: #F6FFED;
+  border: 1px solid #B7EB8F;
+  color: #52C41A;
+}
+
+.ct-link-validate-result--error {
+  background: #FFF2F0;
+  border: 1px solid #FFCCC7;
+  color: #FF4D4F;
+}
+
+.ct-link-validate-error-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0;
+}
+
+.ct-link-validate-error-item {
+  display: inline-block;
+  padding: 2px 8px;
+  background: rgba(255, 77, 79, 0.08);
+  border: 1px solid rgba(255, 77, 79, 0.2);
+  border-radius: 4px;
+  font-size: 12px;
+  color: #CF1322;
+  word-break: break-all;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ============ 动态链接配置模块（已废弃，保留兼容） ============ */
 
 .ct-link-module {
   background: #F5F5F5;
@@ -5321,6 +5392,201 @@
 .ct-batch-footer-actions {
   display: flex;
   gap: 12px;
+}
+
+/* ============ 专题/重点源 - 二级配置区 ============ */
+
+.ct-scope-secondary {
+  background: #F5F7FA;
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 4px;
+  margin-bottom: 16px;
+  border: 1px solid #E8ECF0;
+}
+
+.ct-scope-secondary-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.88);
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #E8ECF0;
+}
+
+.ct-scope-platform-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.ct-scope-platform-all {
+  margin-right: 8px !important;
+  font-weight: 600;
+}
+
+.ct-scope-platform-group .ant-checkbox-wrapper {
+  margin-right: 0 !important;
+  padding: 4px 12px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  background: #ffffff;
+  transition: all 0.2s;
+}
+
+.ct-scope-platform-group .ant-checkbox-wrapper:hover {
+  border-color: #1890FF;
+}
+
+.ct-scope-platform-group .ant-checkbox-wrapper-checked {
+  border-color: #1890FF;
+  background: #e6f7ff;
+}
+
+/* ============ 按平台采集页数配置 ============ */
+
+.ct-platform-page-config {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed #E8ECF0;
+}
+
+.ct-platform-page-config-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.65);
+  margin-bottom: 10px;
+}
+
+.ct-platform-page-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+}
+
+.ct-platform-page-row + .ct-platform-page-row {
+  border-top: 1px solid #F0F0F0;
+}
+
+.ct-platform-page-label {
+  flex-shrink: 0;
+  width: 60px;
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.65);
+  text-align: right;
+}
+
+/* ============ 额度预估看板 ============ */
+
+.ct-quota-panel {
+  background: #ffffff;
+  border-radius: 8px;
+  border: 1px solid #E8ECF0;
+  overflow: hidden;
+  margin-top: 16px;
+}
+
+.ct-quota-panel--warning {
+  border-color: #FA8C16;
+  background: #FFFBF0;
+}
+
+.ct-quota-panel-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.65);
+  padding: 10px 16px;
+  background: #F0F5FF;
+  border-bottom: 1px solid #E8ECF0;
+}
+
+.ct-quota-panel--warning .ct-quota-panel-title {
+  background: #FFF7E6;
+  color: #FA8C16;
+}
+
+.ct-quota-panel-body {
+  padding: 14px 16px;
+}
+
+.ct-quota-info {
+  margin-bottom: 8px;
+}
+
+.ct-quota-info-text {
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.65);
+  line-height: 1.6;
+}
+
+.ct-quota-info-text strong {
+  color: rgba(0, 0, 0, 0.88);
+  font-weight: 600;
+}
+
+.ct-quota-result {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed #E8ECF0;
+}
+
+.ct-quota-result-label {
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.65);
+}
+
+.ct-quota-result-value {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.ct-quota-warning-icon {
+  margin-left: 6px;
+  color: #FA8C16;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+/* ============ 额度预估 Loading ============ */
+
+.ct-quota-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 0;
+}
+
+.ct-quota-loading-bar {
+  width: 100%;
+  height: 4px;
+  background: #F0F0F0;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.ct-quota-loading-bar-inner {
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(90deg, #1890FF, #40a9ff, #1890FF);
+  border-radius: 2px;
+  animation: ct-quota-loading-slide 1s ease-in-out infinite;
+}
+
+@keyframes ct-quota-loading-slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(350%); }
+}
+
+.ct-quota-loading-text {
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.45);
 }
 
 /* ============ 详情页 ============ */
@@ -5608,6 +5874,66 @@
   color: #ffffff;
 }
 
+/* ===== 通用表格页面布局（固定分页栏） ===== */
+
+/**
+ * 通用类：表格页面容器
+ * 用法：外层容器添加 .table-page，内部结构为 .table-page-filter + .table-page-table
+ */
+.table-page {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.table-page-filter {
+  flex-shrink: 0;
+}
+
+.table-page-table {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 表格内部 flex 撑满 */
+.table-page-table .ant-spin-nested-loading,
+.table-page-table .ant-spin-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.table-page-table .ant-table {
+  flex: 1;
+  overflow: hidden;
+}
+
+.table-page-table .ant-table-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.table-page-table .ant-table-body {
+  overflow-y: auto !important;
+}
+
+/* 分页栏固定底部 */
+.table-page-table .ant-pagination {
+  margin: 0;
+  padding: 12px 0 0 0;
+  flex-shrink: 0;
+  position: sticky;
+  bottom: 0;
+  background: #ffffff;
+  border-top: 1px solid #f0f0f0;
+  z-index: 1;
+}
+
 /* ===== Quota Flow Styles (qf-) ===== */
 @import "tailwindcss";
 
@@ -5827,6 +6153,9 @@
 
 .qf-page {
   width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .qf-page-title {
@@ -5893,6 +6222,9 @@
   border-radius: 8px;
   padding: 16px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03), 0 1px 6px -1px rgba(0, 0, 0, 0.02);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
@@ -5921,9 +6253,14 @@
 }
 
 .qf-table-card .ant-pagination {
-  margin: 16px 0 0 0;
-  padding-top: 12px;
+  margin: 0;
+  padding: 12px 0 0 0;
   flex-shrink: 0;
+  position: sticky;
+  bottom: 0;
+  background: #ffffff;
+  border-top: 1px solid #f0f0f0;
+  z-index: 1;
 }
 
 /* 帖子ID */

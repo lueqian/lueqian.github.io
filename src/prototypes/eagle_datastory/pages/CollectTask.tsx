@@ -331,7 +331,7 @@ const TaskListView: React.FC<{
       },
     },
     {
-      title: '平台',
+      title: '采集来源',
       dataIndex: 'platforms',
       key: 'platforms',
       width: 160,
@@ -520,7 +520,7 @@ const TaskListView: React.FC<{
           />
           <Select
             mode="multiple"
-            placeholder="平台"
+            placeholder="采集来源"
             allowClear
             style={{ width: 220 }}
             size="middle"
@@ -556,17 +556,19 @@ const TaskListView: React.FC<{
       </div>
 
       {/* 表格 */}
-      <Table
-        dataSource={filteredData}
-        columns={columns}
-        rowKey="id"
-        pagination={{ pageSize: 20, showSizeChanger: false, showTotal: function (total) { return '共 ' + total + ' 条'; } }}
-        size="middle"
-        scroll={{ x: 1160 }}
-        onChange={function (_pagination, _filters, sorter: any) {
-          setSortOrder(sorter?.columnKey === 'last_updated' ? (sorter.order || '') : '');
-        }}
-      />
+      <div className="table-page-table">
+        <Table
+          dataSource={filteredData}
+          columns={columns}
+          rowKey="id"
+          pagination={{ pageSize: 20, showSizeChanger: false, showTotal: function (total) { return '共 ' + total + ' 条'; } }}
+          size="middle"
+          scroll={{ x: 1160 }}
+          onChange={function (_pagination, _filters, sorter: any) {
+            setSortOrder(sorter?.columnKey === 'last_updated' ? (sorter.order || '') : '');
+          }}
+        />
+      </div>
     </div>
   );
 };
@@ -598,7 +600,7 @@ const TaskDetailView: React.FC<{
               {task.scope_type === 'topic' ? '全网专题' : task.scope_type === 'source' ? '重点源' : '链接'}
             </Tag>
           </Descriptions.Item>
-          <Descriptions.Item label="平台">
+          <Descriptions.Item label="采集来源">
             {task.platforms.map(function (p) { return <Tag key={p}>{p}</Tag>; })}
           </Descriptions.Item>
           <Descriptions.Item label="更新频率">{task.frequency}</Descriptions.Item>
