@@ -36,9 +36,7 @@ const costSubTabs = [
 ];
 
 /** ── 共享状态栏组件 ── */
-const CostStatusBar: React.FC = () => {
-  const [statsEnabled, setStatsEnabled] = useState(true);
-
+const CostStatusBar: React.FC<{ statsEnabled: boolean; onToggle: () => void }> = ({ statsEnabled, onToggle }) => {
   return (
     <div className="cost-status-bar">
       <div className="cost-status-left">
@@ -46,18 +44,22 @@ const CostStatusBar: React.FC = () => {
           统计数据
           <QuestionCircleOutlined className="cost-help-icon" />
         </label>
-        <div className={`status-toggle ${statsEnabled ? 'toggle-on' : 'toggle-off'}`} onClick={() => setStatsEnabled(!statsEnabled)}>
+        <div className={`status-toggle ${statsEnabled ? 'toggle-on' : 'toggle-off'}`} onClick={onToggle}>
           <span className="toggle-dot" />
         </div>
 
-        <span className="cost-status-text" style={{ marginLeft: 24 }}>
-          启用时间: 2024-10-16 09:41:41
-        </span>
+        {statsEnabled && (
+          <span className="cost-status-text" style={{ marginLeft: 24 }}>
+            启用时间: 2024-10-16 09:41:41
+          </span>
+        )}
       </div>
-      <div className="cost-status-right">
-        <span className="cost-status-text">有效期: 2027-01-01</span>
-        <span className="cost-status-remain">剩余 256 日</span>
-      </div>
+      {statsEnabled && (
+        <div className="cost-status-right">
+          <span className="cost-status-text">有效期: 2027-01-01</span>
+          <span className="cost-status-remain">剩余 256 日</span>
+        </div>
+      )}
     </div>
   );
 };
@@ -163,7 +165,8 @@ const DataPackageTab: React.FC = () => {
 };
 
 /** ── 采集任务额度（次）子 Tab 内容 ── */
-const CollectTaskQuotaTab: React.FC = () => {
+const CollectTaskQuotaTab: React.FC<{ statsEnabled: boolean; onToggleStats: () => void }> = ({ statsEnabled, onToggleStats }) => {
+
   // ── 弹窗模式：add | reduce | extend | null ──
   const [modalMode, setModalMode] = useState<'add' | 'reduce' | 'extend' | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -174,14 +177,16 @@ const CollectTaskQuotaTab: React.FC = () => {
   const [formAmount, setFormAmount] = useState('');
   const [formDate, setFormDate] = useState('');
 
-  // ── 采集平台限制 ──
-  const platforms = ['小红书', '抖音', '微博', '今日头条'];
+  // ── 采集平台管理 ──
+  const platforms = ['小红书', '抖音', '微博', '今日头条', 'B站', '知乎'];
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([...platforms]);
   const [platformFactors, setPlatformFactors] = useState<Record<string, { interaction: string; comment: string }>>({
-    '小红书': { interaction: '1.00', comment: '1.00' },
-    '抖音': { interaction: '1.00', comment: '1.00' },
-    '微博': { interaction: '1.00', comment: '1.00' },
-    '今日头条': { interaction: '1.00', comment: '1.00' },
+    '小红书': { interaction: '17.00', comment: '17.00' },
+    '抖音': { interaction: '1.00', comment: '2.00' },
+    '微博': { interaction: '1.00', comment: '2.00' },
+    '今日头条': { interaction: '1.00', comment: '2.00' },
+    'B站': { interaction: '1.00', comment: '2.00' },
+    '知乎': { interaction: '1.00', comment: '2.00' },
   });
 
   const togglePlatform = (p: string) => {
@@ -313,6 +318,7 @@ const CollectTaskQuotaTab: React.FC = () => {
   return (
     <>
       {/* ── 仪表盘：3 张指标卡片 ── */}
+      {statsEnabled && (<>
       <div className="metric-cards metric-cards-3">
         {/* 总量 */}
         <div className="metric-card metric-blue">
@@ -350,13 +356,14 @@ const CollectTaskQuotaTab: React.FC = () => {
         </div>
       </div>
 
-      {/* ── 采集平台限制 ── */}
-      <div className="platform-limit-section">
-        <div className="platform-limit-header">
-          <span className="platform-limit-title">采集平台限制</span>
+      {/* ── 采集平台管理 ── */}
+      <div className="platform-mgmt-section">
+        <div className="platform-mgmt-header">
+          <span className="platform-mgmt-title">采集平台管理</span>
         </div>
-        <div className="platform-limit-body">
-          <div className="platform-checkbox-row">
+        <div className="platform-mgmt-platform-select">
+          <span className="platform-mgmt-select-label">允许用户采集的平台：</span>
+          <div className="platform-mgmt-checkboxes">
             <label
               className={`checkbox-item ${selectedPlatforms.length === platforms.length ? 'checkbox-checked' : ''}`}
               onClick={toggleAllPlatforms}
@@ -379,44 +386,44 @@ const CollectTaskQuotaTab: React.FC = () => {
               </label>
             ))}
           </div>
+        </div>
 
-          {/* 选中具体平台后展示关联字段 */}
-          {selectedPlatforms.length > 0 && (
-            <div className="platform-factor-list">
-              {selectedPlatforms.map((p) => (
-                <div key={p} className="platform-factor-item">
-                  <div className="platform-factor-name">{p}</div>
-                  <div className="platform-factor-fields">
-                    <div className="platform-factor-field">
-                      <label className="platform-factor-label">互动量更新计费基数</label>
-                      <input
-                        type="number"
-                        className="platform-factor-input"
-                        min="0"
-                        max="100"
-                        step="0.01"
-                        value={platformFactors[p]?.interaction ?? '1.00'}
-                        onChange={(e) => updateFactor(p, 'interaction', e.target.value)}
-                      />
-                    </div>
-                    <div className="platform-factor-field">
-                      <label className="platform-factor-label">评论区采集计费基数</label>
-                      <input
-                        type="number"
-                        className="platform-factor-input"
-                        min="0"
-                        max="100"
-                        step="0.01"
-                        value={platformFactors[p]?.comment ?? '1.00'}
-                        onChange={(e) => updateFactor(p, 'comment', e.target.value)}
-                      />
-                    </div>
+        {/* 平台卡片列表 */}
+        {selectedPlatforms.length > 0 && (
+          <div className="platform-card-list">
+            {selectedPlatforms.map((p) => (
+              <div key={p} className="platform-card">
+                <span className={`platform-card-name ${p === '小红书' ? 'platform-name-blue' : ''}`}>{p}</span>
+                <div className="platform-card-fields">
+                  <div className="platform-card-field">
+                    <label className="platform-card-label">互动量更新计费权重</label>
+                    <input
+                      type="number"
+                      className="platform-card-input"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      value={platformFactors[p]?.interaction ?? '1.00'}
+                      onChange={(e) => updateFactor(p, 'interaction', e.target.value)}
+                    />
+                  </div>
+                  <div className="platform-card-field">
+                    <label className="platform-card-label">评论区采集计费权重</label>
+                    <input
+                      type="number"
+                      className="platform-card-input"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      value={platformFactors[p]?.comment ?? '1.00'}
+                      onChange={(e) => updateFactor(p, 'comment', e.target.value)}
+                    />
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ── 额度包列表 ── */}
@@ -534,6 +541,7 @@ const CollectTaskQuotaTab: React.FC = () => {
           <span className="pkg-page-size">20 条/页</span>
         </div>
       </div>
+      </>) }
 
       {/* ═══════ 通用额度包弹窗（新增 / 减量 / 延期） ═══════ */}
       {modalMode && (
@@ -634,6 +642,7 @@ const CollectTaskQuotaTab: React.FC = () => {
 /** ── 费用统计主 Tab ── */
 const CostStatisticsTab: React.FC = () => {
   const [activeCostTab, setActiveCostTab] = useState('rows');
+  const [statsEnabled, setStatsEnabled] = useState(true);
 
   return (
     <div className="cost-tab">
@@ -651,12 +660,12 @@ const CostStatisticsTab: React.FC = () => {
       </div>
 
       {/* ── 共享状态栏 ── */}
-      <CostStatusBar />
+      <CostStatusBar statsEnabled={statsEnabled} onToggle={() => setStatsEnabled(!statsEnabled)} />
 
       {/* ── 二级 Tab 内容 ── */}
       <div className="cost-sub-tab-content">
         {activeCostTab === 'rows' && <DataPackageTab />}
-        {activeCostTab === 'times' && <CollectTaskQuotaTab />}
+        {activeCostTab === 'times' && <CollectTaskQuotaTab statsEnabled={statsEnabled} onToggleStats={() => setStatsEnabled(!statsEnabled)} />}
       </div>
     </div>
   );

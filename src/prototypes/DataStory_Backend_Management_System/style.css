@@ -1607,83 +1607,95 @@ thead .col-fixed-right {
 }
 
 /* ── 采集平台限制 ── */
-.platform-limit-section {
+/* ═══════ 采集平台管理（卡片化布局） ═══════ */
+.platform-mgmt-section {
   margin: 20px 0;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-base);
-  overflow: hidden;
 }
 
-.platform-limit-header {
-  padding: 12px 20px;
-  background: #fafafa;
-  border-bottom: 1px solid var(--border-color);
+.platform-mgmt-header {
+  margin-bottom: 16px;
 }
 
-.platform-limit-title {
+.platform-mgmt-title {
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-main);
 }
 
-.platform-limit-body {
-  padding: 16px 20px;
-}
-
-.platform-checkbox-row {
+.platform-mgmt-platform-select {
   display: flex;
   align-items: center;
-  gap: 20px;
-  flex-wrap: wrap;
-}
-
-.platform-factor-list {
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px dashed var(--border-color);
-  display: flex;
-  flex-direction: column;
+  justify-content: flex-start;
   gap: 12px;
+  margin-bottom: 16px;
 }
 
-.platform-factor-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-  padding: 10px 14px;
-  background: #f9fbff;
-  border-radius: var(--radius-sm);
-  border: 1px solid #e8eef7;
-}
-
-.platform-factor-name {
-  min-width: 70px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--primary-color);
-  line-height: 32px;
-}
-
-.platform-factor-fields {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-  flex-wrap: wrap;
-}
-
-.platform-factor-field {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.platform-factor-label {
+.platform-mgmt-select-label {
   font-size: 13px;
   color: var(--text-secondary);
   white-space: nowrap;
 }
 
-.platform-factor-input {
+.platform-mgmt-checkboxes {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+/* ── 平台卡片列表 ── */
+.platform-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.platform-card {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 14px 20px;
+  background: #fff;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-base);
+  transition: box-shadow var(--transition-duration) ease;
+}
+
+.platform-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.platform-card-name {
+  min-width: 70px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.platform-name-blue {
+  color: var(--primary-color);
+}
+
+.platform-card-fields {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  flex-wrap: wrap;
+}
+
+.platform-card-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.platform-card-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.platform-card-input {
   width: 90px;
   height: 32px;
   padding: 0 10px;
@@ -1697,13 +1709,13 @@ thead .col-fixed-right {
   -moz-appearance: textfield;
 }
 
-.platform-factor-input::-webkit-outer-spin-button,
-.platform-factor-input::-webkit-inner-spin-button {
+.platform-card-input::-webkit-outer-spin-button,
+.platform-card-input::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
 
-.platform-factor-input:focus {
+.platform-card-input:focus {
   border-color: var(--primary-color);
   box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
 }
