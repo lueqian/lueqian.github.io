@@ -130,19 +130,18 @@ function generateMockData(): TaskItem[] {
   const data: TaskItem[] = [];
   const types: TaskType[] = ['interaction', 'comment'];
   const scopes: ScopeType[] = ['topic', 'source', 'other'];
-  const freqModes = ['hour', 'day', 'week', 'month'];
+  const freqModes = ['hour', 'day', 'month'];
   const freqLabels: Record<string, string[]> = {
     hour: ['每1小时', '每2小时', '每3小时', '每4小时', '每6小时', '每8小时', '每12小时'],
-    day: ['每周二08:00', '每周五10:00', '每周一12:00', '每周三14:00', '每周日18:00', '每周四20:00'],
-    week: ['每周一 09:00', '每周二 16:00', '每周三 10:00', '每周四 14:30', '每周五 08:00'],
-    month: ['每4小时', '每周三', '每8小时'],
+    day: ['每天08:00', '每天10:00', '每天12:00', '-', '-', '-'],
+    month: ['每天09:00', '每天16:00', '每天10:00', '-', '-', '-'],
   };
-  const trackDaysMap: Record<string, number[]> = { hour: [1, 3, 5, 7], day: [3, 5, 7], week: [7], month: [7] };
+  const trackDaysMap: Record<string, number[]> = { hour: [1, 3, 5, 7], day: [3, 5, 7], month: [7] };
 
   for (let i = 0; i < 105; i++) {
     const taskType = types[i % 2];
     const scopeType = scopes[i % 3];
-    const freqMode = freqModes[i % 4];
+    const freqMode = freqModes[i % 3];
     const freqOptions = freqLabels[freqMode];
     const frequency = freqOptions[i % freqOptions.length];
     const trackDaysOptions = trackDaysMap[freqMode];
@@ -303,14 +302,14 @@ const TaskListView: React.FC<{
       title: '任务名称',
       dataIndex: 'task_name',
       key: 'task_name',
-      width: 180,
+      width: 220,
       ellipsis: true,
     },
     {
       title: '类型',
       dataIndex: 'task_type',
       key: 'task_type',
-      width: 100,
+      width: 110,
       render: function (val: TaskType) {
         return val === 'interaction' ? <Tag color="blue">互动量更新</Tag> : <Tag color="purple">评论区采集</Tag>;
       },
@@ -319,7 +318,7 @@ const TaskListView: React.FC<{
       title: '范围',
       dataIndex: 'scope_type',
       key: 'scope_type',
-      width: 90,
+      width: 100,
       render: function (val: ScopeType) {
         const map: Record<string, { text: string; color: string }> = {
           topic: { text: '专题', color: 'cyan' },
@@ -334,7 +333,7 @@ const TaskListView: React.FC<{
       title: '采集来源',
       dataIndex: 'platforms',
       key: 'platforms',
-      width: 160,
+      width: 200,
       render: function (platforms: string[]) {
         return (
           <Space size={[0, 4]} wrap>
@@ -350,78 +349,22 @@ const TaskListView: React.FC<{
       title: '频率',
       dataIndex: 'frequency',
       key: 'frequency',
-      width: 100,
+      width: 110,
     },
     {
       title: '追踪',
       dataIndex: 'track_days',
       key: 'track_days',
-      width: 70,
+      width: 80,
       render: function (val: number) {
         return 'T+' + val;
-      },
-    },
-    {
-      title: '总量',
-      key: 'total',
-      width: 280,
-      render: function (_: any, record: TaskItem) {
-        // 关闭状态统一显示暂无数据
-        if (record.status === 'inactive') {
-          return (
-            <div className="ct-total-cell">
-              <div className="ct-total-row">
-                <span className="ct-total-label">累计总量:</span>
-                <span className="ct-total-empty">暂无数据</span>
-              </div>
-              <div className="ct-total-row">
-                <span className="ct-total-label">最近1次:</span>
-                <span className="ct-total-empty">暂无数据</span>
-              </div>
-            </div>
-          );
-        }
-        // 开启状态：根据任务类型展示数据
-        if (record.task_type === 'interaction') {
-          var total = record.interaction_total;
-          var last = record.interaction_last;
-          return (
-            <div className="ct-total-cell">
-              <div className="ct-total-row">
-                <span className="ct-total-label">累计总量:</span>
-                <span className="ct-total-main">
-                  赞:{formatCount(total?.likes ?? 0)} 藏:{formatCount(total?.favorites ?? 0)} 转:{formatCount(total?.reposts ?? 0)} 评:{formatCount(total?.comments ?? 0)}
-                </span>
-              </div>
-              <div className="ct-total-row">
-                <span className="ct-total-label">最近1次:</span>
-                <span className="ct-total-sub">
-                  赞:{formatCount(last?.likes ?? 0)} 藏:{formatCount(last?.favorites ?? 0)} 转:{formatCount(last?.reposts ?? 0)} 评:{formatCount(last?.comments ?? 0)}
-                </span>
-              </div>
-            </div>
-          );
-        } else {
-          return (
-            <div className="ct-total-cell">
-              <div className="ct-total-row">
-                <span className="ct-total-label">累计总量:</span>
-                <span className="ct-total-main">{formatCount(record.comment_total ?? 0)}</span>
-              </div>
-              <div className="ct-total-row">
-                <span className="ct-total-label">最近1次:</span>
-                <span className="ct-total-sub">{formatCount(record.comment_last ?? 0)}</span>
-              </div>
-            </div>
-          );
-        }
       },
     },
     {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
-      width: 70,
+      width: 80,
       render: function (val: TaskStatus, record: TaskItem) {
         return (
           <Switch
@@ -436,7 +379,7 @@ const TaskListView: React.FC<{
       title: '最近更新',
       dataIndex: 'last_updated',
       key: 'last_updated',
-      width: 140,
+      width: 150,
       sorter: true,
       sortOrder: sortOrder as any,
       render: function (val: string) {
@@ -446,7 +389,7 @@ const TaskListView: React.FC<{
     {
       title: '操作',
       key: 'action',
-      width: 150,
+      width: 160,
       render: function (_: any, record: TaskItem) {
         // 总量和增量都为0时允许修改，否则禁用
         var canEdit = record.total_count === 0 && record.hourly_increment === 0;
@@ -563,7 +506,7 @@ const TaskListView: React.FC<{
           rowKey="id"
           pagination={{ pageSize: 20, showSizeChanger: false, showTotal: function (total) { return '共 ' + total + ' 条'; } }}
           size="middle"
-          scroll={{ x: 1160 }}
+          scroll={{ x: 1210 }}
           onChange={function (_pagination, _filters, sorter: any) {
             setSortOrder(sorter?.columnKey === 'last_updated' ? (sorter.order || '') : '');
           }}

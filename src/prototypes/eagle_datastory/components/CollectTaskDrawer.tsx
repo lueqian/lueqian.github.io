@@ -61,16 +61,6 @@ const LINK_PLATFORM_OPTIONS = [
 
 // ============ 频率组件 ============
 
-const WEEK_DAYS = [
-  { value: '1', label: '周一' },
-  { value: '2', label: '周二' },
-  { value: '3', label: '周三' },
-  { value: '4', label: '周四' },
-  { value: '5', label: '周五' },
-  { value: '6', label: '周六' },
-  { value: '0', label: '周日' },
-];
-
 const FrequencySelector: React.FC<{
   value?: { mode: string; value: string };
   onChange?: (val: { mode: string; value: string }) => void;
@@ -81,7 +71,7 @@ const FrequencySelector: React.FC<{
   const handleModeChange = useCallback(function (e: any) {
     const newMode = e.target.value;
     const defaults: Record<string, string> = {
-      hour: '2', day: '08:00', week: '1',
+      hour: '2', day: '08:00',
     };
     onChange?.({ mode: newMode, value: defaults[newMode] || '' });
   }, [onChange]);
@@ -90,44 +80,11 @@ const FrequencySelector: React.FC<{
     onChange?.({ mode, value: typeof v === 'string' ? v : String(v) });
   }, [mode, onChange]);
 
-  // 解析每周选中的日期（逗号分隔）
-  const weekSelected = React.useMemo(function () {
-    if (mode !== 'week' || !val) return [];
-    var parts = val.split('|');
-    return (parts[0] || '').split(',').filter(Boolean);
-  }, [mode, val]);
-
-  // 解析每周时间
-  const weekTime = React.useMemo(function () {
-    if (mode !== 'week') return '08:00';
-    var parts = val.split('|');
-    return parts[1] || '08:00';
-  }, [mode, val]);
-
-  const handleDayToggle = useCallback(function (dayValue: string) {
-    var current = weekSelected.includes(dayValue)
-      ? weekSelected.filter(function (d) { return d !== dayValue; })
-      : [...weekSelected, dayValue];
-    onChange?.({ mode: 'week', value: current.join(',') + '|' + weekTime });
-  }, [weekSelected, weekTime, onChange]);
-
-  const handleSelectAll = useCallback(function () {
-    var allDays = WEEK_DAYS.map(function (d) { return d.value; });
-    var isAllSelected = allDays.every(function (d) { return weekSelected.includes(d); });
-    var newSelected = isAllSelected ? [] : allDays;
-    onChange?.({ mode: 'week', value: newSelected.join(',') + '|' + weekTime });
-  }, [weekSelected, weekTime, onChange]);
-
-  const handleWeekTimeChange = useCallback(function (_: any, timeStr: string | null) {
-    onChange?.({ mode: 'week', value: weekSelected.join(',') + '|' + (timeStr || '08:00') });
-  }, [weekSelected, onChange]);
-
   return (
     <div className="ct-freq-selector">
       <Radio.Group value={mode} onChange={handleModeChange} buttonStyle="solid" size="small">
         <Radio.Button value="hour">每X小时</Radio.Button>
         <Radio.Button value="day">每天</Radio.Button>
-        <Radio.Button value="week">每周</Radio.Button>
       </Radio.Group>
       <div className="ct-freq-value">
         {mode === 'hour' && (
@@ -142,34 +99,6 @@ const FrequencySelector: React.FC<{
             <span className="ct-freq-label">每天</span>
             <TimePicker value={val ? dayjs(val, 'HH:mm') : undefined} onChange={function (_, timeStr) { handleValueChange(timeStr); }} format="HH:mm" size="small" style={{ width: 110 }} />
           </Space.Compact>
-        )}
-        {mode === 'week' && (
-          <div className="ct-freq-week">
-            <div className="ct-freq-week-days">
-                <div
-                  className={'ct-freq-week-day ct-freq-week-day--all' + (weekSelected.length === 7 ? ' ct-freq-week-day--active' : '')}
-                  onClick={handleSelectAll}
-                >
-                  全部
-                </div>
-                {WEEK_DAYS.map(function (day) {
-                var isSelected = weekSelected.includes(day.value);
-                return (
-                  <div
-                    key={day.value}
-                    className={'ct-freq-week-day' + (isSelected ? ' ct-freq-week-day--active' : '')}
-                    onClick={function () { handleDayToggle(day.value); }}
-                  >
-                    {day.label}
-                  </div>
-                );
-              })}
-            </div>
-            <div className="ct-freq-week-time">
-              <span className="ct-freq-label ct-freq-label--time">采集时间</span>
-              <TimePicker value={dayjs(weekTime, 'HH:mm')} onChange={handleWeekTimeChange} format="HH:mm" size="small" style={{ width: 120 }} />
-            </div>
-          </div>
         )}
       </div>
     </div>
