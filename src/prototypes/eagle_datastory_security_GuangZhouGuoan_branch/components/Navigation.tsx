@@ -6,6 +6,8 @@ import {
   StarOutlined,
   CloudSyncOutlined,
   AccountBookOutlined,
+  CompassOutlined,
+  BulbOutlined,
 } from '@ant-design/icons';
 
 // ============ 类型定义 ============
@@ -32,6 +34,8 @@ type MenuItem = {
 const MENU_ITEMS: MenuItem[] = [
   { key: 'search', label: '搜索', icon: <SearchOutlined /> },
   { key: 'workbench', label: '工作台', icon: <AppstoreOutlined /> },
+  { key: 'recommend', label: '智能推荐', icon: <BulbOutlined /> },
+  { key: 'overseas', label: '海外发现', icon: <CompassOutlined /> },
   { key: 'topic', label: '全网专题', icon: <GlobalOutlined /> },
   { key: 'source', label: '重点源', icon: <StarOutlined /> },
   { key: 'collect', label: '采集任务', icon: <CloudSyncOutlined /> },

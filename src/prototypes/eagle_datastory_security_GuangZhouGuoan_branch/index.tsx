@@ -45,15 +45,20 @@ import Topics from './pages/Topics';
 import Sources from './pages/Sources';
 import CollectTask from './pages/CollectTask';
 import QuotaFlow from './pages/QuotaFlow';
+import OverseasDiscovery from './pages/OverseasDiscovery';
+import OverseasResults from './pages/OverseasResults';
+import SmartRecommend from './pages/SmartRecommend';
 
 // ============ 类型定义 ============
 
-type PageKey = 'search' | 'workbench' | 'topic' | 'source' | 'collect' | 'quota';
+type PageKey = 'search' | 'workbench' | 'recommend' | 'overseas' | 'topic' | 'source' | 'collect' | 'quota';
 
 // 页面标题映射
 const PAGE_TITLES: Record<PageKey, string> = {
   search: '搜索',
   workbench: '工作台',
+  recommend: '智能推荐',
+  overseas: '海外发现',
   topic: '全网专题',
   source: '重点源',
   collect: '采集任务',
@@ -176,6 +181,12 @@ const EagleDataStory = forwardRef<AxureHandle, AxureProps>((props, ref) => {
             <p>功能开发中...</p>
           </div>
         );
+      case 'overseas':
+        // 海外发现页面，默认显示搜索结果页（可切换为OverseasDiscovery）
+        return <OverseasResults />;
+      case 'recommend':
+        // 智能推荐页面
+        return <SmartRecommend />;
       case 'topic':
         return <Topics />;
       case 'source':

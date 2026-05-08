@@ -20,7 +20,7 @@
 
 import '../style.css';
 import React, { useState, useCallback } from 'react';
-import { Input, Tag, Drawer } from 'antd';
+import { Input, Tag, Drawer, Popover, Button, Spin } from 'antd';
 import {
   SearchOutlined,
   AppstoreOutlined,
@@ -29,6 +29,7 @@ import {
   CopyOutlined,
   CloseOutlined,
   UserOutlined,
+  PlusOutlined,
 } from '@ant-design/icons';
 
 // ============ 类型定义 ============
@@ -46,6 +47,14 @@ type TGGroupItem = {
   tags: string[];
 };
 
+/** 关联群组数据类型 */
+type RelatedGroup = {
+  id: string;
+  name: string;
+  groupId: string;
+  isMonitored: boolean;
+};
+
 /** 群成员数据类型 */
 type MemberItem = {
   id: number;
@@ -53,6 +62,8 @@ type MemberItem = {
   memberId: string;
   avatar: string;
   interactions: number;
+  crossGroupCount: number;
+  relatedGroups: RelatedGroup[];
 };
 
 // ============ 模拟数据 ============
@@ -115,15 +126,29 @@ const MOCK_TG_GROUPS: TGGroupItem[] = [
   },
 ];
 
+// 关联群组模拟数据（仅保留已监测群组）
+const MOCK_RELATED_GROUPS: RelatedGroup[] = [
+  { id: 'rg1', name: '跨境电商情报总群', groupId: '-1002194108821', isMonitored: true },
+  { id: 'rg2', name: 'Web3项目孵化讨论组', groupId: '-1002123581290', isMonitored: true },
+  { id: 'rg3', name: 'AI产品增长实验室', groupId: '-1002386017736', isMonitored: true },
+];
+
+// 生成随机关联群组（2-3个，仅已监测群组）
+const generateRelatedGroups = (): RelatedGroup[] => {
+  const count = Math.floor(Math.random() * 2) + 2; // 2-3个
+  const shuffled = [...MOCK_RELATED_GROUPS].sort(() => 0.5 - Math.random());
+  return shuffled.slice(0, count);
+};
+
 const MOCK_MEMBERS: MemberItem[] = [
-  { id: 1, name: 'Mason Lin', memberId: 'u101', avatar: 'M', interactions: 92 },
-  { id: 2, name: 'Zoey Chen', memberId: 'u102', avatar: 'Z', interactions: 88 },
-  { id: 3, name: 'Evan Xu', memberId: 'u103', avatar: 'E', interactions: 76 },
-  { id: 4, name: 'Sophie Gao', memberId: 'u104', avatar: 'S', interactions: 65 },
-  { id: 5, name: 'Daniel Wu', memberId: 'u105', avatar: 'D', interactions: 58 },
-  { id: 6, name: 'Nora Li', memberId: 'u106', avatar: 'N', interactions: 53 },
-  { id: 7, name: 'Kevin Wang', memberId: 'u107', avatar: 'K', interactions: 47 },
-  { id: 8, name: 'Luna Zhang', memberId: 'u108', avatar: 'L', interactions: 41 },
+  { id: 1, name: 'Mason Lin', memberId: 'u101', avatar: 'M', interactions: 92, crossGroupCount: 3, relatedGroups: generateRelatedGroups() },
+  { id: 2, name: 'Zoey Chen', memberId: 'u102', avatar: 'Z', interactions: 88, crossGroupCount: 8, relatedGroups: generateRelatedGroups() },
+  { id: 3, name: 'Evan Xu', memberId: 'u103', avatar: 'E', interactions: 76, crossGroupCount: 3, relatedGroups: generateRelatedGroups() },
+  { id: 4, name: 'Sophie Gao', memberId: 'u104', avatar: 'S', interactions: 65, crossGroupCount: 8, relatedGroups: generateRelatedGroups() },
+  { id: 5, name: 'Daniel Wu', memberId: 'u105', avatar: 'D', interactions: 58, crossGroupCount: 3, relatedGroups: generateRelatedGroups() },
+  { id: 6, name: 'Nora Li', memberId: 'u106', avatar: 'N', interactions: 53, crossGroupCount: 8, relatedGroups: generateRelatedGroups() },
+  { id: 7, name: 'Kevin Wang', memberId: 'u107', avatar: 'K', interactions: 47, crossGroupCount: 3, relatedGroups: generateRelatedGroups() },
+  { id: 8, name: 'Luna Zhang', memberId: 'u108', avatar: 'L', interactions: 41, crossGroupCount: 8, relatedGroups: generateRelatedGroups() },
 ];
 
 // ============ 筛选Tab配置 ============
@@ -161,6 +186,7 @@ const TGGroupManage: React.FC = () => {
   const [drawerVisible, setDrawerVisible] = useState<boolean>(false);
   const [selectedGroup, setSelectedGroup] = useState<TGGroupItem | null>(null);
   const [memberSearchKeyword, setMemberSearchKeyword] = useState<string>('');
+  const [switchingGroup, setSwitchingGroup] = useState<boolean>(false);
 
   // ============ 事件处理 ============
   const handleViewDetail = useCallback((group: TGGroupItem) => {
@@ -172,6 +198,19 @@ const TGGroupManage: React.FC = () => {
   const handleDrawerClose = useCallback(() => {
     setDrawerVisible(false);
     setSelectedGroup(null);
+  }, []);
+
+  // 切换到关联群组（抽屉内无缝跳转）
+  const handleSwitchGroup = useCallback((targetGroupId: string) => {
+    const targetGroup = MOCK_TG_GROUPS.find((g) => g.groupId === targetGroupId);
+    if (!targetGroup) return;
+    setSwitchingGroup(true);
+    setMemberSearchKeyword('');
+    // 模拟短暂Loading后切换内容
+    setTimeout(() => {
+      setSelectedGroup(targetGroup);
+      setSwitchingGroup(false);
+    }, 300);
   }, []);
 
   // ============ 过滤成员列表 ============
@@ -339,6 +378,30 @@ const TGGroupManage: React.FC = () => {
     </div>
   );
 
+  // ============ 渲染关联群组Popover内容 ============
+  const renderRelatedGroupsPopover = (relatedGroups: RelatedGroup[]) => (
+    <div className="tg2-popover-content">
+      <div className="tg2-popover-title">关联活跃群组</div>
+      <div className="tg2-popover-list">
+        {relatedGroups.map((group) => (
+          <div
+            key={group.id}
+            className="tg2-popover-item"
+            onClick={() => handleSwitchGroup(group.groupId)}
+          >
+            <div className="tg2-popover-group-icon">#</div>
+            <div className="tg2-popover-group-info">
+              <span className="tg2-popover-group-name tg2-popover-group-name--link">
+                {group.name}
+              </span>
+              <span className="tg2-popover-group-id">{group.groupId}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
   // ============ 渲染右侧抽屉 ============
   const renderDrawer = () => (
     <Drawer
@@ -384,33 +447,51 @@ const TGGroupManage: React.FC = () => {
           {/* 成员列表标题 */}
           <div className="tg2-drawer-section-title">成员信息</div>
 
-          {/* 成员列表 */}
-          <div className="tg2-member-list">
-            {filteredMembers.map((member) => (
-              <div key={member.id} className="tg2-member-item">
-                <div className="tg2-member-left">
-                  <div
-                    className="tg2-member-avatar"
-                    style={{ background: getAvatarColor(member.id - 1) }}
-                  >
-                    {member.avatar}
+          {/* Loading / 内容切换 */}
+          {switchingGroup ? (
+            <div className="tg2-switching-loading">
+              <Spin size="small" />
+              <span className="tg2-switching-text">加载中...</span>
+            </div>
+          ) : (
+            <div className="tg2-member-list">
+              {filteredMembers.map((member) => (
+                <div key={member.id} className="tg2-member-item">
+                  <div className="tg2-member-left">
+                    <div
+                      className="tg2-member-avatar"
+                      style={{ background: getAvatarColor(member.id - 1) }}
+                    >
+                      {member.avatar}
+                    </div>
+                    <div className="tg2-member-info">
+                      <div className="tg2-member-name">{member.name}</div>
+                      <div className="tg2-member-id">
+                        <span className="tg2-member-id-text">成员ID: {member.memberId}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="tg2-member-info">
-                    <div className="tg2-member-name">{member.name}</div>
-                    <div className="tg2-member-id">成员ID: {member.memberId}</div>
+                  <div className="tg2-member-right">
+                    {/* 跨群活跃标签 - 强制向左弹出 */}
+                    <Popover
+                      content={renderRelatedGroupsPopover(member.relatedGroups)}
+                      title={null}
+                      placement="left"
+                      trigger="click"
+                      arrow={true}
+                      overlayClassName="tg2-related-groups-popover"
+                      getPopupContainer={(trigger) => trigger.parentElement as HTMLElement}
+                    >
+                      <span className="tg2-cross-group-tag">
+                        跨群活跃 {member.crossGroupCount}
+                      </span>
+                    </Popover>
+                    <span className="tg2-member-interactions">{member.interactions}次互动</span>
                   </div>
                 </div>
-                <div className="tg2-member-right">
-                  <span className="tg2-member-interactions">{member.interactions}次互动</span>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* 底部查看详情 */}
-          <div className="tg2-drawer-footer">
-            <span className="tg2-drawer-more">查看详情 &rarr;</span>
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </Drawer>
