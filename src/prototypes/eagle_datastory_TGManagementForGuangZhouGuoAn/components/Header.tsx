@@ -7,6 +7,7 @@ import {
   InfoCircleOutlined,
   UpOutlined,
   DownOutlined,
+  FormOutlined,
 } from '@ant-design/icons';
 
 // ============ 类型定义 ============
@@ -33,6 +34,8 @@ export interface HeaderProps {
   onSwitchAccount?: () => void;
   /** 退出登录回调 */
   onLogout?: () => void;
+  /** 打开问题反馈回调 */
+  onOpenTicketSystem?: () => void;
 }
 
 // ============ 主题选项 ============
@@ -250,6 +253,7 @@ const Header: React.FC<HeaderProps> = function Header({
   onBackToNav,
   onSwitchAccount,
   onLogout,
+  onOpenTicketSystem,
 }) {
   // 取昵称首字作为头像文字
   const avatarText = nickname ? nickname.charAt(0).toUpperCase() : 'U';
@@ -336,6 +340,11 @@ const Header: React.FC<HeaderProps> = function Header({
         <Tooltip title="返回导航页" placement="bottom">
           <div className="ly-header-icon" onClick={onBackToNav}>
             <ArrowLeftOutlined />
+          </div>
+        </Tooltip>
+        <Tooltip title="问题反馈" placement="bottom">
+          <div className="ly-header-icon" onClick={onOpenTicketSystem}>
+            <FormOutlined />
           </div>
         </Tooltip>
         <Tooltip title="切换账号" placement="bottom">

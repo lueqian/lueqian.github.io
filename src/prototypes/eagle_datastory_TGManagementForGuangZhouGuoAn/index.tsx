@@ -38,6 +38,7 @@ import { safeEmitEvent, getConfigValue, getDataValue } from '../../common/axure-
 import Navigation from './components/Navigation';
 import Header from './components/Header';
 import type { SubNavItem } from './components/Header';
+import TicketSystemDrawer from './components/TicketSystemDrawer';
 
 // 导入页面组件
 import Search from './pages/Search';
@@ -88,6 +89,9 @@ const EagleDataStory = forwardRef<AxureHandle, AxureProps>((props, ref) => {
 
   // 侧边栏折叠状态
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  // 工单系统抽屉状态
+  const [ticketDrawerOpen, setTicketDrawerOpen] = useState(false);
 
   // 二级菜单激活项（如重点源的子 Tab）
   const [activeSubNav, setActiveSubNav] = useState<string>('');
@@ -322,6 +326,7 @@ const EagleDataStory = forwardRef<AxureHandle, AxureProps>((props, ref) => {
             onBackToNav={handleBackToNav}
             onSwitchAccount={handleSwitchAccount}
             onLogout={handleLogout}
+            onOpenTicketSystem={() => setTicketDrawerOpen(true)}
           />
 
           {/* 页面内容 - 使用独立 ConfigProvider 覆盖表单控件为白色背景 */}
@@ -331,6 +336,12 @@ const EagleDataStory = forwardRef<AxureHandle, AxureProps>((props, ref) => {
             </div>
           </ConfigProvider>
         </div>
+
+        {/* 工单反馈抽屉 */}
+        <TicketSystemDrawer 
+          open={ticketDrawerOpen} 
+          onClose={() => setTicketDrawerOpen(false)} 
+        />
       </div>
     </ConfigProvider>
   );
