@@ -36,8 +36,9 @@ const MENU_ITEMS: MenuItem[] = [
   { key: 'workbench', label: '工作台', icon: <AppstoreOutlined /> },
   { key: 'recommend', label: '智能推荐', icon: <BulbOutlined /> },
   { key: 'topic', label: '全网专题', icon: <GlobalOutlined /> },
+  { key: 'overseas', label: '海外发现', icon: <GlobalOutlined /> },
   { key: 'source', label: '重点源', icon: <StarOutlined /> },
-  { key: 'tg_groups', label: '群组管理', icon: <MessageOutlined /> },
+  { key: 'tg_groups', label: 'TG群管理', icon: <MessageOutlined /> },
   { key: 'collect', label: '采集任务', icon: <CloudSyncOutlined /> },
   { key: 'quota', label: '额度明细', icon: <AccountBookOutlined /> },
 ];

@@ -32,6 +32,8 @@ import {
   SwapOutlined,
   CheckCircleOutlined,
   ClockCircleOutlined,
+  SortDescendingOutlined,
+  SortAscendingOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
@@ -405,8 +407,14 @@ const TGGroupDrawer: React.FC<TGGroupDrawerProps> = function ({
   const [linkVersion, setLinkVersion] = useState(0);
   const [linkType, setLinkType] = useState('all');
 
-  // 成员排序方式
+  // 成员筛选状态
+  const [memberNickname, setMemberNickname] = useState('');
+  const [memberId, setMemberId] = useState('');
+
+  // 成员排序方式（7天/1个月）
   const [sortMode, setSortMode] = useState<'7days' | '30days'>('7days');
+  // 排序方向（true=降序从多到少，false=升序从少到多）
+  const [sortDesc, setSortDesc] = useState(true);
 
   // 选中的成员（用于高亮聊天）
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
@@ -462,13 +470,32 @@ const TGGroupDrawer: React.FC<TGGroupDrawerProps> = function ({
   const sortedMembers = useMemo(function () {
     const sourceMembers = dynamicMembers || MOCK_MEMBERS;
     const sorted = [...sourceMembers];
-    if (sortMode === '7days') {
-      sorted.sort(function (a, b) { return b.active7Days - a.active7Days; });
-    } else {
-      sorted.sort(function (a, b) { return b.active30Days - a.active30Days; });
+
+    // 先筛选
+    let filtered = sorted;
+    if (memberNickname) {
+      filtered = filtered.filter(function (m) {
+        return m.name.toLowerCase().includes(memberNickname.toLowerCase());
+      });
     }
-    return sorted;
-  }, [dynamicMembers, sortMode]);
+    if (memberId) {
+      filtered = filtered.filter(function (m) {
+        return m.id.toLowerCase().includes(memberId.toLowerCase());
+      });
+    }
+
+    // 再排序
+    if (sortMode === '7days') {
+      filtered.sort(function (a, b) {
+        return sortDesc ? b.active7Days - a.active7Days : a.active7Days - b.active7Days;
+      });
+    } else {
+      filtered.sort(function (a, b) {
+        return sortDesc ? b.active30Days - a.active30Days : a.active30Days - b.active30Days;
+      });
+    }
+    return filtered;
+  }, [dynamicMembers, memberNickname, memberId, sortMode, sortDesc]);
 
   // 筛选消息（优先使用动态数据，否则使用 MOCK 数据）
   const filteredMessages = useMemo(function () {
@@ -633,72 +660,52 @@ const TGGroupDrawer: React.FC<TGGroupDrawerProps> = function ({
         body: { padding: 0, display: 'flex', flexDirection: 'column', height: 'calc(100% - 55px)' },
       }}
     >
-      {/* 共享顶栏行 - 保证左右顶部区域等高 */}
-      <div className="tgd-top-row">
-        {/* 左侧筛选栏 */}
-        <div className="tgd-filter-bar">
-          <div className="tgd-filter-item">
-            <CalendarOutlined style={{ marginRight: 8, color: '#999' }} />
-            <RangePicker
-              size="small"
-              style={{ width: 240 }}
-              placeholder={['开始日期', '结束日期']}
-              onChange={function (dates) {
-                setDateRange(dates as [dayjs.Dayjs | null, dayjs.Dayjs | null] | null);
-              }}
-            />
-          </div>
-          <div className="tgd-filter-item">
-            <Input
-              size="small"
-              placeholder="搜索关键词"
-              prefix={<SearchOutlined style={{ color: '#999' }} />}
-              style={{ width: 180 }}
-              value={keyword}
-              onChange={function (e) { setKeyword(e.target.value); }}
-              allowClear
-            />
-          </div>
-          <div className="tgd-filter-item">
-            <LinkOutlined style={{ marginRight: 8, color: '#999' }} />
-            <Select
-              size="small"
-              style={{ width: 120 }}
-              value={linkType}
-              onChange={setLinkType}
-              options={LINK_TYPE_OPTIONS}
-            />
-          </div>
-        </div>
-
-        {/* 右侧成员标题 + 活跃度检索 */}
-        <div className="tgd-right-top">
-          <div className="tgd-member-header">
-            <TeamOutlined style={{ marginRight: 8 }} />
-            <span>成员列表</span>
-            <span className="tgd-member-count">({MOCK_MEMBERS.length}人)</span>
-          </div>
-
-          {/* 活跃度检索 - 标题下方 */}
-          <div className="tgd-sort-bar">
-            <span className="tgd-sort-label">活跃度检索：</span>
-            <Tabs
-              activeKey={sortMode}
-              onChange={function (key) { setSortMode(key as '7days' | '30days'); }}
-              size="small"
-              items={[
-                { key: '7days', label: '7天发言次数' },
-                { key: '30days', label: '1个月发言次数' },
-              ]}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* 内容行：左侧聊天区 + 右侧成员区 */}
-      <div className="tgd-content-row">
-        {/* 左侧：对话溯源区（仅聊天内容） */}
+      {/* 主体区域：左侧聊天 + 右侧成员 */}
+      <div className="tgd-main-row">
+        {/* 左侧：历史聊天记录 */}
         <div className="tgd-left-panel">
+          {/* 标题 */}
+          <div className="tgd-section-header">
+            <MessageOutlined style={{ marginRight: 8 }} />
+            <span>历史聊天记录</span>
+          </div>
+
+          {/* 筛选条件 */}
+          <div className="tgd-chat-filter">
+            <div className="tgd-filter-item">
+              <CalendarOutlined style={{ marginRight: 8, color: '#999' }} />
+              <RangePicker
+                size="small"
+                style={{ width: 220 }}
+                placeholder={['开始日期', '结束日期']}
+                onChange={function (dates) {
+                  setDateRange(dates as [dayjs.Dayjs | null, dayjs.Dayjs | null] | null);
+                }}
+              />
+            </div>
+            <div className="tgd-filter-item">
+              <Input
+                size="small"
+                placeholder="搜索关键词"
+                prefix={<SearchOutlined style={{ color: '#999' }} />}
+                style={{ width: 160 }}
+                value={keyword}
+                onChange={function (e) { setKeyword(e.target.value); }}
+                allowClear
+              />
+            </div>
+            <div className="tgd-filter-item">
+              <LinkOutlined style={{ marginRight: 8, color: '#999' }} />
+              <Select
+                size="small"
+                style={{ width: 110 }}
+                value={linkType}
+                onChange={setLinkType}
+                options={LINK_TYPE_OPTIONS}
+              />
+            </div>
+          </div>
+
           {/* 聊天内容区 */}
           <div className="tgd-chat-area">
           {filteredMessages.map(function (msg) {
@@ -710,7 +717,7 @@ const TGGroupDrawer: React.FC<TGGroupDrawerProps> = function ({
               >
                 <Avatar src={msg.senderAvatar} size={36} icon={<UserOutlined />} />
                 <div className="tgd-chat-content">
-                  <div className="tgd-chat-header">
+                  <div className="tgd-chat-meta">
                     <span className="tgd-chat-sender">{msg.senderName}</span>
                     <span className="tgd-chat-time">{msg.timestamp}</span>
                   </div>
@@ -728,13 +735,64 @@ const TGGroupDrawer: React.FC<TGGroupDrawerProps> = function ({
               <p>暂无符合条件的聊天记录</p>
             </div>
           )}
+          </div>
         </div>
-      </div>
 
-      {/* 右侧：成员镜像区（仅成员列表） */}
-      <div className="tgd-right-panel">
-        {/* 成员列表 */}
-        <div className="tgd-member-list">
+        {/* 右侧：成员列表 */}
+        <div className="tgd-right-panel">
+          {/* 标题 */}
+          <div className="tgd-section-header">
+            <TeamOutlined style={{ marginRight: 8 }} />
+            <span>成员列表</span>
+            <span className="tgd-member-count">({sortedMembers.length}人)</span>
+          </div>
+
+          {/* 成员筛选 */}
+          <div className="tgd-member-filter">
+            <Input
+              placeholder="成员昵称"
+              prefix={<UserOutlined style={{ color: '#bfbfbf' }} />}
+              size="small"
+              value={memberNickname}
+              onChange={function (e) { setMemberNickname(e.target.value); }}
+              allowClear
+              style={{ width: 130 }}
+            />
+            <Input
+              placeholder="ID检索"
+              prefix={<span style={{ color: '#bfbfbf', fontSize: 12 }}>ID</span>}
+              size="small"
+              value={memberId}
+              onChange={function (e) { setMemberId(e.target.value); }}
+              allowClear
+              style={{ width: 110 }}
+            />
+          </div>
+
+          {/* 活跃度检索 */}
+          <div className="tgd-sort-bar">
+            <span className="tgd-sort-label">活跃度检索：</span>
+            <Tabs
+              activeKey={sortMode}
+              onChange={function (key) { setSortMode(key as '7days' | '30days'); }}
+              size="small"
+              items={[
+                { key: '7days', label: '7天发言次数' },
+                { key: '30days', label: '1个月发言次数' },
+              ]}
+            />
+            <Button
+              type="text"
+              size="small"
+              icon={sortDesc ? <SortDescendingOutlined /> : <SortAscendingOutlined />}
+              onClick={function () { setSortDesc(!sortDesc); }}
+              className="tgd-sort-direction-btn"
+              title={sortDesc ? '从多到少，点击切换为从少到多' : '从少到多，点击切换为从多到少'}
+            />
+          </div>
+
+          {/* 成员列表 */}
+          <div className="tgd-member-list">
           {sortedMembers.map(function (member) {
             const isSelected = selectedMemberId === member.id;
             const isTracked = trackedMemberId === member.id;

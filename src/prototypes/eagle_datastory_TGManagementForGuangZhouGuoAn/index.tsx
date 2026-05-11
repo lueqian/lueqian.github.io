@@ -47,10 +47,11 @@ import CollectTask from './pages/CollectTask';
 import QuotaFlow from './pages/QuotaFlow';
 import SmartRecommend from './pages/SmartRecommend';
 import TGGroups from './pages/TGGroups';
+import OverseasTopics from './pages/OverseasTopics';
 
 // ============ 类型定义 ============
 
-type PageKey = 'search' | 'workbench' | 'recommend' | 'topic' | 'source' | 'tg_groups' | 'collect' | 'quota';
+type PageKey = 'search' | 'workbench' | 'recommend' | 'topic' | 'overseas' | 'source' | 'tg_groups' | 'collect' | 'quota';
 
 // 页面标题映射
 const PAGE_TITLES: Record<PageKey, string> = {
@@ -58,8 +59,9 @@ const PAGE_TITLES: Record<PageKey, string> = {
   workbench: '工作台',
   recommend: '智能推荐',
   topic: '全网专题',
+  overseas: '海外发现',
   source: '重点源',
-  tg_groups: 'TG群组管理',
+  tg_groups: 'TG群管理',
   collect: '采集任务',
   quota: '额度明细',
 };
@@ -183,6 +185,8 @@ const EagleDataStory = forwardRef<AxureHandle, AxureProps>((props, ref) => {
         return <SmartRecommend />;
       case 'topic':
         return <Topics />;
+      case 'overseas':
+        return <OverseasTopics />;
       case 'source':
         return <Sources />;
       case 'tg_groups':

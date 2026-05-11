@@ -7709,32 +7709,57 @@
   background: #fff;
 }
 
-/* ============ 共享顶栏行 ============ */
+/* ============ 主体区域（左右并排） ============ */
 
-.tgd-top-row {
-  display: grid;
-  grid-template-columns: 1fr 35%;
-  flex-shrink: 0;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-/* ============ 内容行（左右并排） ============ */
-
-.tgd-content-row {
+.tgd-main-row {
   display: flex;
   flex: 1;
   min-height: 0;
+  border-top: 1px solid #f0f0f0;
 }
 
-/* ============ 筛选栏 ============ */
+/* 左侧面板 */
+.tgd-left-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border-right: 1px solid #f0f0f0;
+}
 
-.tgd-filter-bar {
+/* 右侧面板 */
+.tgd-right-panel {
+  width: 35%;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* 通用标题 */
+.tgd-section-header {
   display: flex;
   align-items: center;
-  gap: 16px;
   padding: 12px 16px;
-  background: #fff;
+  font-weight: 500;
+  font-size: 14px;
+  color: #262626;
+  border-bottom: 1px solid #f0f0f0;
+  flex-shrink: 0;
 }
+
+/* 聊天筛选条件 */
+.tgd-chat-filter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid #f0f0f0;
+  flex-shrink: 0;
+}
+
+/* ============ 筛选项 ============ */
 
 .tgd-filter-item {
   display: flex;
@@ -7873,6 +7898,42 @@
   font-size: 13px;
   color: rgba(0, 0, 0, 0.45);
   margin-left: 4px;
+}
+
+/* 成员筛选 */
+.tgd-member-filter {
+  display: flex;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+/* 排序方向按钮 */
+.tgd-sort-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+}
+
+.tgd-sort-label {
+  font-size: 12px;
+  color: #595959;
+  flex-shrink: 0;
+}
+
+.tgd-sort-bar .ant-tabs {
+  flex: 1;
+}
+
+.tgd-sort-direction-btn {
+  flex-shrink: 0;
+  padding: 4px 8px;
+}
+
+.tgd-sort-direction-btn:hover {
+  background: #f5f5f5;
+  border-radius: 4px;
 }
 
 .tgd-member-list {
@@ -8240,4 +8301,260 @@
 .tgp-status--unfollowed {
   background: #f5f5f5;
   color: #595959;
+}
+
+/* ============ 海外专题页面样式 ============ */
+
+.ot-container {
+  padding: 24px;
+  background: #f5f7fa;
+  min-height: 100%;
+}
+
+/* 搜索头部 */
+.ot-search-header {
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.ot-search-main {
+  display: flex;
+  gap: 0;
+  align-items: stretch;
+}
+
+.ot-search-input {
+  flex: 1;
+  font-size: 14px;
+}
+
+.ot-search-input .ant-input-affix-wrapper {
+  border-radius: 6px 0 0 6px;
+  border-right: none;
+}
+
+.ot-search-input .ant-input {
+  height: 40px;
+  font-size: 14px;
+}
+
+.ot-search-actions {
+  display: flex;
+  flex-direction: column;
+}
+
+.ot-search-actions .ant-btn-primary {
+  height: 40px;
+  border-radius: 0 6px 0 0;
+  border-left: none;
+  padding: 0 20px;
+}
+
+.ot-search-actions .ant-btn:not(.ant-btn-primary) {
+  height: 32px;
+  border-radius: 0 0 6px 0;
+  border-top: 1px solid #d9d9d9;
+  padding: 0 16px;
+  font-size: 13px;
+}
+
+.ot-search-help {
+  margin-top: 12px;
+  font-size: 12px;
+}
+
+.ot-search-help a {
+  color: #1890ff;
+}
+
+/* 检索条件面板 */
+.ot-filter-panel {
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.ot-filter-header {
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.ot-filter-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #262626;
+}
+
+.ot-filter-row {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.ot-filter-row:last-child {
+  margin-bottom: 0;
+}
+
+.ot-filter-label {
+  width: 80px;
+  flex-shrink: 0;
+  font-size: 13px;
+  color: #595959;
+  padding-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ot-filter-info {
+  color: #bfbfbf;
+  font-size: 12px;
+  cursor: help;
+}
+
+.ot-filter-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* 筛选标签 */
+.ot-filter-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.ot-filter-tag {
+  display: inline-block;
+  padding: 4px 12px;
+  font-size: 13px;
+  color: #595959;
+  background: #f5f5f5;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ot-filter-tag:hover {
+  background: #e6e6e6;
+}
+
+.ot-filter-tag--active {
+  background: #e6f4ff;
+  color: #1890ff;
+}
+
+.ot-filter-more {
+  display: inline-block;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: #1890ff;
+  cursor: pointer;
+}
+
+/* 高级筛选折叠面板 */
+.ot-advanced-collapse {
+  margin-top: 16px;
+  background: transparent;
+}
+
+.ot-advanced-collapse .ant-collapse-header {
+  font-size: 13px;
+  color: #595959;
+  padding: 8px 0 !important;
+}
+
+.ot-advanced-collapse .ant-collapse-content {
+  background: #fafafa;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.ot-advanced-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ot-advanced-row {
+  display: flex;
+  gap: 24px;
+}
+
+.ot-advanced-row--switch {
+  justify-content: flex-start;
+}
+
+.ot-advanced-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ot-advanced-item label {
+  font-size: 13px;
+  color: #595959;
+}
+
+.ot-advanced-item--switch {
+  flex: none;
+  width: auto;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+}
+
+.ot-source-link {
+  font-size: 12px;
+  margin-left: 8px;
+}
+
+/* 搜索历史面板 */
+.ot-history-panel {
+  background: #fff;
+  border-radius: 8px;
+  padding: 16px 20px;
+}
+
+.ot-history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.ot-history-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #262626;
+}
+
+.ot-history-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ot-history-item {
+  display: inline-block;
+  padding: 4px 12px;
+  font-size: 13px;
+  color: #595959;
+  background: #f5f5f5;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ot-history-item:hover {
+  background: #e6e6e6;
+  color: #262626;
 }
