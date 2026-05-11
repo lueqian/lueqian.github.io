@@ -26,7 +26,6 @@ import {
   DownOutlined,
 } from '@ant-design/icons';
 import TGGroupDrawer from '../components/TGGroupDrawer';
-import TGPendingGroups from './TGPendingGroups';
 import TGSystemGroups from './TGSystemGroups';
 
 // ============ 常量 ============
@@ -37,7 +36,6 @@ const PRIMARY_COLOR = '#3b82f6';
 
 const TABS = [
   { key: 'following', label: '已关注群组' },
-  { key: 'pending', label: '待布控群组' },
   { key: 'all', label: '系统所有群组' },
 ];
 
@@ -501,8 +499,6 @@ const TGGroups: React.FC = function TGGroups() {
       <div className="tg-content">
         {activeTab === 'following' ? (
           renderFollowingContent()
-        ) : activeTab === 'pending' ? (
-          <TGPendingGroups />
         ) : activeTab === 'all' ? (
           <TGSystemGroups />
         ) : (
