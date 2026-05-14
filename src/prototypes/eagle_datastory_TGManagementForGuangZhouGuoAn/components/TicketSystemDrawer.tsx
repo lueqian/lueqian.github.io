@@ -14,7 +14,7 @@ import {
 
 // ============ 类型定义 ============
 
-type TicketStatus = 'pending' | 'resolved' | 'cancelled';
+type TicketStatus = 'pending' | 'resolved' | 'rejected';
 
 export interface Ticket {
   id: string;
@@ -29,11 +29,15 @@ export interface TicketSystemDrawerProps {
   open: boolean;
   onClose: () => void;
   currentUser?: string;
+  tickets: Ticket[];
+  onAddTicket: (ticket: Ticket) => void;
+  onCancelTicket: (id: string) => void;
+  onMarkAsRead: () => void;
 }
 
 // ============ 模拟数据 ============
 
-const INITIAL_TICKETS: Ticket[] = [
+export const INITIAL_TICKETS: Ticket[] = [
   {
     id: 'T-20260511-001',
     content: '在重点源监测模块发现一个新的黑产发卡群组，链接是 t.me/black_card_sell，希望能尽快接入布控。',
@@ -57,12 +61,20 @@ const INITIAL_TICKETS: Ticket[] = [
     submitTime: '2026-05-11 16:45:00',
     status: 'pending',
   },
+  {
+    id: 'T-20260511-004',
+    content: '请求调取2024年1月份所有关于“杀猪盘”关键词的历史原始报文，用于旧案复盘。',
+    submitter: '李警官',
+    submitTime: '2026-05-11 18:20:00',
+    status: 'rejected',
+    remark: '该时间段的原始报文已超过系统存储有效期（3个月），无法调取。',
+  },
 ];
 
 const STATUS_CONFIG = {
-  pending: { label: '待处理', color: 'default', icon: <ClockCircleOutlined /> },
-  resolved: { label: '已解决', color: 'success', icon: <CheckCircleOutlined /> },
-  cancelled: { label: '已取消', color: 'error', icon: <CloseCircleOutlined /> },
+  pending: { label: '待处理', color: 'blue', icon: <ClockCircleOutlined /> },
+  resolved: { label: '已完成', color: 'success', icon: <CheckCircleOutlined /> },
+  rejected: { label: '已驳回', color: 'red', icon: <CloseCircleOutlined /> },
 };
 
 // ============ 主组件 ============
@@ -71,17 +83,22 @@ const TicketSystemDrawer: React.FC<TicketSystemDrawerProps> = ({
   open,
   onClose,
   currentUser = '当前管理员',
+  tickets,
+  onAddTicket,
+  onCancelTicket,
+  onMarkAsRead,
 }) => {
   const [viewMode, setViewMode] = useState<'list' | 'create'>('list');
-  const [tickets, setTickets] = useState<Ticket[]>(INITIAL_TICKETS);
   
   // 新建工单表单
   const [form] = Form.useForm();
   
-  // 模拟后台处理状态
-  const [adminModalOpen, setAdminModalOpen] = useState(false);
-  const [adminForm] = Form.useForm();
-  const [currentTicketId, setCurrentTicketId] = useState<string | null>(null);
+  // 处理从未读到已读的转化
+  React.useEffect(() => {
+    if (open) {
+      onMarkAsRead();
+    }
+  }, [open, onMarkAsRead]);
 
   // ============ 逻辑处理 ============
 
@@ -96,7 +113,7 @@ const TicketSystemDrawer: React.FC<TicketSystemDrawerProps> = ({
         status: 'pending',
       };
       
-      setTickets(prev => [newTicket, ...prev]);
+      onAddTicket(newTicket);
       message.success('问题反馈已提交成功');
       form.resetFields();
       setViewMode('list');
@@ -105,38 +122,8 @@ const TicketSystemDrawer: React.FC<TicketSystemDrawerProps> = ({
 
   // 用户取消申请
   const handleCancelTicket = (id: string) => {
-    setTickets(prev => prev.map(t => 
-      t.id === id ? { ...t, status: 'cancelled', remark: '申请人自行取消' } : t
-    ));
-    message.success('已取消该反馈申请');
-  };
-
-  // 打开模拟后台处理弹窗
-  const handleOpenAdminModal = (id: string) => {
-    const ticket = tickets.find(t => t.id === id);
-    if (ticket) {
-      setCurrentTicketId(id);
-      adminForm.setFieldsValue({
-        status: ticket.status !== 'cancelled' && ticket.status !== 'pending' ? ticket.status : 'resolved',
-        remark: ticket.remark || '',
-      });
-      setAdminModalOpen(true);
-    }
-  };
-
-  // 提交模拟后台处理
-  const handleSubmitAdminProcess = () => {
-    adminForm.validateFields().then(values => {
-      if (currentTicketId) {
-        setTickets(prev => prev.map(t => 
-          t.id === currentTicketId 
-            ? { ...t, status: values.status, remark: values.remark } 
-            : t
-        ));
-        message.success('后台处理状态已更新');
-        setAdminModalOpen(false);
-      }
-    });
+    onCancelTicket(id);
+    message.success('已撤回该反馈申请');
   };
 
   // 抽屉关闭时的清理
@@ -210,7 +197,7 @@ const TicketSystemDrawer: React.FC<TicketSystemDrawerProps> = ({
         if (record.status === 'pending') {
           return <span style={{ color: '#bfbfbf' }}>等待处理中...</span>;
         }
-        return <div style={{ color: record.status === 'cancelled' ? '#bfbfbf' : '#595959' }}>{text || '-'}</div>;
+        return <div style={{ color: '#8c8c8c' }}>{text || '-'}</div>;
       },
     },
     {
@@ -230,18 +217,6 @@ const TicketSystemDrawer: React.FC<TicketSystemDrawerProps> = ({
             >
               <Button type="link" danger size="small" style={{ padding: 0 }}>取消申请</Button>
             </Popconfirm>
-          )}
-          {/* 后台管理侧操作 (用于原型演示) */}
-          {record.status !== 'cancelled' && (
-            <Button 
-              type="link" 
-              size="small" 
-              icon={<ToolOutlined />} 
-              onClick={() => handleOpenAdminModal(record.id)}
-              style={{ padding: 0 }}
-            >
-              模拟后台处理
-            </Button>
           )}
         </Space>
       ),
@@ -289,7 +264,7 @@ const TicketSystemDrawer: React.FC<TicketSystemDrawerProps> = ({
             <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', background: '#e6f4ff', padding: '8px 12px', borderRadius: 4 }}>
               <ExclamationCircleOutlined style={{ color: '#1890ff', marginRight: 8 }} />
               <span style={{ fontSize: 13, color: '#0958d9' }}>
-                提示：在此处您可以查看您提交过的所有工单记录。点击右侧的“模拟后台处理”可演示后台人员接单及反馈的过程。
+                提示：在此处您可以查看您提交过的所有工单记录。当后台人员处理完成后，您会收到系统通知提示。
               </span>
             </div>
             <Table
@@ -332,36 +307,6 @@ const TicketSystemDrawer: React.FC<TicketSystemDrawerProps> = ({
           </div>
         )}
       </Drawer>
-
-      {/* 模拟后台处理弹窗 */}
-      <Modal
-        title={<span style={{ color: 'rgba(0, 0, 0, 0.88)' }}>[仅演示] 模拟后台人员处理工单</span>}
-        open={adminModalOpen}
-        onOk={handleSubmitAdminProcess}
-        onCancel={() => setAdminModalOpen(false)}
-        okText="保存处理结果"
-        cancelText="关闭"
-        width={400}
-      >
-        <Form form={adminForm} layout="vertical" style={{ marginTop: 16 }}>
-          <Form.Item
-            name="status"
-            label="更新处理状态"
-            rules={[{ required: true }]}
-          >
-            <Select options={[
-              { value: 'resolved', label: '已解决 (处理完成)' },
-            ]} />
-          </Form.Item>
-          <Form.Item
-            name="remark"
-            label="填写处理反馈备注"
-            rules={[{ required: true, message: '请填写反馈备注' }]}
-          >
-            <Input.TextArea rows={4} placeholder="输入反馈内容，如：已完成处理，请查收结果。" />
-          </Form.Item>
-        </Form>
-      </Modal>
     </ConfigProvider>
   );
 };

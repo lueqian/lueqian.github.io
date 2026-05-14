@@ -38,7 +38,8 @@ import { safeEmitEvent, getConfigValue, getDataValue } from '../../common/axure-
 import Navigation from './components/Navigation';
 import Header from './components/Header';
 import type { SubNavItem } from './components/Header';
-import TicketSystemDrawer from './components/TicketSystemDrawer';
+import TicketSystemDrawer, { INITIAL_TICKETS } from './components/TicketSystemDrawer';
+import type { Ticket, TicketStatus } from './components/TicketSystemDrawer';
 
 // 导入页面组件
 import Search from './pages/Search';
@@ -49,10 +50,11 @@ import QuotaFlow from './pages/QuotaFlow';
 import SmartRecommend from './pages/SmartRecommend';
 import TGGroups from './pages/TGGroups';
 import OverseasTopics from './pages/OverseasTopics';
+import TicketManagement from './pages/TicketManagement';
 
 // ============ 类型定义 ============
 
-type PageKey = 'search' | 'workbench' | 'recommend' | 'topic' | 'overseas' | 'source' | 'tg_groups' | 'collect' | 'quota';
+type PageKey = 'search' | 'workbench' | 'recommend' | 'topic' | 'overseas' | 'source' | 'tg_groups' | 'collect' | 'quota' | 'ticket_admin';
 
 // 页面标题映射
 const PAGE_TITLES: Record<PageKey, string> = {
@@ -65,6 +67,7 @@ const PAGE_TITLES: Record<PageKey, string> = {
   tg_groups: 'TG群管理',
   collect: '采集任务',
   quota: '额度明细',
+  ticket_admin: '工单管理',
 };
 
 // 二级菜单配置（按页面分组）
@@ -95,6 +98,32 @@ const EagleDataStory = forwardRef<AxureHandle, AxureProps>((props, ref) => {
 
   // 二级菜单激活项（如重点源的子 Tab）
   const [activeSubNav, setActiveSubNav] = useState<string>('');
+
+  // ============ 工单共享状态 ============
+  const [tickets, setTickets] = useState<Ticket[]>(INITIAL_TICKETS);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const handleAddTicket = useCallback((ticket: Ticket) => {
+    setTickets(prev => [ticket, ...prev]);
+  }, []);
+
+  const handleCancelTicket = useCallback((id: string) => {
+    setTickets(prev => prev.map(t => 
+      t.id === id ? { ...t, status: 'rejected', remark: '申请人自行撤回' } : t
+    ));
+  }, []);
+
+  const handleAdminUpdateTicket = useCallback((id: string, status: TicketStatus, remark: string) => {
+    setTickets(prev => prev.map(t => 
+      t.id === id ? { ...t, status, remark } : t
+    ));
+    // 模拟新通知
+    setUnreadCount(prev => prev + 1);
+  }, []);
+
+  const handleMarkAsRead = useCallback(() => {
+    setUnreadCount(0);
+  }, []);
 
   // ============ 事件处理 ============
 
@@ -199,6 +228,8 @@ const EagleDataStory = forwardRef<AxureHandle, AxureProps>((props, ref) => {
         return <CollectTask />;
       case 'quota':
         return <QuotaFlow />;
+      case 'ticket_admin':
+        return <TicketManagement tickets={tickets} onUpdateTicket={handleAdminUpdateTicket} />;
       default:
         return <Search />;
     }
@@ -327,6 +358,7 @@ const EagleDataStory = forwardRef<AxureHandle, AxureProps>((props, ref) => {
             onSwitchAccount={handleSwitchAccount}
             onLogout={handleLogout}
             onOpenTicketSystem={() => setTicketDrawerOpen(true)}
+            unreadCount={unreadCount}
           />
 
           {/* 页面内容 - 使用独立 ConfigProvider 覆盖表单控件为白色背景 */}
@@ -341,6 +373,10 @@ const EagleDataStory = forwardRef<AxureHandle, AxureProps>((props, ref) => {
         <TicketSystemDrawer 
           open={ticketDrawerOpen} 
           onClose={() => setTicketDrawerOpen(false)} 
+          tickets={tickets}
+          onAddTicket={handleAddTicket}
+          onCancelTicket={handleCancelTicket}
+          onMarkAsRead={handleMarkAsRead}
         />
       </div>
     </ConfigProvider>

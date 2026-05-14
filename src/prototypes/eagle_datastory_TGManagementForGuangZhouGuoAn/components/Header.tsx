@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Avatar, Tooltip, Select } from 'antd';
+import { Avatar, Tooltip, Select, Badge } from 'antd';
 import {
   ArrowLeftOutlined,
   SwapOutlined,
@@ -36,6 +36,8 @@ export interface HeaderProps {
   onLogout?: () => void;
   /** 打开问题反馈回调 */
   onOpenTicketSystem?: () => void;
+  /** 未读工单更新数量 */
+  unreadCount?: number;
 }
 
 // ============ 主题选项 ============
@@ -254,6 +256,7 @@ const Header: React.FC<HeaderProps> = function Header({
   onSwitchAccount,
   onLogout,
   onOpenTicketSystem,
+  unreadCount = 0,
 }) {
   // 取昵称首字作为头像文字
   const avatarText = nickname ? nickname.charAt(0).toUpperCase() : 'U';
@@ -344,7 +347,9 @@ const Header: React.FC<HeaderProps> = function Header({
         </Tooltip>
         <Tooltip title="问题反馈" placement="bottom">
           <div className="ly-header-icon" onClick={onOpenTicketSystem}>
-            <FormOutlined />
+            <Badge count={unreadCount} size="small" offset={[2, -2]}>
+              <FormOutlined style={{ color: unreadCount > 0 ? '#3b82f6' : 'inherit' }} />
+            </Badge>
           </div>
         </Tooltip>
         <Tooltip title="切换账号" placement="bottom">

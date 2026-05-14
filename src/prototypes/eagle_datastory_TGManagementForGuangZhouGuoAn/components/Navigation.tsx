@@ -8,6 +8,7 @@ import {
   AccountBookOutlined,
   BulbOutlined,
   MessageOutlined,
+  CarryOutOutlined,
 } from '@ant-design/icons';
 
 // ============ 类型定义 ============
@@ -41,6 +42,7 @@ const MENU_ITEMS: MenuItem[] = [
   { key: 'tg_groups', label: 'TG群管理', icon: <MessageOutlined /> },
   { key: 'collect', label: '采集任务', icon: <CloudSyncOutlined /> },
   { key: 'quota', label: '额度明细', icon: <AccountBookOutlined /> },
+  { key: 'ticket_admin', label: '工单管理', icon: <CarryOutOutlined /> },
 ];
 
 // ============ 组件 ============
