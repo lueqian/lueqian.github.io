@@ -4,7 +4,8 @@ import {
   Button, 
   Badge, 
   Tooltip, 
-  Space 
+  Space,
+  Dropdown
 } from 'antd';
 import { 
   SearchOutlined, 
@@ -13,7 +14,8 @@ import {
   BellOutlined, 
   LogoutOutlined,
   FormOutlined,
-  ThunderboltOutlined
+  ThunderboltOutlined,
+  DownOutlined
 } from '@ant-design/icons';
 
 const Header: React.FC = () => {
@@ -51,11 +53,15 @@ const Header: React.FC = () => {
         </Tooltip>
 
         <div className="user-info">
-          <span>欢迎，东莞公安局超管！</span>
+          <span>欢迎，总队测试1 回</span>
           <div className="user-links">
             <span>修改密码</span>
             <span>值班表</span>
-            <span>岗位切换</span>
+            <Dropdown menu={{ items: [{ key: '1', label: '材料汇编岗' }, { key: '2', label: '审核研判岗' }] }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                岗位：材料汇编岗... <DownOutlined style={{ fontSize: 10 }} />
+              </span>
+            </Dropdown>
           </div>
         </div>
 
