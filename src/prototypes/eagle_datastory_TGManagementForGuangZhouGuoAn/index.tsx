@@ -239,6 +239,7 @@ const EagleDataStory = forwardRef<AxureHandle, AxureProps>((props, ref) => {
 
   // 内容区表单控件的亮色主题 token（覆盖 darkAlgorithm 的深色背景）
   const contentFormTheme = {
+    algorithm: theme.defaultAlgorithm,
     token: {
       colorBgContainer: '#ffffff',
       colorBgElevated: '#ffffff',

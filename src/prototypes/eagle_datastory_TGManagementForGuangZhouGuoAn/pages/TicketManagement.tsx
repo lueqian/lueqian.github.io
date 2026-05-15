@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Table, Tag, Input, Button, Select, Space, Card, Typography, Modal, Form, message, ConfigProvider, theme } from 'antd';
+import { Table, Tag, Input, Button, Select, Space, Card, Typography, Modal, Form, message, ConfigProvider, theme, Alert } from 'antd';
 import {
   SearchOutlined,
   FilterOutlined,
@@ -171,6 +171,12 @@ const TicketManagement: React.FC<TicketManagementProps> = ({ tickets, onUpdateTi
 
   return (
     <div style={{ padding: '0px' }}>
+      <Alert 
+        message="备注：该页面放在内部管理系统中新增一个菜单，原型中放在蓝鹰只是方便查看。" 
+        type="info" 
+        showIcon 
+        style={{ marginBottom: 16 }} 
+      />
       <Card bordered={false} style={{ marginBottom: 16 }}>
         <Space size="middle" wrap>
           <div>

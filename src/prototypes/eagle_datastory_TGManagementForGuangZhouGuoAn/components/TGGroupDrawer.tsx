@@ -20,6 +20,10 @@ import {
   message,
   Tabs,
   Tooltip,
+  Modal,
+  Popconfirm,
+  List,
+  Space,
 } from 'antd';
 import {
   SearchOutlined,
@@ -34,6 +38,12 @@ import {
   ClockCircleOutlined,
   SortDescendingOutlined,
   SortAscendingOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  PlusOutlined,
+  SaveOutlined,
+  CloseOutlined,
+  TagsOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
@@ -444,6 +454,63 @@ const TGGroupDrawer: React.FC<TGGroupDrawerProps> = function ({
     }
   }, [group?.key, trackedMemberId]);
 
+  // ============ 标签管理状态与逻辑 ============
+  const [availableTags, setAvailableTags] = useState<string[]>(['高活跃', '内容型', '交易型', '品牌型', '黑产', '涉黄', '诈骗']);
+  const [groupTags, setGroupTags] = useState<string[]>([]);
+  const [tagManageVisible, setTagManageVisible] = useState(false);
+  const [newTagName, setNewTagName] = useState('');
+  const [editingTag, setEditingTag] = useState<{old: string, new: string} | null>(null);
+
+  // 初始化群组标签
+  useEffect(() => {
+    if (group) {
+      setGroupTags(group.tags || []);
+    }
+  }, [group]);
+
+  const handleAddTag = useCallback(() => {
+    if (!newTagName.trim()) {
+      message.warning('标签名称不能为空');
+      return;
+    }
+    if (availableTags.includes(newTagName.trim())) {
+      message.warning('标签已存在');
+      return;
+    }
+    setAvailableTags(prev => [...prev, newTagName.trim()]);
+    setNewTagName('');
+    message.success('标签添加成功');
+  }, [newTagName, availableTags]);
+
+  const handleSaveEditTag = useCallback(() => {
+    if (!editingTag || !editingTag.new.trim()) {
+      message.warning('标签名称不能为空');
+      return;
+    }
+    if (editingTag.old !== editingTag.new && availableTags.includes(editingTag.new.trim())) {
+      message.warning('标签已存在');
+      return;
+    }
+    
+    setAvailableTags(prev => prev.map(t => t === editingTag.old ? editingTag.new.trim() : t));
+    
+    if (groupTags.includes(editingTag.old)) {
+      setGroupTags(prev => prev.map(t => t === editingTag.old ? editingTag.new.trim() : t));
+    }
+    
+    setEditingTag(null);
+    message.success('标签修改成功');
+  }, [editingTag, availableTags, groupTags]);
+
+  const handleDeleteTag = useCallback((tag: string) => {
+    setAvailableTags(prev => prev.filter(t => t !== tag));
+    if (groupTags.includes(tag)) {
+      setGroupTags(prev => prev.filter(t => t !== tag));
+    }
+    message.success('标签删除成功');
+  }, [groupTags]);
+  // ==========================================
+
   // 处理链接点击 - 检查布控状态
   const handleLinkClick = useCallback(function (link: string) {
     const status = checkGroupStatus(link);
@@ -660,6 +727,26 @@ const TGGroupDrawer: React.FC<TGGroupDrawerProps> = function ({
         body: { padding: 0, display: 'flex', flexDirection: 'column', height: 'calc(100% - 55px)' },
       }}
     >
+      {/* 标签管理板块 */}
+      <div style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <span style={{ fontWeight: 500, color: 'rgba(0, 0, 0, 0.85)', display: 'flex', alignItems: 'center' }}>
+          <TagsOutlined style={{ marginRight: 6 }} />
+          群组标签：
+        </span>
+        <Select
+          mode="multiple"
+          style={{ width: 400 }}
+          placeholder="请选择群组关联的标签"
+          value={groupTags}
+          onChange={setGroupTags}
+          options={availableTags.map(t => ({ label: t, value: t }))}
+          popupClassName="tg-select-dropdown"
+        />
+        <Button onClick={() => setTagManageVisible(true)}>
+          标签管理
+        </Button>
+      </div>
+
       {/* 主体区域：左侧聊天 + 右侧成员 */}
       <div className="tgd-main-row">
         {/* 左侧：历史聊天记录 */}
@@ -843,6 +930,71 @@ const TGGroupDrawer: React.FC<TGGroupDrawerProps> = function ({
 
         </div>
       </div>
+
+      {/* 标签管理弹窗 */}
+      <Modal
+        title="标签管理"
+        open={tagManageVisible}
+        onCancel={() => {
+          setTagManageVisible(false);
+          setEditingTag(null);
+          setNewTagName('');
+        }}
+        footer={null}
+        width={400}
+      >
+        <div style={{ marginBottom: 16, display: 'flex', gap: '8px' }}>
+          <Input 
+            placeholder="输入新标签名称" 
+            value={newTagName} 
+            onChange={(e) => setNewTagName(e.target.value)}
+            onPressEnter={handleAddTag}
+          />
+          <Button type="primary" icon={<PlusOutlined />} onClick={handleAddTag}>新增</Button>
+        </div>
+        <List
+          size="small"
+          bordered
+          dataSource={availableTags}
+          renderItem={item => (
+            <List.Item
+              actions={[
+                editingTag?.old === item ? (
+                  <Space key="edit-actions">
+                    <Button type="text" size="small" icon={<SaveOutlined />} onClick={handleSaveEditTag} />
+                    <Button type="text" size="small" icon={<CloseOutlined />} onClick={() => setEditingTag(null)} />
+                  </Space>
+                ) : (
+                  <Space key="actions">
+                    <Button type="text" size="small" icon={<EditOutlined />} onClick={() => setEditingTag({ old: item, new: item })} />
+                    <Popconfirm
+                      title="确定要删除该标签吗？"
+                      onConfirm={() => handleDeleteTag(item)}
+                      okText="确定"
+                      cancelText="取消"
+                    >
+                      <Button type="text" danger size="small" icon={<DeleteOutlined />} />
+                    </Popconfirm>
+                  </Space>
+                )
+              ]}
+            >
+              {editingTag?.old === item ? (
+                <Input 
+                  size="small" 
+                  value={editingTag.new} 
+                  onChange={(e) => setEditingTag({ ...editingTag, new: e.target.value })} 
+                  onPressEnter={handleSaveEditTag}
+                />
+              ) : (
+                <Tag style={{ background: '#f5f5f5', color: '#262626', borderColor: '#d9d9d9', fontSize: 13, padding: '2px 8px' }}>
+                  {item}
+                </Tag>
+              )}
+            </List.Item>
+          )}
+        />
+      </Modal>
     </Drawer>
   );
 };

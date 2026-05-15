@@ -46,32 +46,25 @@ const STAT_CARDS = [
     title: '已接入群组',
     value: 128,
     unit: '个',
-    trend: '+12',
-    trendType: 'up',
     icon: <TeamOutlined style={{ fontSize: 24, color: PRIMARY_COLOR }} />,
   },
   {
     title: '总成员规模',
     value: '89.6万',
     unit: '',
-    trend: '+3.2万',
-    trendType: 'up',
     icon: <UserOutlined style={{ fontSize: 24, color: '#52c41a' }} />,
   },
   {
     title: '今日发文总量',
     value: 2847,
     unit: '条',
-    trend: '+156',
-    trendType: 'up',
-    trendRate: '+5.8%',
     icon: <MessageOutlined style={{ fontSize: 24, color: '#faad14' }} />,
   },
 ];
 
 // ============ 筛选标签 ============
 
-const FILTER_TAGS = ['全部群组', '高活跃', '内容型', '交易型', '品牌型'];
+const FILTER_TAGS = ['全部', '高活跃', '内容型', '交易型', '品牌型'];
 
 // ============ Mock 表格数据 ============
 
@@ -194,7 +187,7 @@ const TGGroups: React.FC = function TGGroups() {
   // 当前激活的 Tab
   const [activeTab, setActiveTab] = useState('following');
   // 当前选中的筛选标签
-  const [selectedFilter, setSelectedFilter] = useState('全部群组');
+  const [selectedFilter, setSelectedFilter] = useState('全部');
   // 搜索关键词
   const [searchKeyword, setSearchKeyword] = useState('');
   // 表格加载状态
@@ -304,7 +297,7 @@ const TGGroups: React.FC = function TGGroups() {
       key: 'admin',
       width: 120,
       render: function (text: string) {
-        return <span className="tg-admin-text">{text}</span>;
+        return <span className="tg-admin-text" style={{ color: 'rgba(255,255,255,0.45)' }}>{text}</span>;
       },
     },
     {
@@ -401,12 +394,6 @@ const TGGroups: React.FC = function TGGroups() {
                     {card.value}
                     <span className="tg-stat-unit">{card.unit}</span>
                   </div>
-                  <div className="tg-stat-trend">
-                    <span className="tg-trend-value">{card.trend}</span>
-                    {card.trendRate && (
-                      <span className="tg-trend-rate">{card.trendRate}</span>
-                    )}
-                  </div>
                 </div>
               </div>
             );
@@ -417,23 +404,18 @@ const TGGroups: React.FC = function TGGroups() {
         <div className="tg-section-title" style={{ marginTop: 24 }}>
           <span>已添加群列表</span>
           <div className="tg-title-filters">
-            {/* 筛选标签行 */}
-            <div className="tg-filter-tags">
-              {FILTER_TAGS.map(function (tag) {
-                const isActive = selectedFilter === tag;
-                return (
-                  <span
-                    key={tag}
-                    className={'tg-filter-tag' + (isActive ? ' tg-filter-tag--active' : '')}
-                    onClick={function () { handleFilterChange(tag); }}
-                  >
-                    {tag}
-                  </span>
-                );
-              })}
-            </div>
             {/* 搜索和筛选行 */}
-            <div className="tg-search-row">
+            <div className="tg-search-row" style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: 14, fontWeight: 'normal' }}>标签</span>
+                <Select
+                  value={selectedFilter}
+                  onChange={handleFilterChange}
+                  options={FILTER_TAGS.map(function(tag) { return { label: tag, value: tag }; })}
+                  style={{ width: 120 }}
+                  popupClassName="tg-select-dropdown"
+                />
+              </div>
               <Input
                 placeholder="搜索群组名称/ID/群成员昵称/成员ID"
                 prefix={<SearchOutlined style={{ color: '#999' }} />}
@@ -441,10 +423,6 @@ const TGGroups: React.FC = function TGGroups() {
                 onChange={function (e) { setSearchKeyword(e.target.value); }}
                 className="tg-search-input"
               />
-              <Button icon={<FilterOutlined />} className="tg-filter-btn">
-                高级筛选
-                <DownOutlined style={{ fontSize: 10, marginLeft: 4 }} />
-              </Button>
             </div>
           </div>
         </div>
