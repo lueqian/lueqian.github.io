@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Form, Input, DatePicker, Select, Row, Col, Button, Tabs, Rate, Pagination, Space } from 'antd';
 import { 
   SearchOutlined, 
@@ -13,11 +13,14 @@ import {
   EyeOutlined
 } from '@ant-design/icons';
 import OpinionCard from '../components/OpinionCard';
+import AIJudgmentModal from '../components/AIJudgmentModal';
 
 const { RangePicker } = DatePicker;
 
 const MonitorWarning: React.FC = () => {
   const [form] = Form.useForm();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedData, setSelectedData] = useState<any>(null);
 
   const mockData = [
     {
@@ -64,13 +67,18 @@ const MonitorWarning: React.FC = () => {
     }
   ];
 
+  const handleOpenModal = (data: any) => {
+    setSelectedData(data);
+    setIsModalOpen(true);
+  };
+
   const tabItems = [
-    { key: '1', label: <Space><RadarChartOutlined /> AI全部</Space> },
+    { key: '1', label: <Space><RadarChartOutlined /> 全部</Space> },
     { key: '2', label: <Space><DeploymentUnitOutlined /> 区县上报</Space> },
     { key: '3', label: <Space><ThunderboltOutlined /> 主动发现</Space> },
     { key: '4', label: <Space><UserSwitchOutlined /> 重点账号跟踪</Space> },
     { key: '5', label: <Space><RadarChartOutlined /> 专项巡查</Space> },
-    { key: '6', label: <Space><EyeOutlined /> 智种通报</Space> },
+    { key: '6', label: <Space><EyeOutlined /> 信息通报</Space> },
     { key: '7', label: <Space><AppstoreOutlined /> 数据服务</Space> },
   ];
 
@@ -82,19 +90,19 @@ const MonitorWarning: React.FC = () => {
           <div style={{ width: '100%' }}>
             {/* 第一行 */}
             <Row gutter={[16, 12]} align="middle">
-              <Col span={5}>
+              <Col span={6}>
                 <div className="filter-item">
                   <span className="filter-label">内容搜索</span>
                   <Input placeholder="请输入标题/正文/作者" size="small" />
                 </div>
               </Col>
-              <Col span={7}>
+              <Col span={8}>
                 <div className="filter-item">
                   <span className="filter-label">发布时间</span>
                   <RangePicker size="small" showTime style={{ width: '100%' }} />
                 </div>
               </Col>
-              <Col span={4}>
+              <Col span={5}>
                 <div className="filter-item">
                   <span className="filter-label">排序</span>
                   <Select defaultValue="time" size="small" style={{ width: '100%' }}>
@@ -102,7 +110,7 @@ const MonitorWarning: React.FC = () => {
                   </Select>
                 </div>
               </Col>
-              <Col span={4}>
+              <Col span={5}>
                 <div className="filter-item">
                   <span className="filter-label">信息状态</span>
                   <Select defaultValue="all" size="small" style={{ width: '100%' }}>
@@ -114,35 +122,42 @@ const MonitorWarning: React.FC = () => {
 
             {/* 第二行 */}
             <Row gutter={[16, 12]} align="middle" style={{ marginTop: 12 }}>
-              <Col span={5}>
+              <Col span={6}>
                 <div className="filter-item">
                   <span className="filter-label">舆情等级</span>
                   <Select placeholder="请选择" size="small" style={{ width: '100%' }} />
                 </div>
               </Col>
-              <Col span={4}>
+              <Col span={6}>
                 <div className="filter-item">
                   <span className="filter-label">舆情类型</span>
                   <Select placeholder="请选择" size="small" style={{ width: '100%' }} />
                 </div>
               </Col>
-              <Col span={4}>
+              <Col span={6}>
                 <div className="filter-item">
                   <span className="filter-label">专项任务</span>
                   <Select placeholder="请选择" size="small" style={{ width: '100%' }} />
                 </div>
               </Col>
-              <Col span={4}>
+              <Col span={6}>
                 <div className="filter-item">
                   <span className="filter-label">责任属地</span>
                   <Select placeholder="请选择" size="small" style={{ width: '100%' }} />
                 </div>
               </Col>
-              <Col span={3}>
-                <Input placeholder="请输入编号" size="small" />
+            </Row>
+
+            {/* 第三行 */}
+            <Row gutter={[16, 12]} align="middle" style={{ marginTop: 12 }}>
+              <Col span={6}>
+                <div className="filter-item">
+                  <span className="filter-label">编号搜索</span>
+                  <Input placeholder="请输入编号" size="small" />
+                </div>
               </Col>
               
-              <Col span={4} style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+              <Col span={18} style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                  <Button.Group size="small">
                     <Button icon={<BarsOutlined />}>详细视图</Button>
                     <Button type="primary" icon={<ProfileOutlined />}>研判视图</Button>
@@ -170,7 +185,11 @@ const MonitorWarning: React.FC = () => {
       {/* C & D. AI 舆情信息卡片列表 */}
       <div style={{ padding: '16px 0' }}>
         {mockData.map(item => (
-          <OpinionCard key={item.id} {...item} />
+          <OpinionCard 
+            key={item.id} 
+            {...item} 
+            onAIJudgment={() => handleOpenModal(item)}
+          />
         ))}
       </div>
 
@@ -179,6 +198,12 @@ const MonitorWarning: React.FC = () => {
         <Button size="small" type="primary">导出数据</Button>
         <Pagination size="small" total={50} showSizeChanger showQuickJumper />
       </div>
+
+      <AIJudgmentModal 
+        open={isModalOpen}
+        onCancel={() => setIsModalOpen(false)}
+        data={selectedData}
+      />
     </div>
   );
 };

@@ -23,6 +23,7 @@ export interface OpinionCardProps {
   thumbnail?: string;
   tags: string[];
   status: 'unprocessed' | 'processed';
+  onAIJudgment?: () => void;
 }
 
 const OpinionCard: React.FC<OpinionCardProps> = ({
@@ -37,7 +38,8 @@ const OpinionCard: React.FC<OpinionCardProps> = ({
   indexColor,
   thumbnail,
   tags,
-  status
+  status,
+  onAIJudgment
 }) => {
   return (
     <div className="opinion-card">
@@ -121,6 +123,7 @@ const OpinionCard: React.FC<OpinionCardProps> = ({
             size="small" 
             icon={<ThunderboltOutlined />}
             style={{ background: '#fff7e6', borderColor: '#ffd591', color: '#fa8c16' }}
+            onClick={onAIJudgment}
           >
             AI 辅助研判
           </Button>
