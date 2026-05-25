@@ -10,7 +10,7 @@
 
 import '../style.css';
 import React, { useState, useCallback } from 'react';
-import { Table, Tag, Input, Button, Select, Space, Avatar, Tooltip, message } from 'antd';
+import { Table, Tag, Input, Button, Select, Space, Avatar, Tooltip, message, Popover } from 'antd';
 import {
   SearchOutlined,
   FilterOutlined,
@@ -66,15 +66,37 @@ const STAT_CARDS = [
 
 const FILTER_TAGS = ['全部', '高活跃', '内容型', '交易型', '品牌型'];
 
-// ============ Mock 表格数据 ============
+// ============ 管理员类型定义 ============
 
-const MOCK_TABLE_DATA = [
+interface AdminInfo {
+  nickname: string;
+  id: string;
+}
+
+interface GroupData {
+  key: string;
+  avatar: string;
+  name: string;
+  description: string;
+  admins: AdminInfo[];
+  members: string;
+  groupId: string;
+  todayPosts: number;
+  tags: string[];
+  status: string;
+}
+
+// ============ Mock 表格数据（含多管理员） ============
+
+const MOCK_TABLE_DATA: GroupData[] = [
   {
     key: '1',
     avatar: 'https://picsum.photos/seed/tg1/100/100',
     name: '暗网交易平台-华人社区',
     description: '专注海外华人圈的加密货币交易与黑市物品交易交流群...',
-    admin: 'admin_xyz',
+    admins: [
+      { nickname: '暗夜行者', id: 'admin_xyz_001' },
+    ],
     members: '12,580',
     groupId: 'TG-20240528-001',
     todayPosts: 234,
@@ -86,7 +108,11 @@ const MOCK_TABLE_DATA = [
     avatar: 'https://picsum.photos/seed/tg2/100/100',
     name: '敏感话题讨论组',
     description: '涉及政治敏感话题的讨论社群，群内成员活跃度高...',
-    admin: 'user_abc',
+    admins: [
+      { nickname: '自由之声', id: 'user_abc_002' },
+      { nickname: '真相追寻者', id: 'truth_seeker_88' },
+      { nickname: '民间观察员', id: 'observer_2024' },
+    ],
     members: '8,234',
     groupId: 'TG-20240528-002',
     todayPosts: 156,
@@ -98,7 +124,10 @@ const MOCK_TABLE_DATA = [
     avatar: 'https://picsum.photos/seed/tg3/100/100',
     name: '海外华人互助组',
     description: '海外华人互助交流平台，禁止发布违规内容...',
-    admin: 'helper_001',
+    admins: [
+      { nickname: '热心大哥', id: 'helper_001' },
+      { nickname: '志愿者小王', id: 'volunteer_wang' },
+    ],
     members: '23,567',
     groupId: 'TG-20240528-003',
     todayPosts: 89,
@@ -110,7 +139,12 @@ const MOCK_TABLE_DATA = [
     avatar: 'https://picsum.photos/seed/tg4/100/100',
     name: '数字货币交流圈',
     description: 'BTC/ETH等主流数字货币行情分析与投资交流...',
-    admin: 'crypto_master',
+    admins: [
+      { nickname: '币圈老炮', id: 'crypto_master' },
+      { nickname: '分析师老李', id: 'analyst_li' },
+      { nickname: '矿工老张', id: 'miner_zhang' },
+      { nickname: '量化交易王', id: 'quant_wang' },
+    ],
     members: '15,890',
     groupId: 'TG-20240528-004',
     todayPosts: 412,
@@ -122,7 +156,9 @@ const MOCK_TABLE_DATA = [
     avatar: 'https://picsum.photos/seed/tg5/100/100',
     name: '灰色产业链曝光',
     description: '收集整理各类灰色产业链相关信息，仅供研究使用...',
-    admin: 'research_vip',
+    admins: [
+      { nickname: '调查记者', id: 'research_vip' },
+    ],
     members: '5,678',
     groupId: 'TG-20240528-005',
     todayPosts: 67,
@@ -134,7 +170,11 @@ const MOCK_TABLE_DATA = [
     avatar: 'https://picsum.photos/seed/tg6/100/100',
     name: '境外势力渗透分析',
     description: '针对境外势力在华活动的信息收集与分析社群...',
-    admin: 'analyst_sec',
+    admins: [
+      { nickname: '安全专家', id: 'analyst_sec' },
+      { nickname: '情报分析师', id: 'intel_analyst' },
+      { nickname: '网络安全员', id: 'cyber_guard' },
+    ],
     members: '3,456',
     groupId: 'TG-20240528-006',
     todayPosts: 45,
@@ -146,7 +186,10 @@ const MOCK_TABLE_DATA = [
     avatar: 'https://picsum.photos/seed/tg7/100/100',
     name: '跨境电商资源共享',
     description: '跨境电商资源对接与经验分享，禁止广告推广...',
-    admin: 'ecomm_seller',
+    admins: [
+      { nickname: '电商达人', id: 'ecomm_seller' },
+      { nickname: '跨境小二', id: 'crossborder_02' },
+    ],
     members: '18,234',
     groupId: 'TG-20240528-007',
     todayPosts: 278,
@@ -158,7 +201,13 @@ const MOCK_TABLE_DATA = [
     avatar: 'https://picsum.photos/seed/tg8/100/100',
     name: '加密通讯技术讨论',
     description: '讨论各类加密通讯技术的安全性与使用方法...',
-    admin: 'tech_geek',
+    admins: [
+      { nickname: '技术极客', id: 'tech_geek' },
+      { nickname: '密码学博士', id: 'crypto_phd' },
+      { nickname: '隐私捍卫者', id: 'privacy_guard' },
+      { nickname: '安全研究员', id: 'sec_researcher' },
+      { nickname: '开源贡献者', id: 'open_source_dev' },
+    ],
     members: '7,890',
     groupId: 'TG-20240528-008',
     todayPosts: 123,
@@ -196,7 +245,7 @@ const TGGroups: React.FC = function TGGroups() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   // 当前选中的群组
   // 扩展群组类型，添加 isFollowed 字段
-  type GroupWithFollowStatus = typeof MOCK_TABLE_DATA[0] & { isFollowed?: boolean };
+  type GroupWithFollowStatus = GroupData & { isFollowed?: boolean };
   const [selectedGroup, setSelectedGroup] = useState<GroupWithFollowStatus | null>(null);
 
   // 处理 Tab 切换
@@ -210,7 +259,7 @@ const TGGroups: React.FC = function TGGroups() {
   }, []);
 
   // 打开群组详情抽屉
-  const handleViewDetail = useCallback(function (record: typeof MOCK_TABLE_DATA[0]) {
+  const handleViewDetail = useCallback(function (record: GroupData) {
     setSelectedGroup({ ...record, isFollowed: true });
     setDrawerOpen(true);
   }, []);
@@ -240,12 +289,12 @@ const TGGroups: React.FC = function TGGroups() {
       message.success(`已切换到群组：${groupName}`);
     } else {
       // 如果找不到精确匹配，创建一个模拟的群组数据
-      const mockGroup = {
+      const mockGroup: GroupWithFollowStatus = {
         key: `mock_${Date.now()}`,
         avatar: `https://picsum.photos/seed/${groupName}/100/100`,
         name: groupName,
         description: '通过跨群活跃切换的群组',
-        admin: 'unknown',
+        admins: [{ nickname: '未知管理员', id: 'unknown' }],
         members: '未知',
         groupId: `TG-${Date.now()}`,
         todayPosts: 0,
@@ -267,6 +316,25 @@ const TGGroups: React.FC = function TGGroups() {
     }
   }, [selectedGroup]);
 
+  // 渲染管理员浮窗内容
+  const renderAdminPopover = useCallback(function (admins: AdminInfo[]) {
+    return (
+      <div className="tg-admin-popover">
+        <div className="tg-admin-popover-title">管理员列表 ({admins.length}人)</div>
+        <div className="tg-admin-popover-list">
+          {admins.map(function (admin, index) {
+            return (
+              <div key={index} className="tg-admin-popover-item">
+                <span className="tg-admin-popover-nickname">{admin.nickname}</span>
+                <span className="tg-admin-popover-id">ID: {admin.id}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }, []);
+
   // 表格列定义
   const columns = [
     {
@@ -274,7 +342,7 @@ const TGGroups: React.FC = function TGGroups() {
       dataIndex: 'name',
       key: 'name',
       width: 320,
-      render: function (_: unknown, record: typeof MOCK_TABLE_DATA[0]) {
+      render: function (_: unknown, record: GroupData) {
         return (
           <div className="tg-group-info">
             <Avatar
@@ -293,11 +361,24 @@ const TGGroups: React.FC = function TGGroups() {
     },
     {
       title: '管理员',
-      dataIndex: 'admin',
-      key: 'admin',
+      dataIndex: 'admins',
+      key: 'admins',
       width: 120,
-      render: function (text: string) {
-        return <span className="tg-admin-text" style={{ color: 'rgba(255,255,255,0.45)' }}>{text}</span>;
+      render: function (admins: AdminInfo[]) {
+        const count = admins?.length || 0;
+        return (
+          <Popover
+            content={renderAdminPopover(admins)}
+            title={null}
+            trigger="hover"
+            placement="bottom"
+            overlayClassName="tg-admin-popover-overlay"
+          >
+            <span className="tg-admin-count-tag">
+              管理员{count}人
+            </span>
+          </Popover>
+        );
       },
     },
     {
@@ -358,7 +439,7 @@ const TGGroups: React.FC = function TGGroups() {
       key: 'action',
       width: 160,
       fixed: 'right' as const,
-      render: function (_: unknown, record: typeof MOCK_TABLE_DATA[0]) {
+      render: function (_: unknown, record: GroupData) {
         return (
           <div className="tg-actions">
             <Button type="link" size="small" className="tg-action-link" onClick={function () { handleViewDetail(record); }}>
@@ -400,9 +481,9 @@ const TGGroups: React.FC = function TGGroups() {
           })}
         </div>
 
-        {/* 已添加群列表标题和筛选 */}
+        {/* 已关注群组标题和筛选 */}
         <div className="tg-section-title" style={{ marginTop: 24 }}>
-          <span>已添加群列表</span>
+          <span>已关注群组</span>
           <div className="tg-title-filters">
             {/* 搜索和筛选行 */}
             <div className="tg-search-row" style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>

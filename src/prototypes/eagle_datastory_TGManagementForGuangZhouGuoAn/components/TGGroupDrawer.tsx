@@ -56,12 +56,17 @@ const ORANGE_COLOR = '#fa8c16';
 
 // ============ 类型定义 ============
 
+interface AdminInfo {
+  nickname: string;
+  id: string;
+}
+
 interface GroupInfo {
   key: string;
   name: string;
   avatar: string;
   description: string;
-  admin: string;
+  admins: AdminInfo[];
   members: string;
   groupId: string;
   todayPosts: number;
