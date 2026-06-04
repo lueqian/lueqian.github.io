@@ -25,9 +25,12 @@ import {
   EditTwoTone,
   DeleteOutlined,
   DownOutlined,
+  RobotOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 import type { TabsProps } from 'antd';
 import dayjs from 'dayjs';
+import AIAssistantDrawer from '../components/AIAssistantDrawer';
 
 const { RangePicker } = DatePicker;
 
@@ -41,6 +44,7 @@ interface FilterState {
   sentimentLevel: string;
   sentimentType: string;
   specialTask: string;
+  mediaSource: string[];
   responsibilityArea: string;
   code: string;
 }
@@ -226,6 +230,7 @@ const MonitorWarning: React.FC = () => {
     sentimentLevel: '',
     sentimentType: '',
     specialTask: '',
+    mediaSource: [],
     responsibilityArea: '',
     code: '',
   });
@@ -293,6 +298,10 @@ const MonitorWarning: React.FC = () => {
 
     if (filters.sentimentLevel) {
       result = result.filter(item => item.rating === parseInt(filters.sentimentLevel));
+    }
+
+    if (filters.mediaSource && filters.mediaSource.length > 0) {
+      result = result.filter(item => filters.mediaSource.includes(item.platform));
     }
 
     if (filters.responsibilityArea) {
@@ -410,11 +419,28 @@ const MonitorWarning: React.FC = () => {
       sentimentLevel: '',
       sentimentType: '',
       specialTask: '',
+      mediaSource: [],
       responsibilityArea: '',
       code: '',
     });
     setSelectedCondition('');
     setTimeout(() => executeFilter(), 0);
+  };
+
+  // AI Drawer 状态
+  const [aiDrawerVisible, setAiDrawerVisible] = useState(false);
+  const [selectedOpinion, setSelectedOpinion] = useState<OpinionItem | null>(null);
+
+  // 打开 AI 助手
+  const handleOpenAIAssistant = (item: OpinionItem) => {
+    setSelectedOpinion(item);
+    setAiDrawerVisible(true);
+  };
+
+  // 关闭 AI 助手
+  const handleCloseAIAssistant = () => {
+    setAiDrawerVisible(false);
+    setSelectedOpinion(null);
   };
 
   // 渲染星级
@@ -548,8 +574,13 @@ const MonitorWarning: React.FC = () => {
         <div className="footer-right">
           <Button size="small" className="status-btn">{item.status}</Button>
           <Button size="small" type="link" className="detail-btn">信息详情</Button>
-          <Button size="small" type="primary" className="ai-btn">
-            <span className="ai-icon-small">AI</span> 辅助研判
+          <Button
+            size="small"
+            className="ai-assistant-btn"
+            icon={<RobotOutlined />}
+            onClick={() => handleOpenAIAssistant(item)}
+          >
+            AI 智能助手
           </Button>
         </div>
       </div>
@@ -691,6 +722,29 @@ const MonitorWarning: React.FC = () => {
               ]}
             />
           </div>
+          <div className="filter-item">
+            <span className="filter-label">信源</span>
+            <Select
+              mode="multiple"
+              placeholder="请选择平台"
+              value={filters.mediaSource}
+              onChange={val => setFilters({ ...filters, mediaSource: val })}
+              className="media-source-select"
+              allowClear
+              maxTagCount="responsive"
+              options={[
+                { label: '抖音', value: '抖音app' },
+                { label: '微信', value: '微信' },
+                { label: '微博', value: '微博' },
+                { label: '小红书', value: '小红书' },
+                { label: '快手', value: '快手' },
+                { label: 'B站', value: 'B站' },
+                { label: '今日头条', value: '今日头条' },
+                { label: '百度贴吧', value: '百度贴吧' },
+                { label: '知乎', value: '知乎' },
+              ]}
+            />
+          </div>
         </div>
 
         {/* 第3行 */}
@@ -764,9 +818,6 @@ const MonitorWarning: React.FC = () => {
           items={categoryTabs}
           className="category-tabs"
         />
-        <Button type="primary" icon={<EditOutlined />} className="manual-report-btn">
-          手工上报
-        </Button>
       </div>
 
       {/* 列表区域 */}
@@ -812,6 +863,13 @@ const MonitorWarning: React.FC = () => {
           />
         </div>
       </Modal>
+
+      {/* AI 智能助手 Drawer */}
+      <AIAssistantDrawer
+        visible={aiDrawerVisible}
+        opinion={selectedOpinion}
+        onClose={handleCloseAIAssistant}
+      />
     </div>
   );
 };
