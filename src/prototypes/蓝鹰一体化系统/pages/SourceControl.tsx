@@ -18,8 +18,10 @@ import {
   BarChartOutlined,
   ExclamationCircleOutlined,
   TeamOutlined,
+  EyeOutlined,
 } from '@ant-design/icons';
 import type { TabsProps } from 'antd';
+import TaskDetail from './TaskDetail';
 
 const { TabPane } = Tabs;
 
@@ -82,6 +84,7 @@ const securityTasks = [
 const SourceControl: React.FC = () => {
   const [activeTab, setActiveTab] = useState('today');
   const [calendarType, setCalendarType] = useState<string>();
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const overviewRef = useRef<HTMLDivElement>(null);
 
   // 数据概览滚动
@@ -97,7 +100,7 @@ const SourceControl: React.FC = () => {
 
   // 任务卡片渲染
   const renderTaskCard = (task: any, type: 'special' | 'security') => (
-    <div key={task.id} className="task-card">
+    <div key={task.id} className="task-card" onClick={() => setSelectedTaskId(task.id)} style={{ cursor: 'pointer' }}>
       <div className="task-card-header">
         <div className="task-title-row">
           {type === 'special' && <span className="task-code">{task.code}</span>}
@@ -109,14 +112,14 @@ const SourceControl: React.FC = () => {
           <Dropdown
             menu={{
               items: [
-                { key: 'detail', label: '查看详情' },
+                { key: 'detail', label: '查看详情', icon: <EyeOutlined />, onClick: (e: any) => { e.domEvent.stopPropagation(); setSelectedTaskId(task.id); } },
                 { key: 'edit', label: '编辑任务' },
                 { key: 'delete', label: '删除任务', danger: true },
               ],
             }}
             placement="bottomRight"
           >
-            <Button type="text" size="small" className="more-btn">
+            <Button type="text" size="small" className="more-btn" onClick={(e) => e.stopPropagation()}>
               <MoreOutlined />
             </Button>
           </Dropdown>
@@ -136,6 +139,11 @@ const SourceControl: React.FC = () => {
       </div>
     </div>
   );
+
+  // 如果选中了任务，显示详情页
+  if (selectedTaskId) {
+    return <TaskDetail taskId={selectedTaskId} onBack={() => setSelectedTaskId(null)} />;
+  }
 
   return (
     <div className="source-control-page">
