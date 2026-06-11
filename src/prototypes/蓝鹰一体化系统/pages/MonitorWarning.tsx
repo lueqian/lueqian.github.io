@@ -56,7 +56,7 @@ interface SavedCondition {
   createTime: string;
 }
 
-interface OpinionItem {
+export interface OpinionItem {
   id: string;
   seq: number;
   title: string;

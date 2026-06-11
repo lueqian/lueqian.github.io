@@ -8,6 +8,10 @@ import {
   Tabs,
   Dropdown,
   Space,
+  Modal,
+  Drawer,
+  Checkbox,
+  Select,
 } from 'antd';
 import {
   LeftOutlined,
@@ -32,6 +36,10 @@ import {
   ArrowUpOutlined,
   ArrowDownOutlined,
   MinusOutlined,
+  SendOutlined,
+  LinkOutlined,
+  SyncOutlined,
+  TeamOutlined,
 } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 
@@ -85,6 +93,28 @@ interface SideTask {
   isActive: boolean;
 }
 
+interface InstructionOption {
+  id: string;
+  name: string;
+  group: '本单位指令' | '执行单位指令';
+  cycle: string;
+}
+
+interface IssuedInstruction {
+  id: string;
+  eventId: string;
+  instructionNames: string[];
+  receiverArea: string;
+  receiverPost: string;
+  receiverUser: string;
+  status: '已下达' | '已签收' | '处理中' | '已完成' | '已超时';
+  linkStatus: '未检测' | '仍可访问' | '链接失效' | '无法判断' | '平台异常';
+  issuedBy: string;
+  issuedTime: string;
+  deadline: string;
+  latestFeedback: string;
+}
+
 // 当前任务信息
 const currentTask: TaskInfo = {
   id: '1',
@@ -105,6 +135,68 @@ const sideTasks: SideTask[] = [
   { id: '3', code: '0322', name: '交通事故', status: 'urgent', eventCount: 234, isActive: false },
   { id: '4', code: '0405', name: '校园安全', status: 'normal', eventCount: 45, isActive: false },
   { id: '5', code: '0512', name: '食品安全', status: 'normal', eventCount: 78, isActive: false },
+];
+
+const instructionOptions: InstructionOption[] = [
+  { id: 'local-monitor', name: '本地动态监测', group: '本单位指令', cycle: '2小时' },
+  { id: 'verify-rumor', name: '谣言核查', group: '执行单位指令', cycle: '4小时' },
+  { id: 'post-disposal', name: '帖文处置', group: '执行单位指令', cycle: '6小时' },
+  { id: 'delete-guidance', name: '劝删下达', group: '执行单位指令', cycle: '8小时' },
+  { id: 'material-report', name: '材料反馈', group: '执行单位指令', cycle: '12小时' },
+];
+
+const areaOptions = ['淮安区', '清江浦区', '淮阴区', '洪泽区', '金湖县'];
+const userOptionsByArea: Record<string, string[]> = {
+  淮安区: ['张明', '刘浩宇', '陈思远'],
+  清江浦区: ['王敏', '李倩'],
+  淮阴区: ['刘浩宇'],
+  洪泽区: ['周宁'],
+  金湖县: [],
+};
+
+const issuedInstructions: IssuedInstruction[] = [
+  {
+    id: 'cmd-001',
+    eventId: '1',
+    instructionNames: ['谣言核查', '劝删下达'],
+    receiverArea: '淮安区',
+    receiverPost: '劝删处置岗',
+    receiverUser: '张明',
+    status: '处理中',
+    linkStatus: '仍可访问',
+    issuedBy: '支队值班岗',
+    issuedTime: '2024-05-10 15:20:00',
+    deadline: '2024-05-10 23:20:00',
+    latestFeedback: '属地已签收，正在联系平台侧核验原帖状态。',
+  },
+  {
+    id: 'cmd-002',
+    eventId: '2',
+    instructionNames: ['材料反馈'],
+    receiverArea: '清江浦区',
+    receiverPost: '材料反馈岗',
+    receiverUser: '岗位待申领',
+    status: '已签收',
+    linkStatus: '未检测',
+    issuedBy: '支队值班岗',
+    issuedTime: '2024-05-10 15:35:00',
+    deadline: '2024-05-11 03:35:00',
+    latestFeedback: '岗位已接收，等待材料回传。',
+  },
+  {
+    id: 'cmd-003',
+    eventId: '3',
+    instructionNames: ['帖文处置', '本地动态监测'],
+    receiverArea: '淮阴区',
+    receiverPost: '值班网巡岗',
+    receiverUser: '刘浩宇',
+    status: '已完成',
+    linkStatus: '链接失效',
+    issuedBy: '支队值班岗',
+    issuedTime: '2024-05-10 16:05:00',
+    deadline: '2024-05-10 22:05:00',
+    latestFeedback: '原帖已不可访问，处置反馈已提交。',
+  },
 ];
 
 // 事件列表数据
@@ -287,6 +379,18 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
   const [activeSideTask, setActiveSideTask] = useState(taskId || '1');
   const [searchValue, setSearchValue] = useState('');
   const [activeTab, setActiveTab] = useState('all');
+  const [workView, setWorkView] = useState<'pending' | 'issued'>('pending');
+  const [selectedEventIds, setSelectedEventIds] = useState<string[]>([]);
+  const [instructionModalOpen, setInstructionModalOpen] = useState(false);
+  const [instructionTargetIds, setInstructionTargetIds] = useState<string[]>([]);
+  const [selectedInstructionIds, setSelectedInstructionIds] = useState<string[]>(['post-disposal']);
+  const [selectedArea, setSelectedArea] = useState('淮安区');
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [detailInstruction, setDetailInstruction] = useState<IssuedInstruction | null>(null);
+  const [linkStatusMap, setLinkStatusMap] = useState<Record<string, IssuedInstruction['linkStatus']>>({});
+
+  const selectedAreaUsers = userOptionsByArea[selectedArea] || [];
+  const allSelected = selectedEventIds.length === eventList.length;
 
   // 更多操作菜单
   const moreMenuItems: MenuProps['items'] = [
@@ -295,6 +399,52 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
     { key: 'share', label: '分享' },
     { key: 'delete', label: '删除', danger: true },
   ];
+
+  const getEventById = (eventId: string) => eventList.find((event) => event.id === eventId);
+
+  const toggleEventSelect = (eventId: string, checked: boolean) => {
+    setSelectedEventIds((prev) => (
+      checked ? Array.from(new Set([...prev, eventId])) : prev.filter((id) => id !== eventId)
+    ));
+  };
+
+  const openInstructionModal = (eventIds: string[]) => {
+    setInstructionTargetIds(eventIds);
+    setInstructionModalOpen(true);
+  };
+
+  const handleInstructionSubmit = () => {
+    setInstructionModalOpen(false);
+    setSelectedEventIds([]);
+    setWorkView('issued');
+  };
+
+  const handleAreaChange = (area: string) => {
+    setSelectedArea(area);
+    setSelectedUsers([]);
+  };
+
+  const handleDetectLink = (recordId: string) => {
+    const current = linkStatusMap[recordId] || issuedInstructions.find((item) => item.id === recordId)?.linkStatus;
+    setLinkStatusMap({
+      ...linkStatusMap,
+      [recordId]: current === '链接失效' ? '链接失效' : '链接失效',
+    });
+  };
+
+  const getStatusClassName = (status: string) => {
+    if (status === '已完成') return 'success';
+    if (status === '已超时') return 'danger';
+    if (status === '处理中') return 'processing';
+    return 'default';
+  };
+
+  const getLinkStatusClassName = (status: string) => {
+    if (status === '链接失效') return 'invalid';
+    if (status === '仍可访问') return 'active';
+    if (status === '无法判断' || status === '平台异常') return 'warning';
+    return 'default';
+  };
 
   // 渲染星级
   const renderStars = (rating: number) => {
@@ -312,10 +462,15 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
 
   // 渲染事件卡片
   const renderEventCard = (event: EventItem) => (
-    <div key={event.id} className="event-detail-card">
+    <div key={event.id} className={`event-detail-card ${selectedEventIds.includes(event.id) ? 'selected' : ''}`}>
       {/* 头部信息 */}
       <div className="event-card-header">
         <div className="event-header-left">
+          <Checkbox
+            checked={selectedEventIds.includes(event.id)}
+            onChange={(e) => toggleEventSelect(event.id, e.target.checked)}
+            className="event-select-checkbox"
+          />
           <span className="event-seq">{event.seq}</span>
           <h3 className="event-title">{event.title}</h3>
           {event.isWaring && (
@@ -374,9 +529,18 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
 
       {/* AI 研判 */}
       <div className="ai-analysis-detail">
-        <div className="ai-badge-detail">AI</div>
-        <span className="analysis-label">研判：</span>
-        <span className="analysis-text">该舆情为自然灾害类，目前呈上升趋势，建议相关部门及时发布权威信息，回应社会关切。</span>
+        <div className="analysis-content-detail">
+          <div className="ai-badge-detail">AI</div>
+          <span className="analysis-label">研判：</span>
+          <span className="analysis-text">该舆情为自然灾害类，目前呈上升趋势，建议相关部门及时发布权威信息，回应社会关切。</span>
+        </div>
+        <div className="sentiment-index-detail">
+          <div className="index-label">舆情指数</div>
+          <div className="index-value-detail">{event.sentimentIndex}</div>
+          <div className="index-meter-detail" aria-hidden="true">
+            <span style={{ width: `${event.sentimentIndex}%` }} />
+          </div>
+        </div>
       </div>
 
       {/* 底部信息 */}
@@ -390,25 +554,296 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
           <Tag className="video-tag-detail">视频</Tag>
         </div>
         <div className="footer-right-detail">
-          <Button type="text" size="small" className="status-btn-detail">
-            待处理
-          </Button>
           <Button type="link" size="small" className="detail-btn">
             查看详情
           </Button>
           <Button type="primary" size="small" className="ai-btn-detail">
             AI辅助研判
           </Button>
+          <Button
+            type="primary"
+            size="small"
+            icon={<SendOutlined />}
+            className="command-btn-detail"
+            onClick={() => openInstructionModal([event.id])}
+          >
+            下达指令
+          </Button>
         </div>
-      </div>
-
-      {/* 舆情指数 */}
-      <div className="sentiment-index-detail">
-        <div className="index-value-detail">{event.sentimentIndex}</div>
-        <div className="index-label">舆情指数</div>
       </div>
     </div>
   );
+
+  const renderInstructionModal = () => (
+    <Modal
+      title="发起处置指令"
+      open={instructionModalOpen}
+      width={980}
+      onCancel={() => setInstructionModalOpen(false)}
+      onOk={handleInstructionSubmit}
+      okText="确认下达"
+      cancelText="取消"
+      className="instruction-modal"
+    >
+      <div className="instruction-modal-body">
+        <div className="instruction-modal-left">
+          <div className="modal-field-title">
+            <span className="required-mark">*</span>
+            请选择要下达的指令
+          </div>
+          {(['本单位指令', '执行单位指令'] as const).map((group) => (
+            <div key={group} className="instruction-group">
+              <div className="instruction-group-title">{group}</div>
+              <div className="instruction-option-grid">
+                {instructionOptions.filter((item) => item.group === group).map((item) => {
+                  const active = selectedInstructionIds.includes(item.id);
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className={`instruction-option ${active ? 'active' : ''}`}
+                      onClick={() => setSelectedInstructionIds((prev) => (
+                        active ? prev.filter((id) => id !== item.id) : [...prev, item.id]
+                      ))}
+                    >
+                      <span>{item.name}</span>
+                      <em>{item.cycle}</em>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+          <div className="modal-field-title">补充指令内容</div>
+          <Input.TextArea
+            rows={4}
+            placeholder="请输入补充指令内容，示例：请{单位名称}进行{指令名称}，并在{处理周期}前反馈处理结果。"
+            className="instruction-textarea"
+          />
+          <div className="variable-row">
+            <span>插入变量符</span>
+            {['单位名称', '指令名称', '指令类型', '处理周期'].map((item) => (
+              <Tag key={item} className="variable-tag">{item}</Tag>
+            ))}
+          </div>
+          <div className="target-summary">
+            本次将向 <strong>{instructionTargetIds.length || selectedEventIds.length}</strong> 条帖文下达指令
+          </div>
+        </div>
+        <div className="instruction-modal-right">
+          <div className="modal-field-title">选择执行单位与接收对象</div>
+          <div className="receiver-field">
+            <label>属地/部门</label>
+            <Select
+              value={selectedArea}
+              onChange={handleAreaChange}
+              options={areaOptions.map((area) => ({ value: area, label: area }))}
+            />
+          </div>
+          <div className="receiver-field">
+            <label>指定人员（可选）</label>
+            <Select
+              mode="multiple"
+              value={selectedUsers}
+              onChange={setSelectedUsers}
+              placeholder={selectedAreaUsers.length ? '不指定则按指令预设岗位派发' : '当前属地暂无可选人员'}
+              options={selectedAreaUsers.map((user) => ({ value: user, label: user }))}
+            />
+            {selectedAreaUsers.length === 0 && (
+              <div className="empty-user-hint">当前属地暂无可选人员，将按指令预设岗位派发。</div>
+            )}
+          </div>
+          <div className="receiver-preview">
+            <TeamOutlined />
+            <div>
+              <strong>{selectedArea}</strong>
+              <span>{selectedUsers.length ? `指定人员：${selectedUsers.join('、')}` : '按指令预设岗位自动派发'}</span>
+              <span>{selectedUsers.length ? '直达人员，不再按预设岗位重复推送' : '由指令管理绑定的岗位账号接收'}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Modal>
+  );
+
+  const renderIssuedCard = (record: IssuedInstruction) => {
+    const event = getEventById(record.eventId);
+    const linkStatus = linkStatusMap[record.id] || record.linkStatus;
+
+    if (!event) return null;
+
+    return (
+      <div key={record.id} className="issued-card">
+        <div className="issued-main">
+          <div className="issued-title-row">
+            <h3>{event.title}</h3>
+          </div>
+          <div className="issued-meta-row">
+            <span>{getPlatformIcon(event.platform)} {event.platform}</span>
+            <span>指令：{record.instructionNames.join('、')}</span>
+            <span>下达时间：{record.issuedTime}</span>
+          </div>
+        </div>
+        <div className="issued-status-strip">
+          <div className="issued-mini-stat">
+            <span>链接</span>
+            <strong>{record.instructionNames.includes('劝删下达') || record.instructionNames.includes('帖文处置') ? 1 : 0}</strong>
+          </div>
+          <Tag className={`command-status-tag ${getStatusClassName(record.status)}`}>{record.status}</Tag>
+          <Tag className={`link-status-tag ${getLinkStatusClassName(linkStatus)}`}>
+            <LinkOutlined /> {linkStatus}
+          </Tag>
+        </div>
+        <div className="issued-actions">
+          <Button size="small" icon={<SyncOutlined />} onClick={() => handleDetectLink(record.id)}>
+            检测链接
+          </Button>
+          <Button size="small" type="primary" onClick={() => setDetailInstruction(record)}>
+            查看进度
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
+  const renderDetailDrawer = () => {
+    const event = detailInstruction ? getEventById(detailInstruction.eventId) : null;
+    const linkStatus = detailInstruction
+      ? linkStatusMap[detailInstruction.id] || detailInstruction.linkStatus
+      : '未检测';
+
+    return (
+      <Drawer
+        title={(
+          <div className="progress-drawer-title">
+            <div className="progress-tabs">
+              <span>分析研判</span>
+              <span>处置过程</span>
+              <span className="active">处置详情</span>
+            </div>
+            <Button type="primary" ghost icon={<SendOutlined />}>下达处理指令</Button>
+          </div>
+        )}
+        width={860}
+        open={!!detailInstruction}
+        onClose={() => setDetailInstruction(null)}
+        className="command-detail-drawer"
+        footer={(
+          <div className="drawer-footer-actions">
+            <Button>催办</Button>
+            <Button icon={<SyncOutlined />} onClick={() => detailInstruction && handleDetectLink(detailInstruction.id)}>
+              检测链接
+            </Button>
+            <Button type="primary">标记完成</Button>
+          </div>
+        )}
+      >
+        {detailInstruction && event && (
+          <>
+            <div className="drawer-metric-grid">
+              {[
+                ['发现效率', '0秒', 'red'],
+                ['研判效率', '3分12秒', 'orange'],
+                ['落查耗时', '28分钟', 'green'],
+                ['材料耗时', detailInstruction.status === '已完成' ? '1小时06分' : '--', 'blue'],
+                ['审核耗时', '--', 'purple'],
+              ].map(([label, value, tone]) => (
+                <div key={label} className={`drawer-metric-card ${tone}`}>
+                  <i />
+                  <span>{label}</span>
+                  <strong>{value}</strong>
+                </div>
+              ))}
+            </div>
+            <div className="progress-timeline">
+              <div className="progress-node">
+                <div className="progress-time">{event.publishTime}</div>
+                <div className="progress-content">
+                  <div className="progress-badges">
+                    <span className="solid">第一信源</span>
+                    <span className="link-like">添加第一信源</span>
+                  </div>
+                  <div className="progress-block source-card">
+                    <div>
+                      <h4>{event.author}</h4>
+                      <p><ClockCircleOutlined /> {event.publishTime} <span>|</span> {getPlatformIcon(event.platform)} {event.platform}</p>
+                    </div>
+                    <div className="source-actions">
+                      <Button type="link">复制信息</Button>
+                      <Button type="link">查看原文</Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="progress-node">
+                <div className="progress-time">{detailInstruction.issuedTime}</div>
+                <div className="progress-content">
+                  <div className="progress-badges">
+                    <span className="solid">第一发现</span>
+                    <span className="solid">来源：{detailInstruction.issuedBy}</span>
+                    <span className="outline">{detailInstruction.receiverArea}</span>
+                    <span className="danger">发现用时 18分钟</span>
+                  </div>
+                  <div className="progress-block">核报</div>
+                </div>
+              </div>
+
+              <div className="progress-node">
+                <div className="progress-time">2024-05-10 15:38:35</div>
+                <div className="progress-content">
+                  <div className="progress-badges">
+                    <span className="solid">第一研判</span>
+                    <span className="outline">--</span>
+                  </div>
+                  <div className="progress-block">核报</div>
+                </div>
+              </div>
+
+              <div className="progress-node">
+                <div className="progress-time">2024-05-10 15:42:00</div>
+                <div className="progress-content">
+                  <div className="progress-badges">
+                    <span className="solid">指令：{detailInstruction.instructionNames.join('、')}</span>
+                    <span className="solid">{detailInstruction.receiverPost}</span>
+                    <span className="outline">{detailInstruction.receiverUser}</span>
+                  </div>
+                  <div className="progress-block instruction-block">
+                    <strong>指令要求：请反馈事件发生时间、地点、经过、结果以及相关人员。</strong>
+                    <div className="feedback-card">
+                      <span>{detailInstruction.receiverArea}</span>
+                      <span>{detailInstruction.receiverUser}</span>
+                      <span>2024-05-10 16:11:29</span>
+                      <span>签收</span>
+                      <em className="success">接收用时 29秒</em>
+                    </div>
+                    <div className="feedback-card multiline">
+                      <span>{detailInstruction.receiverArea}</span>
+                      <span>{detailInstruction.receiverUser}</span>
+                      <span>2024-05-10 16:18:00</span>
+                      <span>反馈</span>
+                      <em>接收用时 36分钟</em>
+                      <p>{detailInstruction.latestFeedback}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="progress-node">
+                <div className="progress-time">最近检测</div>
+                <div className="progress-content">
+                  <div className="progress-badges">
+                    <span className={linkStatus === '链接失效' ? 'success-pill' : 'outline'}>链接状态：{linkStatus}</span>
+                    <span className="outline">文章ID {detailInstruction.eventId.padStart(8, '0')}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+      </Drawer>
+    );
+  };
 
   return (
     <div className="task-detail-page">
@@ -461,36 +896,107 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
           <div className="filter-search">
             <Input
               prefix={<SearchOutlined />}
-              placeholder="搜索事件内容"
+              placeholder={workView === 'pending' ? '搜索事件内容' : '搜索已下达指令'}
               className="event-search-input"
             />
           </div>
           <div className="filter-actions-detail">
+            {workView === 'issued' && (
+              <Button icon={<SyncOutlined />}>批量检测链接</Button>
+            )}
             <Button icon={<FilterOutlined />}>筛选</Button>
             <Button>排序 <DownOutlined /></Button>
             <Button>时间 <DownOutlined /></Button>
           </div>
         </div>
 
-        {/* 分类Tab */}
-        <div className="detail-tabs-bar">
-          <Tabs activeKey={activeTab} onChange={setActiveTab} className="detail-tabs">
-            <TabPane tab="全部" key="all" />
-            <TabPane tab="微博" key="weibo" />
-            <TabPane tab="抖音" key="douyin" />
-            <TabPane tab="微信" key="wechat" />
-            <TabPane tab="新闻" key="news" />
-            <TabPane tab="预警" key="warning" />
-          </Tabs>
-          <div className="tabs-extra">
-            <span className="total-count">共 {eventList.length} 条</span>
-          </div>
+        <div className="work-view-switch">
+          <button
+            type="button"
+            className={workView === 'pending' ? 'active' : ''}
+            onClick={() => setWorkView('pending')}
+          >
+            待研判帖文
+            <Badge count={eventList.length} />
+          </button>
+          <button
+            type="button"
+            className={workView === 'issued' ? 'active' : ''}
+            onClick={() => setWorkView('issued')}
+          >
+            已下达指令
+            <Badge count={issuedInstructions.length} />
+          </button>
         </div>
+
+        {/* 分类Tab */}
+        {workView === 'pending' ? (
+          <div className="detail-tabs-bar">
+            <Tabs activeKey={activeTab} onChange={setActiveTab} className="detail-tabs">
+              <TabPane tab="全部" key="all" />
+              <TabPane tab="微博" key="weibo" />
+              <TabPane tab="抖音" key="douyin" />
+              <TabPane tab="微信" key="wechat" />
+              <TabPane tab="新闻" key="news" />
+              <TabPane tab="预警" key="warning" />
+            </Tabs>
+            <div className="tabs-extra">
+              <Checkbox
+                checked={allSelected}
+                indeterminate={selectedEventIds.length > 0 && !allSelected}
+                onChange={(e) => setSelectedEventIds(e.target.checked ? eventList.map((event) => event.id) : [])}
+              >
+                全选
+              </Checkbox>
+              <span className="total-count">共 {eventList.length} 条</span>
+            </div>
+          </div>
+        ) : (
+          <div className="issued-summary-bar">
+            <div className="issued-summary-item">
+              <span>已下达</span>
+              <strong>{issuedInstructions.length}</strong>
+            </div>
+            <div className="issued-summary-item">
+              <span>处理中</span>
+              <strong>1</strong>
+            </div>
+            <div className="issued-summary-item">
+              <span>已完成</span>
+              <strong>1</strong>
+            </div>
+            <div className="issued-summary-item">
+              <span>链接失效</span>
+              <strong>1</strong>
+            </div>
+          </div>
+        )}
 
         {/* 事件列表 */}
         <div className="event-list-container">
-          {eventList.map((event) => renderEventCard(event))}
+          {workView === 'pending'
+            ? eventList.map((event) => renderEventCard(event))
+            : issuedInstructions.map((record) => renderIssuedCard(record))}
         </div>
+
+        {workView === 'pending' && selectedEventIds.length > 0 && (
+          <div className="batch-action-bar">
+            <div className="batch-left">
+              <Badge count={selectedEventIds.length} />
+              <span>已选中 {selectedEventIds.length} 条数据</span>
+              <Button type="link" onClick={() => setSelectedEventIds([])}>取消全选</Button>
+            </div>
+            <div className="batch-right">
+              <Button
+                type="primary"
+                icon={<SendOutlined />}
+                onClick={() => openInstructionModal(selectedEventIds)}
+              >
+                批量下达指令
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 右侧任务列表 */}
@@ -531,6 +1037,8 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
           ))}
         </div>
       </div>
+      {renderInstructionModal()}
+      {renderDetailDrawer()}
     </div>
   );
 };
