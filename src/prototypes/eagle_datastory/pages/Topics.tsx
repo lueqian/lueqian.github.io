@@ -151,6 +151,7 @@ const ARTICLES: ArticleData[] = [
     badge: '原创',
     time: '2026-04-01 17:57:22',
     platform: '抖音app',
+    location: '四川省, 四川省',
     tags: ['张杰', '出轨'],
     content: '念念不忘，必有回响。#马晓迪 #张杰未live曜北斗巡回演唱会 #张杰 #演唱会现场 #张杰成都演唱会',
     hasVideo: true,

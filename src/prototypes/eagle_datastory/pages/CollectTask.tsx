@@ -13,7 +13,7 @@
 
 import '../style.css';
 import React, { useState, useCallback, useMemo } from 'react';
-import { Table, Tag, Switch, Button, Select, Input, Space, Tooltip, Popconfirm, message, Descriptions, Card } from 'antd';
+import { Table, Tag, Switch, Button, Select, Input, Space, Tooltip, Popconfirm, message, Descriptions, Card, Drawer } from 'antd';
 import {
   PlusOutlined,
   SearchOutlined,
@@ -69,6 +69,34 @@ type TaskItem = {
   comment_total?: number;
   // 评论区采集 - 最近1次采集评论数
   comment_last?: number;
+};
+
+type LinkCollectRecord = {
+  id: string;
+  link: string;
+  platform: string;
+  title: string;
+  last_collected_at: string;
+  interaction_last: InteractionData;
+  comment_last: number;
+};
+
+type InteractionHistoryRecord = {
+  id: string;
+  collected_at: string;
+  likes: number;
+  favorites: number;
+  reposts: number;
+  comments: number;
+  total: number;
+};
+
+type CommentHistoryRecord = {
+  id: string;
+  user: string;
+  platform: string;
+  collected_at: string;
+  content: string;
 };
 
 // ============ 常量 ============
@@ -260,6 +288,86 @@ function formatIncrement(n: number): string {
   return '+' + formatCount(n);
 }
 
+function getTaskSeed(task: TaskItem): number {
+  var matched = task.id.match(/\d+/);
+  return matched ? parseInt(matched[0], 10) : 1;
+}
+
+function getTaskLinkRecords(task: TaskItem): LinkCollectRecord[] {
+  var seed = getTaskSeed(task);
+  var sourcePlatforms = task.platforms.length > 0 ? task.platforms : ['微博'];
+  var count = Math.max(2, Math.min(4, sourcePlatforms.length + 1));
+
+  return Array.from({ length: count }, function (_, index) {
+    var platform = sourcePlatforms[index % sourcePlatforms.length];
+    var base = seed * 37 + index * 19;
+    var lastCollectedAt = dayjs(task.last_updated)
+      .subtract(index * 2, 'hour')
+      .format('YYYY-MM-DD HH:mm');
+
+    return {
+      id: task.id + '_link_' + (index + 1),
+      link: task.link ? task.link + '?target=' + (index + 1) : 'https://example.com/post/' + seed + '-' + (index + 1),
+      platform: platform,
+      title: (task.title || task.task_name.replace(/_\d+$/, '')) + ' #' + (index + 1),
+      last_collected_at: lastCollectedAt,
+      interaction_last: {
+        likes: base * 8 + 320,
+        favorites: base * 2 + 76,
+        reposts: base + 28,
+        comments: base * 3 + 49,
+      },
+      comment_last: base * 2 + 18,
+    };
+  });
+}
+
+function getInteractionHistory(record: LinkCollectRecord): InteractionHistoryRecord[] {
+  var seed = parseInt(record.id.replace(/\D/g, '').slice(-4), 10) || 1;
+  return Array.from({ length: 8 }, function (_, index) {
+    var ratio = 8 - index;
+    var likes = record.interaction_last.likes + ratio * (seed % 31 + 12);
+    var favorites = record.interaction_last.favorites + ratio * (seed % 13 + 5);
+    var reposts = record.interaction_last.reposts + ratio * (seed % 9 + 3);
+    var comments = record.interaction_last.comments + ratio * (seed % 17 + 6);
+
+    return {
+      id: record.id + '_history_' + index,
+      collected_at: dayjs(record.last_collected_at).subtract(index * 2, 'hour').format('YYYY-MM-DD HH:mm'),
+      likes: likes,
+      favorites: favorites,
+      reposts: reposts,
+      comments: comments,
+      total: likes + favorites + reposts + comments,
+    };
+  });
+}
+
+function getCommentHistory(record: LinkCollectRecord): CommentHistoryRecord[] {
+  var comments = [
+    '这个内容最近讨论很多，观点变化比较快，建议持续跟踪后续发酵情况。',
+    '从评论区看，用户关注点主要集中在真实体验、售后反馈和价格变化。',
+    '这条信息下面有效评论不少，里面有几条高赞评论值得单独标注。',
+    '平台推荐带来的新增评论比较明显，最新一轮采集已经覆盖核心讨论。',
+    '评论情绪有分化，部分用户认可，也有用户提出了比较具体的质疑。',
+    '建议结合历史互动量一起看，单次评论数量不能完全代表传播质量。',
+  ];
+
+  return comments.map(function (content, index) {
+    return {
+      id: record.id + '_comment_' + index,
+      user: '用户_' + record.platform + '_' + String(index + 1).padStart(2, '0'),
+      platform: record.platform,
+      collected_at: dayjs(record.last_collected_at).subtract(index * 37, 'minute').format('YYYY-MM-DD HH:mm'),
+      content: content,
+    };
+  });
+}
+
+function formatInteractionSummary(data: InteractionData): string {
+  return '赞 ' + formatCount(data.likes) + ' / 藏 ' + formatCount(data.favorites) + ' / 转 ' + formatCount(data.reposts) + ' / 评 ' + formatCount(data.comments);
+}
+
 // ============ 列表页 ============
 
 const TaskListView: React.FC<{
@@ -412,7 +520,6 @@ const TaskListView: React.FC<{
               cancelText="取消"
               okButtonProps={{ danger: true }}
               icon={null}
-              animation={false}
             >
               <a className="ct-action-delete">删除</a>
             </Popconfirm>
@@ -523,6 +630,79 @@ const TaskDetailView: React.FC<{
   onBack: () => void;
 }> = function ({ task, onBack }) {
   const isOtherScope = task.scope_type === 'other';
+  const linkRecords = useMemo(function () {
+    return isOtherScope ? getTaskLinkRecords(task) : [];
+  }, [isOtherScope, task]);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [selectedLink, setSelectedLink] = useState<LinkCollectRecord | null>(null);
+
+  const openLinkDetail = useCallback(function (record: LinkCollectRecord) {
+    setSelectedLink(record);
+    setDrawerOpen(true);
+  }, []);
+
+  const closeLinkDetail = useCallback(function () {
+    setDrawerOpen(false);
+    setSelectedLink(null);
+  }, []);
+
+  const linkColumns = [
+    {
+      title: '链接',
+      dataIndex: 'link',
+      key: 'link',
+      width: 360,
+      render: function (link: string, record: LinkCollectRecord) {
+        return (
+          <div className="ct-link-cell">
+            <div className="ct-link-title">{record.title}</div>
+            <div className="ct-link-url">{link}</div>
+          </div>
+        );
+      },
+    },
+    {
+      title: '信源',
+      dataIndex: 'platform',
+      key: 'platform',
+      width: 120,
+      render: function (platform: string) {
+        return <Tag color="blue">{platform}</Tag>;
+      },
+    },
+    {
+      title: '最新一次采集时间',
+      dataIndex: 'last_collected_at',
+      key: 'last_collected_at',
+      width: 170,
+    },
+    {
+      title: task.task_type === 'interaction' ? '最新一次采集到的互动量' : '最新一次采集到的有效评论数量',
+      key: 'latest_value',
+      render: function (_: any, record: LinkCollectRecord) {
+        return task.task_type === 'interaction'
+          ? <span className="ct-link-stat">{formatInteractionSummary(record.interaction_last)}</span>
+          : <span className="ct-link-stat">{formatCount(record.comment_last)} 条</span>;
+      },
+    },
+    {
+      title: '操作',
+      key: 'action',
+      width: 90,
+      render: function (_: any, record: LinkCollectRecord) {
+        return <a className="ct-action-link" onClick={function () { openLinkDetail(record); }}>详情</a>;
+      },
+    },
+  ];
+
+  const interactionHistoryColumns = [
+    { title: '采集时间', dataIndex: 'collected_at', key: 'collected_at', width: 160 },
+    { title: '点赞数', dataIndex: 'likes', key: 'likes', render: function (v: number) { return formatCount(v); } },
+    { title: '收藏数', dataIndex: 'favorites', key: 'favorites', render: function (v: number) { return formatCount(v); } },
+    { title: '转发数', dataIndex: 'reposts', key: 'reposts', render: function (v: number) { return formatCount(v); } },
+    { title: '评论数', dataIndex: 'comments', key: 'comments', render: function (v: number) { return formatCount(v); } },
+    { title: '互动总量', dataIndex: 'total', key: 'total', render: function (v: number) { return <strong>{formatCount(v)}</strong>; } },
+  ];
 
   return (
     <div className="ct-detail-view">
@@ -590,160 +770,90 @@ const TaskDetailView: React.FC<{
             </a>
           </div>
         ) : task.task_type === 'interaction' ? (
-          /* 场景A：互动量更新 → 指标卡片 + 趋势折线图 */
           <div className="ct-detail-content">
-            {/* 指标卡片组 */}
-            <div className="ct-metric-cards">
-              {[
-                { label: '点赞数', value: '2,350', icon: '👍', color: '#ff4d4f', bg: '#fff1f0' },
-                { label: '收藏数', value: '512', icon: '⭐', color: '#faad14', bg: '#fffbe6' },
-                { label: '转发数', value: '110', icon: '🔄', color: '#3b82f6', bg: '#e6f4ff' },
-                { label: '评论数', value: '192', icon: '💬', color: '#52c41a', bg: '#f6ffed' },
-              ].map(function (metric, idx) {
-                return (
-                  <div key={idx} className="ct-metric-card">
-                    <div className="ct-metric-icon" style={{ backgroundColor: metric.bg, color: metric.color }}>
-                      <span style={{ fontSize: 20 }}>{metric.icon}</span>
-                    </div>
-                    <div className="ct-metric-info">
-                      <div className="ct-metric-label">{metric.label}</div>
-                      <div className="ct-metric-value">{metric.value}</div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* 趋势折线图 */}
-            <div className="ct-detail-section" style={{ marginTop: 20 }}>
-              <h4 style={{ marginBottom: 12 }}><BarChartOutlined style={{ marginRight: 6 }} />互动量趋势统计</h4>
-              <div className="ct-chart-container">
-                <div className="ct-chart-area">
-                  {/* Y轴标签 */}
-                  <div className="ct-chart-yaxis">
-                    <span>2,500</span>
-                    <span>2,000</span>
-                    <span>1,500</span>
-                    <span>1,000</span>
-                    <span>500</span>
-                    <span>0</span>
-                  </div>
-                  {/* 图表主体 */}
-                  <div className="ct-chart-body">
-                    {/* 网格线 */}
-                    <div className="ct-chart-grid">
-                      {[0, 1, 2, 3, 4, 5].map(function (i) {
-                        return <div key={i} className="ct-chart-grid-line" />;
-                      })}
-                    </div>
-                    {/* SVG折线 */}
-                    <svg className="ct-chart-svg" viewBox="0 0 600 200" preserveAspectRatio="none">
-                      {/* 点赞量线 - 红 */}
-                      <polyline
-                        fill="none"
-                        stroke="#ff4d4f"
-                        strokeWidth="2"
-                        strokeLinejoin="round"
-                        strokeLinecap="round"
-                        points="0,152 120,142 240,124 360,105 480,82 600,60"
-                      />
-                      {/* 收藏量线 - 黄 */}
-                      <polyline
-                        fill="none"
-                        stroke="#faad14"
-                        strokeWidth="2"
-                        strokeLinejoin="round"
-                        strokeLinecap="round"
-                        points="0,188 120,187 240,185 360,183 480,182 600,180"
-                      />
-                      {/* 转发量线 - 蓝 */}
-                      <polyline
-                        fill="none"
-                        stroke="#3b82f6"
-                        strokeWidth="2"
-                        strokeLinejoin="round"
-                        strokeLinecap="round"
-                        points="0,198 120,197 240,195 360,193 480,190 600,188"
-                      />
-                      {/* 评论量线 - 绿 */}
-                      <polyline
-                        fill="none"
-                        stroke="#52c41a"
-                        strokeWidth="2"
-                        strokeLinejoin="round"
-                        strokeLinecap="round"
-                        points="0,196 120,194 240,191 360,185 480,178 600,172"
-                      />
-                      {/* 数据点 - 点赞 */}
-                      {[[0,152],[120,142],[240,124],[360,105],[480,82],[600,60]].map(function (p, i) {
-                        return <circle key={'like-'+i} cx={p[0]} cy={p[1]} r="3" fill="#ff4d4f" />;
-                      })}
-                      {/* 数据点 - 评论 */}
-                      {[[0,196],[120,194],[240,191],[360,185],[480,178],[600,172]].map(function (p, i) {
-                        return <circle key={'comment-'+i} cx={p[0]} cy={p[1]} r="3" fill="#52c41a" />;
-                      })}
-                    </svg>
-                  </div>
-                </div>
-                {/* X轴标签 */}
-                <div className="ct-chart-xaxis">
-                  <span>08:00</span>
-                  <span>10:00</span>
-                  <span>12:00</span>
-                  <span>14:00</span>
-                  <span>16:00</span>
-                  <span>18:00</span>
-                </div>
-                {/* 图例 */}
-                <div className="ct-chart-legend">
-                  <span className="ct-legend-item"><span className="ct-legend-dot" style={{ backgroundColor: '#ff4d4f' }} />点赞量</span>
-                  <span className="ct-legend-item"><span className="ct-legend-dot" style={{ backgroundColor: '#faad14' }} />收藏量</span>
-                  <span className="ct-legend-item"><span className="ct-legend-dot" style={{ backgroundColor: '#3b82f6' }} />转发量</span>
-                  <span className="ct-legend-item"><span className="ct-legend-dot" style={{ backgroundColor: '#52c41a' }} />评论量</span>
-                </div>
+            <div className="ct-link-list-header">
+              <div>
+                <h4><BarChartOutlined style={{ marginRight: 6 }} />链接互动量采集结果</h4>
+                <p>按链接拆分展示最新一次采集结果，点击详情查看该链接的互动量变动统计。</p>
               </div>
             </div>
+            <Table
+              rowKey="id"
+              columns={linkColumns}
+              dataSource={linkRecords}
+              pagination={false}
+              size="small"
+              scroll={{ x: 980 }}
+            />
           </div>
         ) : (
-          /* 场景B：评论区采集 → 评论流水列表 + 分页 */
           <div className="ct-detail-content">
-            <div className="ct-detail-section">
-              <h4 style={{ marginBottom: 12 }}><UnorderedListOutlined style={{ marginRight: 6 }} />评论记录</h4>
+            <div className="ct-link-list-header">
+              <div>
+                <h4><UnorderedListOutlined style={{ marginRight: 6 }} />链接评论采集结果</h4>
+                <p>按链接拆分展示最新一次有效评论数量，点击详情查看该链接从最新到最早的评论内容。</p>
+              </div>
+            </div>
+            <Table
+              rowKey="id"
+              columns={linkColumns}
+              dataSource={linkRecords}
+              pagination={false}
+              size="small"
+              scroll={{ x: 980 }}
+            />
+          </div>
+        )}
+      </Card>
+
+      <Drawer
+        title={task.task_type === 'interaction' ? '互动量变动统计' : '评论内容明细'}
+        placement="right"
+        width={720}
+        open={drawerOpen}
+        onClose={closeLinkDetail}
+        className="ct-link-detail-drawer"
+        destroyOnClose
+      >
+        {selectedLink && (
+          <div className="ct-link-drawer-content">
+            <div className="ct-link-drawer-summary">
+              <div className="ct-link-title">{selectedLink.title}</div>
+              <div className="ct-link-url">{selectedLink.link}</div>
+              <Space size={8} wrap style={{ marginTop: 10 }}>
+                <Tag color="blue">{selectedLink.platform}</Tag>
+                <Tag>最新采集：{selectedLink.last_collected_at}</Tag>
+              </Space>
+            </div>
+
+            {task.task_type === 'interaction' ? (
+              <Table
+                rowKey="id"
+                columns={interactionHistoryColumns}
+                dataSource={getInteractionHistory(selectedLink)}
+                pagination={false}
+                size="small"
+                scroll={{ x: 650 }}
+              />
+            ) : (
               <div className="ct-comment-list">
-                {[
-                  { user: '用户A_' + task.id.slice(-3), content: '这个话题确实值得关注，最近讨论热度很高，各方观点都有涉及。', time: '2026-04-16 17:32', platform: task.platforms[0] },
-                  { user: '用户B_' + task.id.slice(-3), content: '数据采集很及时，信息覆盖面广，希望能持续保持这个更新频率。', time: '2026-04-16 15:18', platform: task.platforms[1] || task.platforms[0] },
-                  { user: '用户C_' + task.id.slice(-3), content: '希望能增加更多维度的分析数据，比如情感倾向和传播路径。', time: '2026-04-16 12:45', platform: task.platforms[0] },
-                  { user: '用户D_' + task.id.slice(-3), content: '从数据来看，这个话题的讨论量在持续上升，建议关注后续走势。', time: '2026-04-16 10:22', platform: task.platforms[2] || task.platforms[0] },
-                  { user: '用户E_' + task.id.slice(-3), content: '这个功能很实用，可以帮助我们快速了解舆论动态。', time: '2026-04-16 08:55', platform: task.platforms[1] || task.platforms[0] },
-                ].map(function (comment, idx) {
+                {getCommentHistory(selectedLink).map(function (comment) {
                   return (
-                    <div key={idx} className="ct-comment-item">
+                    <div key={comment.id} className="ct-comment-item">
                       <div className="ct-comment-header">
                         <span className="ct-comment-user">{comment.user}</span>
                         <Tag style={{ marginLeft: 8 }}>{comment.platform}</Tag>
-                        <span className="ct-comment-time">{comment.time}</span>
+                        <span className="ct-comment-time">{comment.collected_at}</span>
                       </div>
                       <div className="ct-comment-body">{comment.content}</div>
                     </div>
                   );
                 })}
               </div>
-              {/* 分页 */}
-              <div className="ct-pagination">
-                <span className="ct-pagination-info">共 128 条</span>
-                <div className="ct-pagination-pages">
-                  <span className="ct-pagination-btn ct-pagination-btn--active">1</span>
-                  <span className="ct-pagination-btn">2</span>
-                  <span className="ct-pagination-btn">3</span>
-                  <span className="ct-pagination-btn">...</span>
-                  <span className="ct-pagination-btn">13</span>
-                </div>
-              </div>
-            </div>
+            )}
           </div>
         )}
-      </Card>
+      </Drawer>
     </div>
   );
 };
@@ -868,6 +978,7 @@ const CollectTask: React.FC = function () {
 
       <CollectTaskDrawer
         open={drawerVisible}
+        title={editData ? '修改采集任务' : '新建采集任务'}
         onClose={function () { setDrawerVisible(false); setEditData(null); }}
         onSubmit={function () {
           // 刷新列表

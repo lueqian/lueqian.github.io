@@ -15,6 +15,7 @@ type ScopeType = 'topic' | 'source' | 'other';
 
 export interface CollectTaskDrawerProps {
   open: boolean;
+  title?: string;
   onClose: () => void;
   onSubmit?: () => void;  // 提交成功后的回调（可选）
   // 预填充数据（可选，用于跨页面调用时自动填充）
@@ -637,7 +638,7 @@ const TaskFormContent: React.FC<{
 
 // ============ 主组件：CollectTaskDrawer ============
 
-const CollectTaskDrawer: React.FC<CollectTaskDrawerProps> = function ({ open, onClose, onSubmit, initialValues }) {
+const CollectTaskDrawer: React.FC<CollectTaskDrawerProps> = function ({ open, title = '新建采集任务', onClose, onSubmit, initialValues }) {
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
   const [drawerScopeType, setDrawerScopeType] = useState<ScopeType>('topic');
@@ -708,7 +709,7 @@ const CollectTaskDrawer: React.FC<CollectTaskDrawerProps> = function ({ open, on
 
   return (
     <Drawer
-      title="新建采集任务"
+      title={title}
       placement="right"
       width={640}
       open={open}
