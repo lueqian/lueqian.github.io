@@ -2,16 +2,13 @@ import React, { useState } from 'react';
 import {
   Button,
   Tag,
-  Avatar,
   Input,
   Badge,
   Tabs,
   Dropdown,
   Space,
-  Modal,
   Drawer,
   Checkbox,
-  Select,
 } from 'antd';
 import {
   LeftOutlined,
@@ -19,19 +16,15 @@ import {
   FilterOutlined,
   DownOutlined,
   MoreOutlined,
-  StarFilled,
-  StarOutlined,
   EyeOutlined,
   MessageOutlined,
   LikeOutlined,
   ShareAltOutlined,
   ClockCircleOutlined,
-  UserOutlined,
   BarChartOutlined,
   FileTextOutlined,
   BellOutlined,
   CloseOutlined,
-  CaretRightOutlined,
   ExclamationCircleOutlined,
   ArrowUpOutlined,
   ArrowDownOutlined,
@@ -39,9 +32,10 @@ import {
   SendOutlined,
   LinkOutlined,
   SyncOutlined,
-  TeamOutlined,
 } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
+import InstructionCommandModal from '../components/InstructionCommandModal';
+import UnifiedOpinionCard from '../components/UnifiedOpinionCard';
 
 const { TabPane } = Tabs;
 
@@ -93,13 +87,6 @@ interface SideTask {
   isActive: boolean;
 }
 
-interface InstructionOption {
-  id: string;
-  name: string;
-  group: '本单位指令' | '执行单位指令';
-  cycle: string;
-}
-
 interface IssuedInstruction {
   id: string;
   eventId: string;
@@ -136,23 +123,6 @@ const sideTasks: SideTask[] = [
   { id: '4', code: '0405', name: '校园安全', status: 'normal', eventCount: 45, isActive: false },
   { id: '5', code: '0512', name: '食品安全', status: 'normal', eventCount: 78, isActive: false },
 ];
-
-const instructionOptions: InstructionOption[] = [
-  { id: 'local-monitor', name: '本地动态监测', group: '本单位指令', cycle: '2小时' },
-  { id: 'verify-rumor', name: '谣言核查', group: '执行单位指令', cycle: '4小时' },
-  { id: 'post-disposal', name: '帖文处置', group: '执行单位指令', cycle: '6小时' },
-  { id: 'delete-guidance', name: '劝删下达', group: '执行单位指令', cycle: '8小时' },
-  { id: 'material-report', name: '材料反馈', group: '执行单位指令', cycle: '12小时' },
-];
-
-const areaOptions = ['淮安区', '清江浦区', '淮阴区', '洪泽区', '金湖县'];
-const userOptionsByArea: Record<string, string[]> = {
-  淮安区: ['张明', '刘浩宇', '陈思远'],
-  清江浦区: ['王敏', '李倩'],
-  淮阴区: ['刘浩宇'],
-  洪泽区: ['周宁'],
-  金湖县: [],
-};
 
 const issuedInstructions: IssuedInstruction[] = [
   {
@@ -381,16 +351,14 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
   const [activeTab, setActiveTab] = useState('all');
   const [workView, setWorkView] = useState<'pending' | 'issued'>('pending');
   const [selectedEventIds, setSelectedEventIds] = useState<string[]>([]);
+  const [ignoredEventIds, setIgnoredEventIds] = useState<string[]>([]);
   const [instructionModalOpen, setInstructionModalOpen] = useState(false);
   const [instructionTargetIds, setInstructionTargetIds] = useState<string[]>([]);
-  const [selectedInstructionIds, setSelectedInstructionIds] = useState<string[]>(['post-disposal']);
-  const [selectedArea, setSelectedArea] = useState('淮安区');
-  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [detailInstruction, setDetailInstruction] = useState<IssuedInstruction | null>(null);
   const [linkStatusMap, setLinkStatusMap] = useState<Record<string, IssuedInstruction['linkStatus']>>({});
 
-  const selectedAreaUsers = userOptionsByArea[selectedArea] || [];
-  const allSelected = selectedEventIds.length === eventList.length;
+  const visibleEvents = eventList.filter((event) => !ignoredEventIds.includes(event.id));
+  const allSelected = visibleEvents.length > 0 && selectedEventIds.length === visibleEvents.length;
 
   // 更多操作菜单
   const moreMenuItems: MenuProps['items'] = [
@@ -408,6 +376,11 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
     ));
   };
 
+  const ignoreEvents = (eventIds: string[]) => {
+    setIgnoredEventIds((prev) => Array.from(new Set([...prev, ...eventIds])));
+    setSelectedEventIds((prev) => prev.filter((id) => !eventIds.includes(id)));
+  };
+
   const openInstructionModal = (eventIds: string[]) => {
     setInstructionTargetIds(eventIds);
     setInstructionModalOpen(true);
@@ -417,11 +390,6 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
     setInstructionModalOpen(false);
     setSelectedEventIds([]);
     setWorkView('issued');
-  };
-
-  const handleAreaChange = (area: string) => {
-    setSelectedArea(area);
-    setSelectedUsers([]);
   };
 
   const handleDetectLink = (recordId: string) => {
@@ -446,114 +414,46 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
     return 'default';
   };
 
-  // 渲染星级
-  const renderStars = (rating: number) => {
-    return (
-      <div className="star-rating-detail">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <span key={star} className={star <= rating ? 'star-filled' : 'star-empty'}>
-            {star <= rating ? <StarFilled /> : <StarOutlined />}
-          </span>
-        ))}
-        <span className="rating-text">{rating}级</span>
-      </div>
-    );
-  };
-
   // 渲染事件卡片
-  const renderEventCard = (event: EventItem) => (
-    <div key={event.id} className={`event-detail-card ${selectedEventIds.includes(event.id) ? 'selected' : ''}`}>
-      {/* 头部信息 */}
-      <div className="event-card-header">
-        <div className="event-header-left">
-          <Checkbox
-            checked={selectedEventIds.includes(event.id)}
-            onChange={(e) => toggleEventSelect(event.id, e.target.checked)}
-            className="event-select-checkbox"
-          />
-          <span className="event-seq">{event.seq}</span>
-          <h3 className="event-title">{event.title}</h3>
-          {event.isWaring && (
-            <Tag color="error" className="warning-tag">
-              <ExclamationCircleOutlined /> 预警
-            </Tag>
-          )}
-        </div>
-        <div className="event-header-right">
-          {renderStars(event.starRating)}
-          <Dropdown menu={{ items: moreMenuItems }} placement="bottomRight">
-            <Button type="text" size="small" className="more-btn">
-              <MoreOutlined />
-            </Button>
-          </Dropdown>
-        </div>
-      </div>
-
-      {/* 作者信息 */}
-      <div className="event-author-row">
-        <Avatar size="small" icon={<UserOutlined />} className="author-avatar-detail" />
-        <span className="author-name-detail">{event.author}</span>
-        <span className="post-id">ID: 123456789</span>
-        <span className="heat-num-detail" style={{ color: getHeatColor(event.heatLevel) }}>
-          <BarChartOutlined /> 热度 {event.heatValue}
-        </span>
-        <span className="platform-detail">
-          {getPlatformIcon(event.platform)} {event.platform}
-        </span>
-        <span className="post-time-detail">
-          <ClockCircleOutlined /> {formatTime(event.publishTime)}
-        </span>
-      </div>
-
-      {/* 内容 */}
-      <div className="event-content">
-        <p>{event.content}</p>
-      </div>
-
-      {/* 视频/图片 */}
-      {event.videoUrl && (
-        <div className="event-media">
-          <div className="video-preview-detail">
-            <CaretRightOutlined className="play-icon-detail" />
-            <span className="video-duration">00:32</span>
-          </div>
-        </div>
-      )}
-
-      {/* AI 摘要 */}
-      <div className="ai-summary-detail">
-        <div className="ai-badge-detail">AI</div>
-        <span className="summary-label">摘要：</span>
-        <span className="summary-text">该内容涉及淮安暴雨汛情，反映市区积水情况，建议关注后续发展。</span>
-      </div>
-
-      {/* AI 研判 */}
-      <div className="ai-analysis-detail">
-        <div className="analysis-content-detail">
-          <div className="ai-badge-detail">AI</div>
-          <span className="analysis-label">研判：</span>
-          <span className="analysis-text">该舆情为自然灾害类，目前呈上升趋势，建议相关部门及时发布权威信息，回应社会关切。</span>
-        </div>
-        <div className="sentiment-index-detail">
-          <div className="index-label">舆情指数</div>
-          <div className="index-value-detail">{event.sentimentIndex}</div>
-          <div className="index-meter-detail" aria-hidden="true">
-            <span style={{ width: `${event.sentimentIndex}%` }} />
-          </div>
-        </div>
-      </div>
-
-      {/* 底部信息 */}
-      <div className="event-footer">
-        <div className="footer-left-detail">
-          <span className="data-source-label">数据来源：</span>
-          <Tag className="source-tag-detail">{event.dataSource}</Tag>
-          {event.tags.map((tag) => (
-            <Tag key={tag} className="info-tag-detail">{tag}</Tag>
-          ))}
-          <Tag className="video-tag-detail">视频</Tag>
-        </div>
-        <div className="footer-right-detail">
+  const renderEventCard = (event: EventItem, displaySeq: number) => (
+    <UnifiedOpinionCard
+      key={event.id}
+      id={event.id}
+      seq={displaySeq}
+      title={event.title}
+      author={event.author}
+      postId="123456789"
+      heat={event.heatValue}
+      platform={event.platform}
+      platformIcon={getPlatformIcon(event.platform)}
+      time={formatTime(event.publishTime)}
+      content={event.content}
+      summary="该内容涉及淮安暴雨汛情，反映市区积水情况，建议关注后续发展。"
+      analysis="该舆情为自然灾害类，目前呈上升趋势，建议相关部门及时发布权威信息，回应社会关切。"
+      dataSource={event.dataSource}
+      tags={event.videoUrl ? [...event.tags, '视频'] : event.tags}
+      rating={event.starRating}
+      ratingText={`${event.starRating}级`}
+      sentimentIndex={event.sentimentIndex}
+      warningLabel={event.isWaring ? <><ExclamationCircleOutlined /> 预警</> : undefined}
+      hasVideo={!!event.videoUrl}
+      selected={selectedEventIds.includes(event.id)}
+      selectionSlot={
+        <Checkbox
+          checked={selectedEventIds.includes(event.id)}
+          onChange={(e) => toggleEventSelect(event.id, e.target.checked)}
+          className="event-select-checkbox"
+        />
+      }
+      moreSlot={
+        <Dropdown menu={{ items: moreMenuItems }} placement="bottomRight">
+          <Button type="text" size="small" className="more-btn">
+            <MoreOutlined />
+          </Button>
+        </Dropdown>
+      }
+      actions={
+        <>
           <Button type="link" size="small" className="detail-btn">
             查看详情
           </Button>
@@ -569,101 +469,17 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
           >
             下达指令
           </Button>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderInstructionModal = () => (
-    <Modal
-      title="发起处置指令"
-      open={instructionModalOpen}
-      width={980}
-      onCancel={() => setInstructionModalOpen(false)}
-      onOk={handleInstructionSubmit}
-      okText="确认下达"
-      cancelText="取消"
-      className="instruction-modal"
-    >
-      <div className="instruction-modal-body">
-        <div className="instruction-modal-left">
-          <div className="modal-field-title">
-            <span className="required-mark">*</span>
-            请选择要下达的指令
-          </div>
-          {(['本单位指令', '执行单位指令'] as const).map((group) => (
-            <div key={group} className="instruction-group">
-              <div className="instruction-group-title">{group}</div>
-              <div className="instruction-option-grid">
-                {instructionOptions.filter((item) => item.group === group).map((item) => {
-                  const active = selectedInstructionIds.includes(item.id);
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      className={`instruction-option ${active ? 'active' : ''}`}
-                      onClick={() => setSelectedInstructionIds((prev) => (
-                        active ? prev.filter((id) => id !== item.id) : [...prev, item.id]
-                      ))}
-                    >
-                      <span>{item.name}</span>
-                      <em>{item.cycle}</em>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-          <div className="modal-field-title">补充指令内容</div>
-          <Input.TextArea
-            rows={4}
-            placeholder="请输入补充指令内容，示例：请{单位名称}进行{指令名称}，并在{处理周期}前反馈处理结果。"
-            className="instruction-textarea"
-          />
-          <div className="variable-row">
-            <span>插入变量符</span>
-            {['单位名称', '指令名称', '指令类型', '处理周期'].map((item) => (
-              <Tag key={item} className="variable-tag">{item}</Tag>
-            ))}
-          </div>
-          <div className="target-summary">
-            本次将向 <strong>{instructionTargetIds.length || selectedEventIds.length}</strong> 条帖文下达指令
-          </div>
-        </div>
-        <div className="instruction-modal-right">
-          <div className="modal-field-title">选择执行单位与接收对象</div>
-          <div className="receiver-field">
-            <label>属地/部门</label>
-            <Select
-              value={selectedArea}
-              onChange={handleAreaChange}
-              options={areaOptions.map((area) => ({ value: area, label: area }))}
-            />
-          </div>
-          <div className="receiver-field">
-            <label>指定人员（可选）</label>
-            <Select
-              mode="multiple"
-              value={selectedUsers}
-              onChange={setSelectedUsers}
-              placeholder={selectedAreaUsers.length ? '不指定则按指令预设岗位派发' : '当前属地暂无可选人员'}
-              options={selectedAreaUsers.map((user) => ({ value: user, label: user }))}
-            />
-            {selectedAreaUsers.length === 0 && (
-              <div className="empty-user-hint">当前属地暂无可选人员，将按指令预设岗位派发。</div>
-            )}
-          </div>
-          <div className="receiver-preview">
-            <TeamOutlined />
-            <div>
-              <strong>{selectedArea}</strong>
-              <span>{selectedUsers.length ? `指定人员：${selectedUsers.join('、')}` : '按指令预设岗位自动派发'}</span>
-              <span>{selectedUsers.length ? '直达人员，不再按预设岗位重复推送' : '由指令管理绑定的岗位账号接收'}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </Modal>
+          <Button
+            type="link"
+            size="small"
+            className="ignore-btn-detail"
+            onClick={() => ignoreEvents([event.id])}
+          >
+            忽略
+          </Button>
+        </>
+      }
+    />
   );
 
   const renderIssuedCard = (record: IssuedInstruction) => {
@@ -917,7 +733,7 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
             onClick={() => setWorkView('pending')}
           >
             待研判帖文
-            <Badge count={eventList.length} />
+            <Badge count={visibleEvents.length} />
           </button>
           <button
             type="button"
@@ -944,11 +760,11 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
               <Checkbox
                 checked={allSelected}
                 indeterminate={selectedEventIds.length > 0 && !allSelected}
-                onChange={(e) => setSelectedEventIds(e.target.checked ? eventList.map((event) => event.id) : [])}
+                onChange={(e) => setSelectedEventIds(e.target.checked ? visibleEvents.map((event) => event.id) : [])}
               >
                 全选
               </Checkbox>
-              <span className="total-count">共 {eventList.length} 条</span>
+              <span className="total-count">共 {visibleEvents.length} 条</span>
             </div>
           </div>
         ) : (
@@ -975,7 +791,7 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
         {/* 事件列表 */}
         <div className="event-list-container">
           {workView === 'pending'
-            ? eventList.map((event) => renderEventCard(event))
+            ? visibleEvents.map((event, index) => renderEventCard(event, index + 1))
             : issuedInstructions.map((record) => renderIssuedCard(record))}
         </div>
 
@@ -993,6 +809,12 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
                 onClick={() => openInstructionModal(selectedEventIds)}
               >
                 批量下达指令
+              </Button>
+              <Button
+                className="batch-ignore-btn"
+                onClick={() => ignoreEvents(selectedEventIds)}
+              >
+                批量忽略
               </Button>
             </div>
           </div>
@@ -1037,7 +859,16 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
           ))}
         </div>
       </div>
-      {renderInstructionModal()}
+      <InstructionCommandModal
+        open={instructionModalOpen}
+        onCancel={() => setInstructionModalOpen(false)}
+        onSubmit={handleInstructionSubmit}
+        targetSummary={
+          <>
+            本次将向 <strong>{instructionTargetIds.length || selectedEventIds.length}</strong> 条帖文下达指令
+          </>
+        }
+      />
       {renderDetailDrawer()}
     </div>
   );

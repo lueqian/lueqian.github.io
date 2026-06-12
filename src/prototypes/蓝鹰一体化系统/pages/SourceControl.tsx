@@ -19,9 +19,11 @@ import {
   ExclamationCircleOutlined,
   TeamOutlined,
   EyeOutlined,
+  SendOutlined,
 } from '@ant-design/icons';
 import type { TabsProps } from 'antd';
 import TaskDetail from './TaskDetail';
+import InstructionCommandModal from '../components/InstructionCommandModal';
 
 const { TabPane } = Tabs;
 
@@ -85,6 +87,7 @@ const SourceControl: React.FC = () => {
   const [activeTab, setActiveTab] = useState('today');
   const [calendarType, setCalendarType] = useState<string>();
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [commandTask, setCommandTask] = useState<any | null>(null);
   const overviewRef = useRef<HTMLDivElement>(null);
 
   // 数据概览滚动
@@ -96,6 +99,14 @@ const SourceControl: React.FC = () => {
         behavior: 'smooth',
       });
     }
+  };
+
+  const openTaskCommandModal = (task: any) => {
+    setCommandTask(task);
+  };
+
+  const handleTaskCommandSubmit = () => {
+    setCommandTask(null);
   };
 
   // 任务卡片渲染
@@ -113,10 +124,12 @@ const SourceControl: React.FC = () => {
             menu={{
               items: [
                 { key: 'detail', label: '查看详情', icon: <EyeOutlined />, onClick: (e: any) => { e.domEvent.stopPropagation(); setSelectedTaskId(task.id); } },
+                { key: 'command', label: '批量下达处置指令', icon: <SendOutlined />, onClick: (e: any) => { e.domEvent.stopPropagation(); openTaskCommandModal(task); } },
                 { key: 'edit', label: '编辑任务' },
                 { key: 'delete', label: '删除任务', danger: true },
               ],
             }}
+            trigger={['click']}
             placement="bottomRight"
           >
             <Button type="text" size="small" className="more-btn" onClick={(e) => e.stopPropagation()}>
@@ -288,6 +301,18 @@ const SourceControl: React.FC = () => {
           </Card>
         </div>
       </div>
+      <InstructionCommandModal
+        open={!!commandTask}
+        onCancel={() => setCommandTask(null)}
+        onSubmit={handleTaskCommandSubmit}
+        targetSummary={
+          commandTask ? (
+            <>
+              本次将针对「<strong>{commandTask.name}</strong>」任务批量下达处置指令
+            </>
+          ) : null
+        }
+      />
     </div>
   );
 };

@@ -5,32 +5,25 @@ import {
   DatePicker,
   Button,
   Tabs,
-  Tag,
   Pagination,
-  Avatar,
   Modal,
   message,
   Dropdown,
-  Space,
 } from 'antd';
 import {
   SearchOutlined,
   ReloadOutlined,
   EditOutlined,
-  PlayCircleOutlined,
-  FireOutlined,
-  StarFilled,
-  StarOutlined,
   SaveOutlined,
   EditTwoTone,
   DeleteOutlined,
   DownOutlined,
   RobotOutlined,
-  ThunderboltOutlined,
 } from '@ant-design/icons';
 import type { TabsProps } from 'antd';
 import dayjs from 'dayjs';
 import AIAssistantDrawer from '../components/AIAssistantDrawer';
+import UnifiedOpinionCard from '../components/UnifiedOpinionCard';
 
 const { RangePicker } = DatePicker;
 
@@ -443,18 +436,6 @@ const MonitorWarning: React.FC = () => {
     setSelectedOpinion(null);
   };
 
-  // 渲染星级
-  const renderStars = (rating: number) => (
-    <div className="star-rating">
-      {[1, 2, 3, 4, 5].map(star => (
-        <span key={star} className={star <= rating ? 'star-filled' : 'star-empty'}>
-          {star <= rating ? <StarFilled /> : <StarOutlined />}
-        </span>
-      ))}
-      <span className="rating-text">{rating}星</span>
-    </div>
-  );
-
   // 常用条件下拉选项
   const filteredConditions = savedConditions.filter(c =>
     c.name.toLowerCase().includes(conditionSearchText.toLowerCase())
@@ -518,60 +499,26 @@ const MonitorWarning: React.FC = () => {
 
   // 渲染舆情卡片
   const renderOpinionCard = (item: OpinionItem) => (
-    <div key={item.id} className="opinion-card">
-      <div className="card-header-row">
-        <div className="header-left">
-          <span className="seq-num">{item.seq}</span>
-          <h4 className="opinion-title">
-            {item.title}
-            {item.isHot && (
-              <Tag color="error" className="hot-tag">
-                <FireOutlined /> 热敏
-              </Tag>
-            )}
-          </h4>
-        </div>
-        <div className="header-right">
-          {renderStars(item.rating)}
-        </div>
-      </div>
-
-      <div className="author-row">
-        <Avatar size="small" className="author-avatar">
-          {item.author.charAt(0)}
-        </Avatar>
-        <span className="author-name">{item.author}</span>
-        <span className="post-id">ID {item.postId}</span>
-        <span className="heat-num">🔥 {item.heat}</span>
-        <span className="platform">
-          <span className="platform-icon">🎵</span>
-          {item.platform}
-        </span>
-        <span className="post-time">⏱ {item.time}</span>
-      </div>
-
-      <div className="ai-summary-row">
-        <span className="ai-badge">AI</span>
-        <span className="summary-label">摘要</span>
-        <span className="summary-text">{item.aiSummary}</span>
-      </div>
-
-      <div className="ai-analysis-row">
-        <span className="ai-badge">AI</span>
-        <span className="analysis-label">研判</span>
-        <span className="analysis-text">{item.aiAnalysis}</span>
-      </div>
-
-      <div className="card-footer-row">
-        <div className="footer-left">
-          <span className="data-source-label">数据来源：</span>
-          <Tag color="processing" className="source-tag">{item.dataSource}</Tag>
-          {item.tags.map((tag, idx) => (
-            <Tag key={idx} className="info-tag">{tag}</Tag>
-          ))}
-          {!item.hasVideo && <Tag className="video-tag">未上传视频</Tag>}
-        </div>
-        <div className="footer-right">
+    <UnifiedOpinionCard
+      key={item.id}
+      id={item.id}
+      seq={item.seq}
+      title={item.title}
+      author={item.author}
+      postId={item.postId}
+      heat={item.heat}
+      platform={item.platform}
+      platformIcon={<span className="platform-icon">♪</span>}
+      time={item.time}
+      summary={item.aiSummary}
+      analysis={item.aiAnalysis}
+      dataSource={item.dataSource}
+      tags={item.tags}
+      rating={item.rating}
+      sentimentIndex={item.sentimentIndex}
+      hot={item.isHot}
+      actions={
+        <>
           <Button size="small" className="status-btn">{item.status}</Button>
           <Button size="small" type="link" className="detail-btn">信息详情</Button>
           <Button
@@ -582,17 +529,9 @@ const MonitorWarning: React.FC = () => {
           >
             AI 智能助手
           </Button>
-        </div>
-      </div>
-
-      <div className="sentiment-index">
-        <div className="video-preview">
-          <PlayCircleOutlined className="play-icon" />
-        </div>
-        <div className="index-value">{item.sentimentIndex}</div>
-        <div className="index-label">舆情指数</div>
-      </div>
-    </div>
+        </>
+      }
+    />
   );
 
   return (
