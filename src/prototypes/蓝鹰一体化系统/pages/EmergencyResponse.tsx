@@ -1,10 +1,6 @@
 import React, { useState } from 'react';
-import { Button, Input, Select, Switch, Tag } from 'antd';
-import {
-  ClockCircleOutlined,
-  TeamOutlined,
-  UserSwitchOutlined,
-} from '@ant-design/icons';
+import { Button, Checkbox, Empty, Input, Select, Switch, Tag, message } from 'antd';
+import { ClockCircleOutlined } from '@ant-design/icons';
 import UnifiedOpinionCard from '../components/UnifiedOpinionCard';
 
 type EmergencySource = 'monitor-warning' | 'source-control';
@@ -271,31 +267,51 @@ const EmergencyResponse: React.FC = () => {
     'source-003': '陈思远',
   });
   const [assignedTaskIds, setAssignedTaskIds] = useState<string[]>([]);
+  const [selectedSourceTaskIds, setSelectedSourceTaskIds] = useState<string[]>([]);
+  const [batchAssignee, setBatchAssignee] = useState<string>();
+
+  const visibleSourceControlTasks = sourceControlTasks.filter((task) => !assignedTaskIds.includes(task.id));
+  const batchAssigneeOptions = Array.from(new Set(Object.values(assigneeOptionsByUnit).flat()));
+
+  const handleSingleAssign = (taskId: string) => {
+    setAssignedTaskIds((prev) => Array.from(new Set([...prev, taskId])));
+    setSelectedSourceTaskIds((prev) => prev.filter((id) => id !== taskId));
+    message.success('任务指派成功');
+  };
+
+  const handleBatchAssign = () => {
+    if (!batchAssignee || selectedSourceTaskIds.length === 0) {
+      return;
+    }
+
+    setAssigneeMap((prev) => {
+      const next = { ...prev };
+      selectedSourceTaskIds.forEach((id) => {
+        next[id] = batchAssignee;
+      });
+      return next;
+    });
+    setAssignedTaskIds((prev) => Array.from(new Set([...prev, ...selectedSourceTaskIds])));
+    setSelectedSourceTaskIds([]);
+    setBatchAssignee(undefined);
+    message.success('任务指派成功');
+  };
 
   const renderSourceControlContent = () => (
     <>
-      <div className="source-control-disposal-summary">
-        <div>
-          <strong>源头防控流转任务</strong>
-          <span>内网模块仅承接外部系统下发的数据，不向互联网侧同步；下级单位接收后可在本页继续指派具体执行人员。</span>
-        </div>
-        <div className="source-control-summary-stats">
-          <span>待指派 <strong>1</strong></span>
-          <span>待签收 <strong>1</strong></span>
-          <span>处理中 <strong>1</strong></span>
-        </div>
-      </div>
-
       <div className="emergency-disposal-list">
-        {sourceControlTasks.map((task) => {
+        {visibleSourceControlTasks.length === 0 && (
+          <Empty className="source-control-empty" description="暂无待指派文章" />
+        )}
+        {visibleSourceControlTasks.map((task, index) => {
           const assignees = assigneeOptionsByUnit[task.receiverUnit] || [];
           const selectedAssignee = assigneeMap[task.id];
-          const assigned = assignedTaskIds.includes(task.id) || !!task.receiverUser;
+          const checked = selectedSourceTaskIds.includes(task.id);
           return (
             <UnifiedOpinionCard
               key={task.id}
               id={task.id}
-              seq={task.seq}
+              seq={index + 1}
               title={task.title}
               author={task.author}
               postId={task.postId}
@@ -310,6 +326,21 @@ const EmergencyResponse: React.FC = () => {
               rating={task.rating}
               sentimentIndex={task.index}
               compact
+              selected={checked}
+              selectionSlot={
+                <Checkbox
+                  checked={checked}
+                  aria-label={`选择${task.title}`}
+                  onChange={(event) => {
+                    const isChecked = event.target.checked;
+                    setSelectedSourceTaskIds((prev) => (
+                      isChecked
+                        ? Array.from(new Set([...prev, task.id]))
+                        : prev.filter((id) => id !== task.id)
+                    ));
+                  }}
+                />
+              }
               processSlot={
                 <div className="source-control-command-panel">
                   <div className="source-control-command-meta">
@@ -322,20 +353,7 @@ const EmergencyResponse: React.FC = () => {
                     <span>截止：{task.deadline}</span>
                   </div>
                   <div className="source-control-assignment-row">
-                    <div className="receiver-unit-box">
-                      <TeamOutlined />
-                      <div>
-                        <span>接收单位</span>
-                        <strong>{task.receiverUnit}</strong>
-                      </div>
-                    </div>
-                    <div className="receiver-mode-box">
-                      <UserSwitchOutlined />
-                      <div>
-                        <span>{task.receiverMode === 'person' ? '总部已指定人员' : '下级单位待指派'}</span>
-                        <strong>{assigned ? (selectedAssignee || task.receiverUser) : '未指派'}</strong>
-                      </div>
-                    </div>
+                    <span className="current-assignee-label">当前指派：</span>
                     <Select
                       placeholder="选择执行人员"
                       value={selectedAssignee}
@@ -345,17 +363,17 @@ const EmergencyResponse: React.FC = () => {
                     <Button
                       type="primary"
                       disabled={!selectedAssignee}
-                      onClick={() => setAssignedTaskIds((prev) => Array.from(new Set([...prev, task.id])))}
+                      onClick={() => handleSingleAssign(task.id)}
                     >
-                      提交指派
+                      提交
                     </Button>
                   </div>
                 </div>
               }
               footerBadges={
                 <>
-                  <Tag className={`source-control-status-tag ${assigned ? 'assigned' : 'pending'}`}>
-                    {assigned ? '已指派' : task.status}
+                  <Tag className="source-control-status-tag pending">
+                    {task.status}
                   </Tag>
                   <Tag className="emergency-soft-tag">处置记录</Tag>
                   <Tag className="emergency-soft-tag">指令详情</Tag>
@@ -365,6 +383,24 @@ const EmergencyResponse: React.FC = () => {
           );
         })}
       </div>
+      {selectedSourceTaskIds.length > 0 && (
+        <div className="source-control-batch-assign-bar">
+          <div className="batch-assign-meta">
+            <strong>已选择 {selectedSourceTaskIds.length} 条</strong>
+            <button type="button" onClick={() => setSelectedSourceTaskIds([])}>取消全选</button>
+          </div>
+          <span className="batch-assign-target">批量指派到</span>
+          <Select
+            placeholder="选择指派人员"
+            value={batchAssignee}
+            onChange={setBatchAssignee}
+            options={batchAssigneeOptions.map((name) => ({ value: name, label: name }))}
+          />
+          <Button type="primary" disabled={!batchAssignee} onClick={handleBatchAssign}>
+            批量提交
+          </Button>
+        </div>
+      )}
     </>
   );
 

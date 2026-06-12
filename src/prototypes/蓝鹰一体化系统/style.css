@@ -1213,6 +1213,10 @@
   padding: 10px 0 4px;
 }
 
+.source-control-empty {
+  padding: 96px 0;
+}
+
 .emergency-task-panel .unified-opinion-card.compact {
   padding-top: 14px;
   padding-bottom: 12px;
@@ -1647,60 +1651,6 @@
   min-height: 420px;
 }
 
-.source-control-disposal-summary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-top: 12px;
-  padding: 12px 14px;
-  border: 1px solid #dfe5ff;
-  border-radius: 6px;
-  background: #f7f9ff;
-}
-
-.source-control-disposal-summary > div:first-child {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-
-.source-control-disposal-summary strong {
-  color: #252a36;
-  font-size: 15px;
-}
-
-.source-control-disposal-summary span {
-  color: #6b7280;
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.source-control-summary-stats {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex: 0 0 auto;
-}
-
-.source-control-summary-stats span {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 30px;
-  padding: 0 10px;
-  border-radius: 4px;
-  background: #fff;
-  color: #5f6675;
-  font-weight: 600;
-}
-
-.source-control-summary-stats strong {
-  color: #6259d9;
-  font-size: 18px;
-}
-
 .source-control-command-panel {
   display: flex;
   flex-direction: column;
@@ -1741,6 +1691,16 @@
 .unit-command-tag {
   background: #fff4e5 !important;
   color: #d97706 !important;
+}
+
+.current-assignee-label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  color: #4b5563;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .receiver-unit-box,
@@ -1801,6 +1761,96 @@
   color: #d97706 !important;
 }
 
+.source-control-batch-assign-bar {
+  position: fixed;
+  right: 24px;
+  bottom: 18px;
+  left: calc(var(--sidebar-width) + 24px);
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+  min-height: 52px;
+  padding: 10px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: #28206f;
+  box-shadow: 0 12px 32px rgba(40, 32, 111, 0.34);
+  color: #fff;
+}
+
+.batch-assign-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-right: auto;
+}
+
+.batch-assign-meta strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.batch-assign-meta strong::before {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: #7667f0;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  content: "✓";
+}
+
+.batch-assign-meta button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.batch-assign-meta button:hover {
+  color: #fff;
+}
+
+.batch-assign-target {
+  color: #e5e7eb;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.source-control-batch-assign-bar .ant-select {
+  width: 200px;
+}
+
+.source-control-batch-assign-bar .ant-select-selector,
+.source-control-batch-assign-bar .ant-btn {
+  height: 34px !important;
+  border-radius: 4px !important;
+}
+
+.source-control-batch-assign-bar .ant-btn-primary {
+  min-width: 104px;
+  background: #2f7cff;
+  border-color: #2f7cff;
+  font-weight: 700;
+  box-shadow: 0 6px 14px rgba(47, 124, 255, 0.26);
+}
+
+.content-area.collapsed .source-control-batch-assign-bar {
+  left: calc(var(--sidebar-collapsed-width) + 24px);
+}
+
 /* ==================== 响应式适配 ==================== */
 @media (max-width: 1200px) {
   .page-content-grid {
@@ -1813,6 +1863,23 @@
 }
 
 @media (max-width: 768px) {
+  .source-control-batch-assign-bar {
+    right: 12px;
+    bottom: 12px;
+    left: 12px;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .batch-assign-meta {
+    width: 100%;
+  }
+
+  .source-control-batch-assign-bar .ant-select {
+    flex: 1 1 160px;
+    width: auto;
+  }
+
   .sidebar {
     position: fixed;
     left: 0;
