@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Button,
   Tag,
@@ -9,6 +9,8 @@ import {
   Space,
   Drawer,
   Checkbox,
+  message,
+  Modal,
 } from 'antd';
 import {
   LeftOutlined,
@@ -32,8 +34,17 @@ import {
   SendOutlined,
   LinkOutlined,
   SyncOutlined,
+  EditOutlined,
+  CopyOutlined,
+  DownloadOutlined,
+  PieChartOutlined,
+  CheckCircleOutlined,
+  FilePdfOutlined,
+  FileWordOutlined,
+  TableOutlined,
 } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
+import * as echarts from 'echarts';
 import InstructionCommandModal from '../components/InstructionCommandModal';
 import UnifiedOpinionCard from '../components/UnifiedOpinionCard';
 
@@ -284,6 +295,44 @@ const eventList: EventItem[] = [
   },
 ];
 
+export interface OpinionReport {
+  id: string;
+  version: string;
+  title: string;
+  date: string;
+  content: string;
+}
+
+const initialReports: OpinionReport[] = [
+  {
+    id: 'report-2',
+    version: 'V2',
+    title: '阶段性报告 V2 - 0604中农到市信访局',
+    date: '2026-06-17 10:25',
+    content: `# 0604 中农到市信访局网上情况
+(截至 2026-06-09 15:14:36)
+
+# 全网舆情态势
+本时段，"0604 中农到市信访局"事件网上相关信息累计监测到 70 篇，评论 0 条。其中，新发现舆情信息 63 条，已协同处置 7 条。平台分布呈现碎片化特征，主要集中于网易（8 篇）、微信（5 篇）、搜狐移动版（4 篇）、懂车帝（4 篇）及今日头条（4 篇）等平台；微博、抖音 app、快手 app 等社交短视频平台均有少量涉及，分别为 1 篇、2 篇和 2 篇。目前舆情热度总体可控，未发现大规模聚集性讨论，但需警惕跨平台扩散风险。针对已发现的敏感信息，已开展举报限流及源头清理工作，累计处置 7 条。
+
+# 重点媒体及资讯平台动态
+本时段，多家主流商业门户及行业资讯网站转发发布相关事件信息，内容多聚焦于事件经过及现场情况回顾。突出情况有：
+1. [2026-06-09 10:23], [网易] 网民“财经观察员”《张三，男，34 岁，北京人）发布文章《中农代表赴市信访局反映诉求，现场秩序井然》，详细梳理了 6 月 4 日以来的信访流程及相关部门回应，该贴文目前阅读量较高，已被纳入重点监测名单。
+2. [2026-06-09 08:45], [今日头条] 网民“法治前线”《李四，女，29 岁，河南省人）转发凤凰网报道，配文称“关注涉农群体合法权益保障”，引发少量跟帖讨论。针对上述媒体报道，已启动舆情引导机制，协调相关平台优化评论区管理，防止不实言论滋生。`
+  },
+  {
+    id: 'report-1',
+    version: 'V1',
+    title: '阶段性报告 V1 - 0604中农到市信访局',
+    date: '2026-06-09 10:58',
+    content: `# 0604 中农到市信访局网上情况
+(截至 2026-06-09 10:57:33)
+
+# 全网舆情态势
+本时段，"0604 中农到市信访局"事件网上相关信息累计监测到 35 篇，评论 0 条。其中，新发现舆情信息 30 条，已协同处置 5 条。平台分布呈现碎片化特征，主要集中于网易（4 篇）、微信（3 篇）、搜狐移动版（2 篇）等平台；目前舆情热度总体可控，相关处置工作正稳步推进。`
+  }
+];
+
 // ==================== 辅助函数 ====================
 
 const formatNumber = (num: number): string => {
@@ -356,6 +405,473 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
   const [instructionTargetIds, setInstructionTargetIds] = useState<string[]>([]);
   const [detailInstruction, setDetailInstruction] = useState<IssuedInstruction | null>(null);
   const [linkStatusMap, setLinkStatusMap] = useState<Record<string, IssuedInstruction['linkStatus']>>({});
+
+  // 新增：一级 Tab 状态（articles: 文章列表, analysis: 快速分析, statistics: 工作情况统计, summary: 舆情综述）
+  const [firstLevelTab, setFirstLevelTab] = useState<'articles' | 'analysis' | 'statistics' | 'summary'>('articles');
+  // 报道趋势图表切换维度（volume: 声量, interaction: 互动量, sentiment: 情感）
+  const [trendDimension, setTrendDimension] = useState<'volume' | 'interaction' | 'sentiment'>('volume');
+
+  // 新增：舆情综述历史报告与弹窗状态
+  const [reports, setReports] = useState<OpinionReport[]>([]);
+  const [generating, setGenerating] = useState(false);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [currentEditingReport, setCurrentEditingReport] = useState<OpinionReport | null>(null);
+  const [isEditingExisting, setIsEditingExisting] = useState(false);
+
+  // ECharts refs
+  const trendChartRef = useRef<HTMLDivElement>(null);
+  const pieChartRef = useRef<HTMLDivElement>(null);
+  const statsTypeChartRef = useRef<HTMLDivElement>(null);
+
+  // 一键复制综述内容
+  const handleCopySummary = () => {
+    const summaryText = `06月21日15时09分39秒 - 06月22日15时09分39秒，共检测相关数据27篇，其中新闻13篇，今日头条10篇，APP2篇，微信2篇，境外0篇，长视频0篇，论坛0篇，短视频0篇，小红书0篇，抖音0篇，微博0篇。正面占比3.70%，中性占比96.30%。主要为今日头条，懂车帝，网易等平台网友扩散舆情。共抓取评论0篇。`;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(summaryText).then(() => {
+        message.success('综述内容已成功复制到剪贴板！');
+      }).catch(() => {
+        message.error('复制失败，请手动选择复制。');
+      });
+    } else {
+      // fallback
+      const textArea = document.createElement("textarea");
+      textArea.value = summaryText;
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        message.success('综述内容已成功复制到剪贴板！');
+      } catch (err) {
+        message.error('复制失败，请手动选择复制。');
+      }
+      document.body.removeChild(textArea);
+    }
+  };
+
+  // Markdown 解析渲染器（高保真复刻，为平台标签提供胶囊状背景样式）
+  const renderMarkdown = (md: string) => {
+    if (!md) return null;
+    return md.split('\n').map((line, idx) => {
+      const trimmed = line.trim();
+      
+      // H1 Header
+      if (trimmed.startsWith('# ')) {
+        return (
+          <h2
+            key={idx}
+            className="md-header-1"
+            style={{
+              marginTop: '20px',
+              marginBottom: '10px',
+              fontSize: '18px',
+              fontWeight: 700,
+              color: 'var(--text-primary)',
+              borderBottom: '2px solid #3366FF',
+              paddingBottom: '4px',
+              display: 'inline-block'
+            }}
+          >
+            {trimmed.slice(2)}
+          </h2>
+        );
+      }
+      
+      // H2 Header
+      if (trimmed.startsWith('## ')) {
+        return (
+          <h3
+            key={idx}
+            className="md-header-2"
+            style={{
+              marginTop: '16px',
+              marginBottom: '8px',
+              fontSize: '15px',
+              fontWeight: 600,
+              color: 'var(--text-primary)',
+              paddingLeft: '6px',
+              borderLeft: '3px solid var(--primary-color)'
+            }}
+          >
+            {trimmed.slice(3)}
+          </h3>
+        );
+      }
+
+      // H3 Header
+      if (trimmed.startsWith('### ')) {
+        return (
+          <h4
+            key={idx}
+            className="md-header-3"
+            style={{
+              marginTop: '12px',
+              marginBottom: '6px',
+              fontSize: '14px',
+              fontWeight: 600,
+              color: '#334155'
+            }}
+          >
+            {trimmed.slice(4)}
+          </h4>
+        );
+      }
+
+      // 截至时间等斜体/置灰副标题：(截至 xxx)
+      if (trimmed.startsWith('(') && trimmed.endsWith(')')) {
+        return (
+          <div
+            key={idx}
+            className="md-subtitle"
+            style={{
+              fontSize: '12px',
+              color: '#64748b',
+              fontStyle: 'normal',
+              marginBottom: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}
+          >
+            <ClockCircleOutlined style={{ fontSize: '11px' }} /> {trimmed}
+          </div>
+        );
+      }
+
+      // 数字列表项，形如 "1. [2026-06-09 10:23], [网易]..."
+      const numListMatch = trimmed.match(/^(\d+)\.\s+(.*)$/);
+      if (numListMatch) {
+        const num = numListMatch[1];
+        const rest = numListMatch[2];
+        return (
+          <div
+            key={idx}
+            className="preview-list-item"
+            style={{
+              display: 'flex',
+              gap: '8px',
+              marginBottom: '8px',
+              paddingLeft: '10px',
+              fontSize: '13px',
+              lineHeight: 1.6,
+              alignItems: 'flex-start'
+            }}
+          >
+            <span style={{ color: 'var(--primary-color)', fontWeight: 'bold' }}>{num}.</span>
+            <span style={{ flex: 1, color: '#334155' }}>
+              {rest.split(/(\[[^\]]+\])/).map((part, pIdx) => {
+                if (part.startsWith('[') && part.endsWith(']')) {
+                  const label = part.slice(1, -1);
+                  // 针对微博、今日头条、网易等常见字眼做一些配色区分
+                  let tagBg = 'rgba(51, 102, 255, 0.1)';
+                  let tagColor = 'var(--primary-color)';
+                  if (label === '网易') {
+                    tagBg = 'rgba(239, 68, 68, 0.1)';
+                    tagColor = '#ef4444';
+                  } else if (label === '今日头条') {
+                    tagBg = 'rgba(245, 158, 11, 0.1)';
+                    tagColor = '#f59e0b';
+                  } else if (label === '微博') {
+                    tagBg = 'rgba(236, 72, 153, 0.1)';
+                    tagColor = '#ec4899';
+                  }
+                  
+                  return (
+                    <span
+                      key={pIdx}
+                      style={{
+                        display: 'inline-block',
+                        background: tagBg,
+                        color: tagColor,
+                        padding: '1px 6px',
+                        borderRadius: '4px',
+                        margin: '0 4px',
+                        fontWeight: 600,
+                        fontSize: '12px'
+                      }}
+                    >
+                      {label}
+                    </span>
+                  );
+                }
+                return part;
+              })}
+            </span>
+          </div>
+        );
+      }
+
+      if (trimmed === '') {
+        return <div key={idx} style={{ height: '8px' }} />;
+      }
+
+      return (
+        <p
+          key={idx}
+          style={{
+            fontSize: '13px',
+            lineHeight: '1.65',
+            color: '#334155',
+            marginBottom: '12px',
+            textAlign: 'justify'
+          }}
+        >
+          {trimmed}
+        </p>
+      );
+    });
+  };
+
+  // 生成最新报告事件触发（内容加载 2 秒延迟）
+  const handleTriggerGenerateReport = () => {
+    setGenerating(true);
+    setTimeout(() => {
+      setGenerating(false);
+      // 初始化新生成的报告模板数据
+      const newVersion = `V${reports.length + 1}`;
+      const newTitle = `阶段性报告 ${newVersion} - 0604中农到市信访局`;
+      const todayDate = new Date().toISOString().replace('T', ' ').substring(0, 16);
+      
+      const newContent = `# 0604 中农到市信访局网上情况
+(截至 ${todayDate}:00)
+
+# 全网舆情态势
+本时段，"0604 中农到市信访局"事件网上相关信息累计监测到 112 篇，较昨日新增 42 篇，累计评论 12 条。其中，新发现舆情信息 98 条，已协同处置 14 条。平台分布依旧呈现碎片化特征，网易、今日头条、微博的讨论热度有所上升。目前舆情引导工作生效明显，整体舆论态势趋于平稳，未见二次爆发性反弹。
+
+# 重点媒体及资讯平台动态
+本时段，各家自媒体及自营端账号开始深度剖析涉事各方诉求，主要动态如下：
+1. [${todayDate}], [微博] 网民“政法观察哨”《王五，男，41 岁，上海人）发布博文指出“应客观理性看待信访矛盾，注重从法理与关怀双重角度化解难题”，博文阅读量已突破 5 万，社会各界反馈偏向理性。
+2. [${todayDate}], [今日头条] 网民“法理天下”《赵六，女，35 岁，湖北人）发文呼吁“强化属地责任，将问题消解在最初阶段”，该帖文获得 156 次点赞，未见大规模跟风炒作。`;
+
+      setCurrentEditingReport({
+        id: `report-${reports.length + 1}`,
+        version: newVersion,
+        title: newTitle,
+        date: todayDate,
+        content: newContent
+      });
+      setIsEditingExisting(false);
+      setReportModalOpen(true);
+    }, 2000);
+  };
+
+  // 编辑已有报告
+  const handleEditReport = (report: OpinionReport) => {
+    setCurrentEditingReport({ ...report });
+    setIsEditingExisting(true);
+    setReportModalOpen(true);
+  };
+
+  // 复制报告内容
+  const handleCopyReportContent = (text: string) => {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => {
+        message.success('报告 Markdown 源码已成功复制到剪贴板！');
+      }).catch(() => {
+        message.error('复制失败，请手动选择复制。');
+      });
+    } else {
+      const textArea = document.createElement("textarea");
+      textArea.value = text;
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        message.success('报告 Markdown 源码已成功复制到剪贴板！');
+      } catch (err) {
+        message.error('复制失败，请手动选择复制。');
+      }
+      document.body.removeChild(textArea);
+    }
+  };
+
+  // 模拟报告导出成功
+  const handleExportReport = (title: string) => {
+    message.loading({ content: '正在打包导出文件...', key: 'export' });
+    setTimeout(() => {
+      message.success({ content: `报告「${title}」导出 Word 与 PDF 成功！`, key: 'export', duration: 3 });
+    }, 1500);
+  };
+
+  // 保存报告修改
+  const handleSaveReport = () => {
+    if (!currentEditingReport) return;
+    
+    if (isEditingExisting) {
+      // 更新现有报告
+      setReports((prev) =>
+        prev.map((r) => (r.id === currentEditingReport.id ? currentEditingReport : r))
+      );
+      message.success('报告更新成功！');
+    } else {
+      // 插入新报告到最前端
+      setReports((prev) => [currentEditingReport, ...prev]);
+      message.success('新报告生成并提交成功！');
+    }
+    setReportModalOpen(false);
+    setCurrentEditingReport(null);
+  };
+
+  // ECharts 初始化与配置更新
+  useEffect(() => {
+    let trendChart: echarts.ECharts | null = null;
+    let pieChart: echarts.ECharts | null = null;
+    let statsTypeChart: echarts.ECharts | null = null;
+
+    if (firstLevelTab === 'analysis') {
+      if (trendChartRef.current) {
+        trendChart = echarts.init(trendChartRef.current);
+        
+        let seriesData: any[] = [];
+        let legendData: string[] = [];
+        
+        if (trendDimension === 'volume') {
+          legendData = ['全部', '今日头条', '新闻', '微信', 'APP'];
+          seriesData = [
+            { name: '全部', type: 'line', data: [2, 4, 2, 18, 4, 6, 2, 4], smooth: true, color: '#3366FF' },
+            { name: '今日头条', type: 'line', data: [0, 2, 0, 10, 2, 2, 0, 4], smooth: true, color: '#00d4aa' },
+            { name: '新闻', type: 'line', data: [2, 2, 2, 6, 2, 4, 2, 0], smooth: true, color: '#ff7a45' },
+            { name: '微信', type: 'line', data: [0, 0, 0, 2, 0, 0, 0, 0], smooth: true, color: '#7c3aed' },
+            { name: 'APP', type: 'line', data: [0, 0, 0, 0, 0, 0, 0, 0], smooth: true, color: '#faad14' },
+          ];
+        } else if (trendDimension === 'interaction') {
+          legendData = ['全部', '今日头条', '新闻', '微信', 'APP'];
+          seriesData = [
+            { name: '全部', type: 'line', data: [20, 35, 10, 100, 15, 20, 8, 12], smooth: true, color: '#3366FF' },
+            { name: '今日头条', type: 'line', data: [5, 15, 2, 50, 5, 8, 2, 5], smooth: true, color: '#00d4aa' },
+            { name: '新闻', type: 'line', data: [15, 20, 8, 48, 10, 12, 6, 7], smooth: true, color: '#ff7a45' },
+            { name: '微信', type: 'line', data: [0, 0, 0, 2, 0, 0, 0, 0], smooth: true, color: '#7c3aed' },
+            { name: 'APP', type: 'line', data: [0, 0, 0, 0, 0, 0, 0, 0], smooth: true, color: '#faad14' },
+          ];
+        } else {
+          legendData = ['正面占比', '中性占比'];
+          seriesData = [
+            { name: '正面占比', type: 'line', data: [3, 4, 3, 3.7, 4, 3, 3, 4], smooth: true, color: '#52c41a' },
+            { name: '中性占比', type: 'line', data: [97, 96, 97, 96.3, 96, 97, 97, 96], smooth: true, color: '#faad14' },
+          ];
+        }
+
+        trendChart.setOption({
+          tooltip: { trigger: 'axis' },
+          legend: {
+            data: legendData,
+            bottom: 0,
+            icon: 'rect',
+            itemWidth: 12,
+            itemHeight: 4,
+          },
+          grid: { left: '4%', right: '4%', bottom: '15%', containLabel: true },
+          xAxis: {
+            type: 'category',
+            boundaryGap: false,
+            data: ['15:00', '18:00', '21:00', '00:00', '03:00', '06:00', '09:00', '12:00'],
+            axisLine: { lineStyle: { color: '#e5e7eb' } },
+            axisLabel: { color: '#6b7280' }
+          },
+          yAxis: {
+            type: 'value',
+            splitLine: { lineStyle: { type: 'dashed', color: '#f3f4f6' } },
+            axisLabel: { color: '#6b7280' }
+          },
+          series: seriesData
+        });
+      }
+
+      if (pieChartRef.current) {
+        pieChart = echarts.init(pieChartRef.current);
+        pieChart.setOption({
+          tooltip: { trigger: 'item', formatter: '{b}: {c} 篇 ({d}%)' },
+          legend: {
+            orient: 'vertical',
+            right: '5%',
+            top: 'center',
+            icon: 'circle',
+            itemWidth: 8,
+            itemHeight: 8,
+            textStyle: { color: '#1f2937', fontSize: 12 }
+          },
+          series: [
+            {
+              name: '阵地占比',
+              type: 'pie',
+              radius: ['45%', '70%'],
+              center: ['40%', '50%'],
+              avoidLabelOverlap: false,
+              itemStyle: {
+                borderRadius: 4,
+                borderColor: '#fff',
+                borderWidth: 2
+              },
+              label: { show: false },
+              emphasis: {
+                label: {
+                  show: true,
+                  fontSize: 14,
+                  fontWeight: 'bold',
+                  formatter: '{b}\n{d}%'
+                }
+              },
+              data: [
+                { value: 13, name: '新闻', itemStyle: { color: '#00d4aa' } },
+                { value: 10, name: '今日头条', itemStyle: { color: '#3366FF' } },
+                { value: 2, name: '微信', itemStyle: { color: '#ff7a45' } },
+                { value: 2, name: 'APP', itemStyle: { color: '#7c3aed' } },
+              ]
+            }
+          ]
+        });
+      }
+    }
+
+    if (firstLevelTab === 'statistics') {
+      if (statsTypeChartRef.current) {
+        statsTypeChart = echarts.init(statsTypeChartRef.current);
+        statsTypeChart.setOption({
+          tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+          grid: { left: '5%', right: '8%', top: '5%', bottom: '5%', containLabel: true },
+          xAxis: {
+            type: 'value',
+            splitLine: { lineStyle: { type: 'dashed', color: '#f3f4f6' } },
+            axisLabel: { color: '#6b7280' }
+          },
+          yAxis: {
+            type: 'category',
+            data: ['谣言核查', '劝删下达', '本地动态监测', '材料反馈'],
+            axisLine: { lineStyle: { color: '#e5e7eb' } },
+            axisLabel: { color: '#1f2937', fontWeight: 500 }
+          },
+          series: [
+            {
+              name: '下达指令数',
+              type: 'bar',
+              data: [86, 124, 38, 56],
+              barWidth: 16,
+              itemStyle: {
+                borderRadius: [0, 4, 4, 0],
+                color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
+                  { offset: 0, color: '#5c85ff' },
+                  { offset: 1, color: '#3366FF' }
+                ])
+              }
+            }
+          ]
+        });
+      }
+    }
+
+    const handleResize = () => {
+      trendChart?.resize();
+      pieChart?.resize();
+      statsTypeChart?.resize();
+    };
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      trendChart?.dispose();
+      pieChart?.dispose();
+      statsTypeChart?.dispose();
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [firstLevelTab, trendDimension]);
 
   const visibleEvents = eventList.filter((event) => !ignoredEventIds.includes(event.id));
   const allSelected = visibleEvents.length > 0 && selectedEventIds.length === visibleEvents.length;
@@ -707,116 +1223,499 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
           </div>
         </div>
 
-        {/* 搜索筛选栏 */}
-        <div className="detail-filter-bar">
-          <div className="filter-search">
-            <Input
-              prefix={<SearchOutlined />}
-              placeholder={workView === 'pending' ? '搜索事件内容' : '搜索已下达指令'}
-              className="event-search-input"
-            />
+        {/* 新增：一级 Tab 切换栏（基于截图的1:1复刻样式设计） */}
+        <div className="detail-sub-header-bar">
+          <div className="sub-header-left">
+            <span className="task-check-icon">✓</span>
+            <span className="sub-task-name">{currentTask.name}</span>
+            <span className="sub-task-time">2026-06-21 15:09:3 至 2026-06-22 15:09:3</span>
           </div>
-          <div className="filter-actions-detail">
-            {workView === 'issued' && (
-              <Button icon={<SyncOutlined />}>批量检测链接</Button>
-            )}
-            <Button icon={<FilterOutlined />}>筛选</Button>
-            <Button>排序 <DownOutlined /></Button>
-            <Button>时间 <DownOutlined /></Button>
+          <div className="sub-header-tabs">
+            <div
+              className={`sub-tab-item ${firstLevelTab === 'articles' ? 'active' : ''}`}
+              onClick={() => setFirstLevelTab('articles')}
+            >
+              文章列表
+            </div>
+            <div
+              className={`sub-tab-item ${firstLevelTab === 'analysis' ? 'active' : ''}`}
+              onClick={() => setFirstLevelTab('analysis')}
+            >
+              快速分析
+            </div>
+            <div
+              className={`sub-tab-item ${firstLevelTab === 'statistics' ? 'active' : ''}`}
+              onClick={() => setFirstLevelTab('statistics')}
+            >
+              工作情况统计
+            </div>
+            <div
+              className={`sub-tab-item ${firstLevelTab === 'summary' ? 'active' : ''}`}
+              onClick={() => setFirstLevelTab('summary')}
+            >
+              舆情综述
+            </div>
+          </div>
+          <div className="sub-header-right">
+            <Button type="text" icon={<SyncOutlined />} className="refresh-btn" />
           </div>
         </div>
 
-        <div className="work-view-switch">
-          <button
-            type="button"
-            className={workView === 'pending' ? 'active' : ''}
-            onClick={() => setWorkView('pending')}
-          >
-            待研判帖文
-            <Badge count={visibleEvents.length} />
-          </button>
-          <button
-            type="button"
-            className={workView === 'issued' ? 'active' : ''}
-            onClick={() => setWorkView('issued')}
-          >
-            已下达指令
-            <Badge count={issuedInstructions.length} />
-          </button>
-        </div>
+        {/* ==================== 1. 文章列表视图 ==================== */}
+        {firstLevelTab === 'articles' && (
+          <>
+            {/* 搜索筛选栏 */}
+            <div className="detail-filter-bar">
+              <div className="filter-search">
+                <Input
+                  prefix={<SearchOutlined />}
+                  placeholder={workView === 'pending' ? '搜索事件内容' : '搜索已下达指令'}
+                  className="event-search-input"
+                />
+              </div>
+              <div className="filter-actions-detail">
+                {workView === 'issued' && (
+                  <Button icon={<SyncOutlined />}>批量检测链接</Button>
+                )}
+                <Button icon={<FilterOutlined />}>筛选</Button>
+                <Button>排序 <DownOutlined /></Button>
+                <Button>时间 <DownOutlined /></Button>
+              </div>
+            </div>
 
-        {/* 分类Tab */}
-        {workView === 'pending' ? (
-          <div className="detail-tabs-bar">
-            <Tabs activeKey={activeTab} onChange={setActiveTab} className="detail-tabs">
-              <TabPane tab="全部" key="all" />
-              <TabPane tab="微博" key="weibo" />
-              <TabPane tab="抖音" key="douyin" />
-              <TabPane tab="微信" key="wechat" />
-              <TabPane tab="新闻" key="news" />
-              <TabPane tab="预警" key="warning" />
-            </Tabs>
-            <div className="tabs-extra">
-              <Checkbox
-                checked={allSelected}
-                indeterminate={selectedEventIds.length > 0 && !allSelected}
-                onChange={(e) => setSelectedEventIds(e.target.checked ? visibleEvents.map((event) => event.id) : [])}
+            <div className="work-view-switch">
+              <button
+                type="button"
+                className={workView === 'pending' ? 'active' : ''}
+                onClick={() => setWorkView('pending')}
               >
-                全选
-              </Checkbox>
-              <span className="total-count">共 {visibleEvents.length} 条</span>
+                待研判帖文
+                <Badge count={visibleEvents.length} />
+              </button>
+              <button
+                type="button"
+                className={workView === 'issued' ? 'active' : ''}
+                onClick={() => setWorkView('issued')}
+              >
+                已下达指令
+                <Badge count={issuedInstructions.length} />
+              </button>
             </div>
-          </div>
-        ) : (
-          <div className="issued-summary-bar">
-            <div className="issued-summary-item">
-              <span>已下达</span>
-              <strong>{issuedInstructions.length}</strong>
+
+            {/* 分类Tab */}
+            {workView === 'pending' ? (
+              <div className="detail-tabs-bar">
+                <Tabs activeKey={activeTab} onChange={setActiveTab} className="detail-tabs">
+                  <TabPane tab="全部" key="all" />
+                  <TabPane tab="微博" key="weibo" />
+                  <TabPane tab="抖音" key="douyin" />
+                  <TabPane tab="微信" key="wechat" />
+                  <TabPane tab="新闻" key="news" />
+                  <TabPane tab="预警" key="warning" />
+                </Tabs>
+                <div className="tabs-extra">
+                  <Checkbox
+                    checked={allSelected}
+                    indeterminate={selectedEventIds.length > 0 && !allSelected}
+                    onChange={(e) => setSelectedEventIds(e.target.checked ? visibleEvents.map((event) => event.id) : [])}
+                  >
+                    全选
+                  </Checkbox>
+                  <span className="total-count">共 {visibleEvents.length} 条</span>
+                </div>
+              </div>
+            ) : (
+              <div className="issued-summary-bar">
+                <div className="issued-summary-item">
+                  <span>已下达</span>
+                  <strong>{issuedInstructions.length}</strong>
+                </div>
+                <div className="issued-summary-item">
+                  <span>处理中</span>
+                  <strong>1</strong>
+                </div>
+                <div className="issued-summary-item">
+                  <span>已完成</span>
+                  <strong>1</strong>
+                </div>
+                <div className="issued-summary-item">
+                  <span>链接失效</span>
+                  <strong>1</strong>
+                </div>
+              </div>
+            )}
+
+            {/* 事件列表 */}
+            <div className="event-list-container">
+              {workView === 'pending'
+                ? visibleEvents.map((event, index) => renderEventCard(event, index + 1))
+                : issuedInstructions.map((record) => renderIssuedCard(record))}
             </div>
-            <div className="issued-summary-item">
-              <span>处理中</span>
-              <strong>1</strong>
+
+            {workView === 'pending' && selectedEventIds.length > 0 && (
+              <div className="batch-action-bar">
+                <div className="batch-left">
+                  <Badge count={selectedEventIds.length} />
+                  <span>已选中 {selectedEventIds.length} 条数据</span>
+                  <Button type="link" onClick={() => setSelectedEventIds([])}>取消全选</Button>
+                </div>
+                <div className="batch-right">
+                  <Button
+                    type="primary"
+                    icon={<SendOutlined />}
+                    onClick={() => openInstructionModal(selectedEventIds)}
+                  >
+                    批量下达指令
+                  </Button>
+                  <Button
+                    className="batch-ignore-btn"
+                    onClick={() => ignoreEvents(selectedEventIds)}
+                  >
+                    批量忽略
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ==================== 2. 快速分析视图 ==================== */}
+        {firstLevelTab === 'analysis' && (
+          <div className="analysis-tab-content">
+            {/* 文字综述卡片 */}
+            <div className="analysis-summary-card">
+              <div className="summary-left">
+                <span className="time-badge">监测区间：2026-06-21 15:09:3 到 2026-06-22 15:09:3</span>
+                <p className="summary-text">
+                  06月21日15时09分39秒 - 06月22日15时09分39秒，共检测相关数据27篇，其中新闻13篇，今日头条10篇，APP2篇，微信2篇，境外0篇，长视频0篇，论坛0篇，短视频0篇，小红书0篇，抖音0篇，微博0篇。
+                  正面占比3.70%，中性占比96.30%。主要为今日头条，懂车帝，网易等平台网友扩散舆情。共抓取评论0篇。
+                </p>
+              </div>
+              <Button
+                type="primary"
+                ghost
+                icon={<CopyOutlined />}
+                className="copy-btn"
+                onClick={handleCopySummary}
+              >
+                一键复制
+              </Button>
             </div>
-            <div className="issued-summary-item">
-              <span>已完成</span>
-              <strong>1</strong>
+
+            {/* 双行核心指标面板 */}
+            <div className="analysis-metrics-container">
+              {/* 第一行：总声量与平台 breakdown */}
+              <div className="metric-row-box">
+                <div className="metric-primary-card">
+                  <div className="primary-title">
+                    总声量 <ExclamationCircleOutlined className="info-icon-small" />
+                  </div>
+                  <div className="primary-val">27</div>
+                </div>
+                <div className="metric-breakdown-cards">
+                  {[
+                    { name: '微博', value: 0 },
+                    { name: '抖音', value: 0 },
+                    { name: '今日头条', value: 10 },
+                    { name: '小红书', value: 0 },
+                    { name: '其他短视频', value: 0 },
+                    { name: '微信', value: 2 },
+                    { name: '新闻', value: 13 },
+                    { name: '论坛', value: 0 },
+                    { name: '长视频', value: 0 },
+                    { name: 'APP', value: 2 },
+                    { name: '境外', value: 0 }
+                  ].map((plat) => (
+                    <div key={plat.name} className="breakdown-card">
+                      <div className="breakdown-val">{plat.value}</div>
+                      <div className="breakdown-lbl">{plat.name}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* 第二行：总互动量与详情 breakdown */}
+              <div className="metric-row-box">
+                <div className="metric-primary-card interactive-primary">
+                  <div className="primary-title">
+                    总互动量 <ExclamationCircleOutlined className="info-icon-small" />
+                  </div>
+                  <div className="primary-val">100</div>
+                  <div className="sub-primary-val">不含阅读数 2</div>
+                </div>
+                <div className="metric-breakdown-cards">
+                  {[
+                    { name: '总发文数', value: 0 },
+                    { name: '总分享数', value: 0 },
+                    { name: '总评论数', value: 0 },
+                    { name: '总阅读数', value: 98 },
+                    { name: '总点赞数', value: 1 },
+                    { name: '其他互动量之和', value: 1 }
+                  ].map((detail) => (
+                    <div key={detail.name} className="breakdown-card">
+                      <div className="breakdown-val">{detail.value}</div>
+                      <div className="breakdown-lbl">{detail.name}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
-            <div className="issued-summary-item">
-              <span>链接失效</span>
-              <strong>1</strong>
+
+            {/* ECharts 图表行 */}
+            <div className="analysis-charts-grid">
+              {/* 报道趋势 */}
+              <div className="chart-card">
+                <div className="chart-card-header">
+                  <div className="chart-title">
+                    <BarChartOutlined className="icon" /> 报道趋势
+                  </div>
+                  <div className="chart-controls">
+                    <div className="trend-toggles">
+                      <button
+                        className={trendDimension === 'volume' ? 'active' : ''}
+                        onClick={() => setTrendDimension('volume')}
+                      >
+                        声量
+                      </button>
+                      <button
+                        className={trendDimension === 'interaction' ? 'active' : ''}
+                        onClick={() => setTrendDimension('interaction')}
+                      >
+                        互动量
+                      </button>
+                      <button
+                        className={trendDimension === 'sentiment' ? 'active' : ''}
+                        onClick={() => setTrendDimension('sentiment')}
+                      >
+                        情感
+                      </button>
+                    </div>
+                    <Tag className="resolution-tag">小时</Tag>
+                    <Space size={4} className="control-icons">
+                      <Button type="text" size="small" icon={<TableOutlined />} />
+                      <Button type="text" size="small" icon={<DownloadOutlined />} />
+                    </Space>
+                  </div>
+                </div>
+                <div className="chart-canvas" ref={trendChartRef} />
+              </div>
+
+              {/* 阵地类型分析 */}
+              <div className="chart-card">
+                <div className="chart-card-header">
+                  <div className="chart-title">
+                    <PieChartOutlined className="icon" /> 阵地类型分析
+                  </div>
+                  <Space size={4} className="control-icons">
+                    <Button type="text" size="small" icon={<DownloadOutlined />} />
+                  </Space>
+                </div>
+                <div className="chart-canvas" ref={pieChartRef} />
+              </div>
             </div>
           </div>
         )}
 
-        {/* 事件列表 */}
-        <div className="event-list-container">
-          {workView === 'pending'
-            ? visibleEvents.map((event, index) => renderEventCard(event, index + 1))
-            : issuedInstructions.map((record) => renderIssuedCard(record))}
-        </div>
-
-        {workView === 'pending' && selectedEventIds.length > 0 && (
-          <div className="batch-action-bar">
-            <div className="batch-left">
-              <Badge count={selectedEventIds.length} />
-              <span>已选中 {selectedEventIds.length} 条数据</span>
-              <Button type="link" onClick={() => setSelectedEventIds([])}>取消全选</Button>
+        {/* ==================== 3. 工作情况统计视图 ==================== */}
+        {firstLevelTab === 'statistics' && (
+          <div className="statistics-tab-content">
+            {/* 顶层效能统计卡 */}
+            <div className="stats-efficiency-row">
+              <div className="efficiency-card">
+                <span className="lbl">指令下达总数</span>
+                <strong className="val">254 <span className="unit">次</span></strong>
+                <div className="trend-text">较上周 <span className="up">↑ 12%</span></div>
+              </div>
+              <div className="efficiency-card">
+                <span className="lbl">平均签收用时</span>
+                <strong className="val green">2 <span className="unit">分</span> 45 <span className="unit">秒</span></strong>
+                <div className="trend-text">较上周 <span className="down">↓ 15秒</span></div>
+              </div>
+              <div className="efficiency-card">
+                <span className="lbl">平均反馈用时</span>
+                <strong className="val">42 <span className="unit">分钟</span></strong>
+                <div className="trend-text">较上周 <span className="down">↓ 3分钟</span></div>
+              </div>
+              <div className="efficiency-card">
+                <span className="lbl">超时指令占比</span>
+                <strong className="val red">1.2 <span className="unit">%</span></strong>
+                <div className="trend-text">低于警示阈值 (3%)</div>
+              </div>
             </div>
-            <div className="batch-right">
+
+            {/* 下方排名与分类排版 */}
+            <div className="stats-dashboard-grid">
+              {/* 各部门/属地执行情况表 */}
+              <div className="stats-ranking-card">
+                <div className="card-header-simple">
+                  <h3>各属地/部门执行情况排名</h3>
+                  <Tag color="blue">实时统计</Tag>
+                </div>
+                <div className="stats-table-container">
+                  <table className="stats-table">
+                    <thead>
+                      <tr>
+                        <th>排名</th>
+                        <th>部门/属地</th>
+                        <th>分派指令数</th>
+                        <th>已签收数</th>
+                        <th>已反馈数</th>
+                        <th>按时反馈率</th>
+                        <th>平均反馈用时</th>
+                        <th>状态</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[
+                        { rank: 1, name: '淮安区', sent: 120, signed: 120, feedback: 118, rate: '98.3%', time: '38分钟', status: '优秀', color: 'green' },
+                        { rank: 2, name: '清江浦区', sent: 85, signed: 85, feedback: 84, rate: '98.8%', time: '41分钟', status: '优秀', color: 'green' },
+                        { rank: 3, name: '淮阴区', sent: 45, signed: 45, feedback: 44, rate: '97.8%', time: '45分钟', status: '良好', color: 'blue' },
+                        { rank: 4, name: '涟水县', sent: 4, signed: 4, feedback: 4, rate: '100%', time: '28分钟', status: '优秀', color: 'green' },
+                      ].map((item) => (
+                        <tr key={item.rank}>
+                          <td><span className={`rank-number r-${item.rank}`}>{item.rank}</span></td>
+                          <td className="dept-name">{item.name}</td>
+                          <td>{item.sent}</td>
+                          <td>{item.signed}</td>
+                          <td>{item.feedback}</td>
+                          <td className="rate-col">{item.rate}</td>
+                          <td>{item.time}</td>
+                          <td><Tag color={item.color}>{item.status}</Tag></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* 右侧：指令类型分布图表 */}
+              <div className="stats-ranking-card type-distribution-card">
+                <div className="card-header-simple">
+                  <h3>分类型指令统计</h3>
+                </div>
+                <div className="chart-canvas" ref={statsTypeChartRef} style={{ height: 260 }} />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ==================== 4. 舆情综述视图 ==================== */}
+        {firstLevelTab === 'summary' && (
+          <div className="summary-tab-content">
+            {/* 顶栏控制栏 */}
+            <div className="summary-control-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div className="control-left-title" style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                舆情阶段性报告时间线
+              </div>
               <Button
                 type="primary"
-                icon={<SendOutlined />}
-                onClick={() => openInstructionModal(selectedEventIds)}
+                icon={<BellOutlined />}
+                onClick={handleTriggerGenerateReport}
+                loading={generating}
+                style={{ background: '#3366FF', borderColor: '#3366FF' }}
               >
-                批量下达指令
-              </Button>
-              <Button
-                className="batch-ignore-btn"
-                onClick={() => ignoreEvents(selectedEventIds)}
-              >
-                批量忽略
+                {generating ? 'AI 正在提取数据并分析生成中...' : '生成最新舆情报告'}
               </Button>
             </div>
+
+            {/* 报告时间线（始终作为背景渲染，即使在加载时也不隐藏） */}
+            <div className="reports-timeline-container">
+              {reports.length === 0 ? (
+                <div className="summary-placeholder-card">
+                  <div className="placeholder-icon">
+                    <FileTextOutlined className="icon" />
+                  </div>
+                  <h2>暂无报告记录</h2>
+                  <p className="placeholder-desc">
+                    当前任务下暂无已生成的阶段性舆情总结报告，请点击右上角“生成最新舆情报告”按钮。
+                  </p>
+                </div>
+              ) : (
+                <div className="reports-timeline">
+                  <div className="timeline-spine-line" />
+                  {reports.map((report) => (
+                    <div key={report.id} className="timeline-item">
+                      {/* 左侧连线节点 */}
+                      <div className="timeline-node">
+                        <div className="timeline-dot" />
+                        <div className="timeline-line-connector" />
+                      </div>
+                      {/* 右侧阶段报告卡片 */}
+                      <div className="timeline-content-card">
+                        <div className="report-card-header">
+                          <div className="report-card-title-box">
+                            <span className="report-time">{report.date}</span>
+                            <h4 className="report-version-title">{report.title}</h4>
+                          </div>
+                          <div className="report-card-actions">
+                            <Button
+                              size="small"
+                              type="primary"
+                              ghost
+                              icon={<EditOutlined />}
+                              onClick={() => handleEditReport(report)}
+                            >
+                              编辑
+                            </Button>
+                            <Button
+                              size="small"
+                              icon={<DownloadOutlined />}
+                              onClick={() => handleExportReport(report.title)}
+                            >
+                              导出
+                            </Button>
+                          </div>
+                        </div>
+                        <div className="report-card-body">
+                          {renderMarkdown(report.content)}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* AI 加载状态全局遮罩（背景内容仍然保留显示，通过透明背景与模糊遮罩层覆盖） */}
+            {generating && (
+              <div
+                className="global-report-loading-overlay"
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  background: 'rgba(255, 255, 255, 0.75)',
+                  backdropFilter: 'blur(2px)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  zIndex: 100,
+                  borderRadius: '8px'
+                }}
+              >
+                <div
+                  className="loading-box"
+                  style={{
+                    background: '#ffffff',
+                    border: '1px solid var(--border-color)',
+                    padding: '30px 40px',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                    textAlign: 'center',
+                    maxWidth: '450px'
+                  }}
+                >
+                  <SyncOutlined spin style={{ fontSize: '32px', color: 'var(--primary-color)', marginBottom: '16px' }} />
+                  <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>内容归纳与智能分析中</h3>
+                  <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.6 }}>
+                    AI 正在快速检索并归纳该事件全网舆情数据（新闻、今日头条、微博、微信等），正在自动生成阶段性报告，请稍候...
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -869,6 +1768,96 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
           </>
         }
       />
+      
+      {/* 新增：AI 舆情处置报告双栏对比弹窗 */}
+      <Modal
+        title="AI 舆情处置报告"
+        width={1050}
+        centered
+        open={reportModalOpen}
+        onCancel={() => {
+          setReportModalOpen(false);
+          setCurrentEditingReport(null);
+        }}
+        footer={[
+          <Button
+            key="copy"
+            icon={<CopyOutlined />}
+            onClick={() => currentEditingReport && handleCopyReportContent(currentEditingReport.content)}
+            style={{ float: 'left' }}
+          >
+            复制内容
+          </Button>,
+          <Button
+            key="export"
+            icon={<DownloadOutlined />}
+            onClick={() => currentEditingReport && handleExportReport(currentEditingReport.title)}
+            style={{ float: 'left' }}
+          >
+            导出
+          </Button>,
+          <Button
+            key="close"
+            onClick={() => {
+              setReportModalOpen(false);
+              setCurrentEditingReport(null);
+            }}
+          >
+            关闭
+          </Button>,
+          <Button key="save" type="primary" onClick={handleSaveReport}>
+            保存
+          </Button>
+        ]}
+      >
+        {currentEditingReport && (
+          <div className="editor-split-container" style={{ display: 'flex', gap: '20px', marginTop: '12px' }}>
+            {/* 左侧 Markdown 编辑器 */}
+            <div className="editor-left-panel" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div className="panel-title-label" style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-secondary)' }}>Markdown 编辑</div>
+              <Input.TextArea
+                value={currentEditingReport.content}
+                onChange={(e) =>
+                  setCurrentEditingReport({
+                    ...currentEditingReport,
+                    content: e.target.value
+                  })
+                }
+                className="markdown-textarea"
+                style={{
+                  height: '500px',
+                  fontFamily: 'monospace, Consolas, "Courier New"',
+                  fontSize: '13px',
+                  lineHeight: '1.6',
+                  padding: '12px',
+                  resize: 'none',
+                  borderRadius: '6px',
+                  border: '1px solid #cbd5e1',
+                  background: '#f8fafc'
+                }}
+              />
+            </div>
+            {/* 右侧 效果实时预览 */}
+            <div className="editor-right-panel" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div className="panel-title-label" style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-secondary)' }}>报告预览</div>
+              <div
+                className="markdown-preview-panel"
+                style={{
+                  height: '500px',
+                  overflowY: 'auto',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '6px',
+                  padding: '20px',
+                  background: '#ffffff'
+                }}
+              >
+                {renderMarkdown(currentEditingReport.content)}
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
+
       {renderDetailDrawer()}
     </div>
   );
