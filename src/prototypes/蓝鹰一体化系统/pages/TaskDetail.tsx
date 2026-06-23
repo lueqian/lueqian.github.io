@@ -11,12 +11,15 @@ import {
   Checkbox,
   message,
   Modal,
+  Select,
+  DatePicker,
 } from 'antd';
 import {
   LeftOutlined,
   SearchOutlined,
   FilterOutlined,
   DownOutlined,
+  UpOutlined,
   MoreOutlined,
   EyeOutlined,
   MessageOutlined,
@@ -42,8 +45,10 @@ import {
   FilePdfOutlined,
   FileWordOutlined,
   TableOutlined,
+  LoadingOutlined,
 } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
+import dayjs from 'dayjs';
 import * as echarts from 'echarts';
 import InstructionCommandModal from '../components/InstructionCommandModal';
 import UnifiedOpinionCard from '../components/UnifiedOpinionCard';
@@ -301,6 +306,9 @@ export interface OpinionReport {
   title: string;
   date: string;
   content: string;
+  status: 'generating' | 'success';
+  template?: string;
+  timeRange?: string;
 }
 
 const initialReports: OpinionReport[] = [
@@ -318,7 +326,8 @@ const initialReports: OpinionReport[] = [
 # 重点媒体及资讯平台动态
 本时段，多家主流商业门户及行业资讯网站转发发布相关事件信息，内容多聚焦于事件经过及现场情况回顾。突出情况有：
 1. [2026-06-09 10:23], [网易] 网民“财经观察员”《张三，男，34 岁，北京人）发布文章《中农代表赴市信访局反映诉求，现场秩序井然》，详细梳理了 6 月 4 日以来的信访流程及相关部门回应，该贴文目前阅读量较高，已被纳入重点监测名单。
-2. [2026-06-09 08:45], [今日头条] 网民“法治前线”《李四，女，29 岁，河南省人）转发凤凰网报道，配文称“关注涉农群体合法权益保障”，引发少量跟帖讨论。针对上述媒体报道，已启动舆情引导机制，协调相关平台优化评论区管理，防止不实言论滋生。`
+2. [2026-06-09 08:45], [今日头条] 网民“法治前线”《李四，女，29 岁，河南省人）转发凤凰网报道，配文称“关注涉农群体合法权益保障”，引发少量跟帖讨论。针对上述媒体报道，已启动舆情引导机制，协调相关平台优化评论区管理，防止不实言论滋生。`,
+    status: 'success'
   },
   {
     id: 'report-1',
@@ -329,7 +338,8 @@ const initialReports: OpinionReport[] = [
 (截至 2026-06-09 10:57:33)
 
 # 全网舆情态势
-本时段，"0604 中农到市信访局"事件网上相关信息累计监测到 35 篇，评论 0 条。其中，新发现舆情信息 30 条，已协同处置 5 条。平台分布呈现碎片化特征，主要集中于网易（4 篇）、微信（3 篇）、搜狐移动版（2 篇）等平台；目前舆情热度总体可控，相关处置工作正稳步推进。`
+本时段，"0604 中农到市信访局"事件网上相关信息累计监测到 35 篇，评论 0 条。其中，新发现舆情信息 30 条，已协同处置 5 条。平台分布呈现碎片化特征，主要集中于网易（4 篇）、微信（3 篇）、搜狐移动版（2 篇）等平台；目前舆情热度总体可控，相关处置工作正稳步推进。`,
+    status: 'success'
   }
 ];
 
@@ -412,11 +422,21 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
   const [trendDimension, setTrendDimension] = useState<'volume' | 'interaction' | 'sentiment'>('volume');
 
   // 新增：舆情综述历史报告与弹窗状态
-  const [reports, setReports] = useState<OpinionReport[]>([]);
+  const [reports, setReports] = useState<OpinionReport[]>(initialReports);
   const [generating, setGenerating] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [currentEditingReport, setCurrentEditingReport] = useState<OpinionReport | null>(null);
   const [isEditingExisting, setIsEditingExisting] = useState(false);
+
+  // 新增优化：报告列表折叠/展开与配置弹窗状态
+  const [expandedReportIds, setExpandedReportIds] = useState<string[]>([]);
+  const [collapsedReportIds, setCollapsedReportIds] = useState<string[]>([]);
+  const [configModalOpen, setConfigModalOpen] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('summary');
+  const [selectedTimeRange, setSelectedTimeRange] = useState<[dayjs.Dayjs, dayjs.Dayjs] | null>([
+    dayjs('2026-06-21 15:09:30'),
+    dayjs('2026-06-22 15:09:30')
+  ]);
 
   // ECharts refs
   const trendChartRef = useRef<HTMLDivElement>(null);
@@ -621,30 +641,62 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
     });
   };
 
-  // 生成最新报告事件触发（内容加载 2 秒延迟）
-  const handleTriggerGenerateReport = () => {
-    setGenerating(true);
-    setTimeout(() => {
-      setGenerating(false);
-      
-      const currentActiveTask = sideTasks.find(t => t.id === activeSideTask) || currentTask;
-      const taskName = currentActiveTask.name;
-      const newVersion = `V${reports.length + 1}`;
-      const newTitle = `阶段性报告 ${newVersion} - ${taskName}专题`;
-      
-      const now = new Date();
-      const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
-      const currentDay = String(now.getDate()).padStart(2, '0');
-      const currentHour = String(now.getHours()).padStart(2, '0');
-      const formattedTime = `${currentMonth}月${currentDay}日 ${currentHour}时`;
-      const todayDate = now.toISOString().replace('T', ' ').substring(0, 16);
+  // 报告内容生成器，根据任务、模板及时间段组合高保真 Markdown 文本
+  const generateReportContent = (taskName: string, template: string, startTime: string, endTime: string): string => {
+    // 提取截至时间，例如 2026-06-22 15:09:30 格式化为 06月22日 15时
+    const formatTimePart = (timeStr: string) => {
+      if (!timeStr) return '';
+      const parts = timeStr.split(' ');
+      const dateParts = parts[0].split('-');
+      const timeParts = parts[1] ? parts[1].split(':') : ['00'];
+      return `${dateParts[1]}月${dateParts[2]}日 ${timeParts[0]}时`;
+    };
+    
+    const endFormatted = formatTimePart(endTime);
 
-      const newContent = `# 关于“${taskName}专题”网上舆情综述（综述模板）
-(截至 ${formattedTime})
+    if (template === 'emergency') {
+      // 突发舆情事件快速研判报告模板
+      return `# 关于“${taskName}”突发舆情事件快速研判报告
+(截至 ${endFormatted})
+
+## 舆情事件概述
+本时段内，监测到关于“${taskName}”突发事件相关敏感信息在全网广泛传播。监测时间范围自 ${startTime} 至 ${endTime}。全网涉敏感声量累计达 3,450 条，舆情峰值出现在事件发生后 2 小时内，目前整体舆论情绪呈现高度波动的特征。
+
+## 主要传播阵地与信源
+1. [今日头条] 网民“快讯博主”发帖曝光现场突发画面，单帖阅读量迅速超过 25 万，成为本轮舆情爆发的核心导火索。
+2. [微博] 话题“#${taskName}突发关注#”登榜同城热搜榜第 3 位，网民跟帖讨论活跃，转发占比高达 68.4%。
+3. [微信] 多个本地资讯类微信公众号推送了相关分析文章，侧重于讨论涉事主体的响应时效。
+
+## 研判与应对策略
+1. [快速研判] 事件目前处于发酵中期，网民关注点主要聚焦在官方回应及事实真相上，伴有少量非理性猜测，有进一步扩散风险。
+2. [处置策略] 一是建议属地网信部门迅速对接职能单位，1小时内发布首发事实性说明；二是加强微博、抖音等热搜话题的动态巡查与正向引导；三是联合主流媒体发布辟谣及权威科普信息，阻断谣言二次传播。`;
+    }
+
+    if (template === 'special') {
+      // 专项工作阶段性舆情分析报告模板
+      return `# “${taskName}”专项工作阶段性舆情分析报告
+(截至 ${endFormatted})
+
+## 专项舆情分析背景
+本次监测针对“${taskName}”专项推进工作开展舆情阶段性评估。评估周期为 ${startTime} 至 ${endTime}。在此时段内，全网累计监测到相关舆情信息 1.2万条，其中新闻报道占比 45%，自媒体讨论占比 35%，网民跟帖评论占比 20%，整体网络情绪偏向正面与中性。
+
+## 工作亮点报道及反馈
+1. [人民网] 报道专项工作在民生保障、服务优化等方面的切实成效，获得网民的积极点赞与广泛认可。
+2. [新华网] 深入报道专项工作的执行细节，肯定了多部门协同推进的工作机制，阅读量破百万。
+3. [重庆日报] 发布社论指出，该项工作对于提升城市综合治理水平具有重要示范意义。
+
+## 后续舆情工作建议
+1. [趋势研判] 随着专项工作深入，社会公众对执行实效和透明度提出更高期望，后续应注意防范因个别执行细节偏差被局部放大而引发的次生舆情。
+2. [引导工作] 建议继续保持与权威官媒的联动报道节奏，以真实数据和典型案例做支撑；同时畅通网上民意诉求通道，将潜在隐患消解在源头。`;
+    }
+
+    // 默认模板：关于“xxxxx专题”网上舆情综述（综述模板）
+    return `# 关于“${taskName}专题”网上舆情综述（综述模板）
+(截至 ${endFormatted})
 
 目前，互联网公开面“${taskName}”相关信息8.6万余条，2个话题进入抖音等平台热搜热榜，网民评论1.2万余条，舆情热度呈上升趋势。
 
-截至 ${formattedTime}，互联网公开面涉我市清明节假期相关信息8.6万余条（24小时新增8.6万余条，原发 1.8万余条、转发 4.2万余条、评论 2.6万余条）。人民网、重庆日报、华龙网等20余家媒体报道我市平安文明祭祖、文旅消费升级、交通出行向好等情况。
+截至 ${endFormatted}，互联网公开面涉我市清明节假期相关信息8.6万余条（24小时新增8.6万余条，原发 1.8万余条、转发 4.2万余条、评论 2.6万余条）。监测区间为 ${startTime} 到 ${endTime}。人民网、重庆日报、华龙网等20余家媒体报道我市平安文明祭祖、文旅消费升级、交通出行向好等情况。
 
 ## 媒体报道情况
 1. [重庆日报] 报道，重庆平稳迎来清明祭扫高峰，全市当日19.65万人次现场祭扫，11.74万人选择鲜花、云祭扫等绿色祭扫方式；祭扫全程秩序平稳，未发生火情、安全事故，文明低碳祭扫成主流。
@@ -659,17 +711,78 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
 1. [网民观点] 一是热议本地豁达简约、轻松生活化的祭扫民俗，认可心意重于形式的追思理念，鲜花祭扫、云祭扫等文明低碳祭祀方式获广泛支持。
 2. [网民观点] 二是全市文旅市场热度高涨，近郊踏青、两江夜游等出游场景备受青睐，城市消费活力获网友点赞。
 3. [网民观点] 三是集中吐槽景区客流拥挤、交通拥堵、游玩排队耗时等假期常态化民生问题。`;
+  };
 
-      setCurrentEditingReport({
-        id: `report-${reports.length + 1}`,
-        version: newVersion,
-        title: newTitle,
-        date: todayDate,
-        content: newContent
-      });
-      setIsEditingExisting(false);
-      setReportModalOpen(true);
-    }, 2000);
+  // 生成最新报告事件触发（打开配置弹窗）
+  const handleTriggerGenerateReport = () => {
+    setSelectedTemplate('summary');
+    setSelectedTimeRange([
+      dayjs('2026-06-21 15:09:30'),
+      dayjs('2026-06-22 15:09:30')
+    ]);
+    setConfigModalOpen(true);
+  };
+
+  // 开始异步生成报告工作流（非阻塞后台大模型生成）
+  const handleStartGenerateReport = () => {
+    setConfigModalOpen(false);
+    setGenerating(true);
+    
+    const currentActiveTask = sideTasks.find(t => t.id === activeSideTask) || currentTask;
+    const taskName = currentActiveTask.name;
+    const newVersion = `V${reports.length + 1}`;
+    const newTitle = `阶段性报告 ${newVersion} - ${taskName}专题`;
+    
+    const now = new Date();
+    const todayDate = now.toISOString().replace('T', ' ').substring(0, 16);
+    const newReportId = `report-${Date.now()}`;
+    
+    // 提取格式化起止时间
+    let startTimeStr = '2026-06-21 15:09:30';
+    let endTimeStr = '2026-06-22 15:09:30';
+    let displayTimeRange = '06月21日 15时 至 06月22日 15时';
+    
+    if (selectedTimeRange && selectedTimeRange[0] && selectedTimeRange[1]) {
+      startTimeStr = selectedTimeRange[0].format('YYYY-MM-DD HH:mm:ss');
+      endTimeStr = selectedTimeRange[1].format('YYYY-MM-DD HH:mm:ss');
+      displayTimeRange = `${selectedTimeRange[0].format('MM月DD日 HH时')} 至 ${selectedTimeRange[1].format('MM月DD日 HH时')}`;
+    }
+
+    // 1. 创建生成中占位报告卡片
+    const placeholderReport: OpinionReport = {
+      id: newReportId,
+      version: newVersion,
+      title: newTitle,
+      date: todayDate,
+      content: '', // 后台计算中暂时无内容
+      status: 'generating',
+      template: selectedTemplate,
+      timeRange: displayTimeRange
+    };
+
+    // 2. 压入报告列表头部
+    setReports(prev => [placeholderReport, ...prev]);
+    // 3. 收起其他卡片，仅展开最新这条
+    setExpandedReportIds([newReportId]);
+
+    // 4. 模拟 4 秒大模型数据检索与提取分析过程
+    setTimeout(() => {
+      setGenerating(false);
+      const finalContent = generateReportContent(taskName, selectedTemplate, startTimeStr, endTimeStr);
+      
+      setReports(prev => prev.map(report => {
+        if (report.id === newReportId) {
+          return {
+            ...report,
+            status: 'success',
+            content: finalContent
+          };
+        }
+        return report;
+      }));
+      
+      message.success(`AI 智能分析完毕，${newTitle} 已成功生成！`);
+    }, 4000);
   };
 
   // 编辑已有报告
@@ -1636,8 +1749,8 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
               </Button>
             </div>
 
-            {/* 报告时间线（始终作为背景渲染，即使在加载时也不隐藏） */}
-            <div className="reports-timeline-container">
+            {/* 报告时间线（支持后台异步生成与折叠展开） */}
+            <div className="reports-timeline-container" style={{ position: 'relative' }}>
               {reports.length === 0 ? (
                 <div className="summary-placeholder-card">
                   <div className="placeholder-icon">
@@ -1651,89 +1764,173 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
               ) : (
                 <div className="reports-timeline">
                   <div className="timeline-spine-line" />
-                  {reports.map((report) => (
-                    <div key={report.id} className="timeline-item">
-                      {/* 左侧连线节点 */}
-                      <div className="timeline-node">
-                        <div className="timeline-dot" />
-                        <div className="timeline-line-connector" />
-                      </div>
-                      {/* 右侧阶段报告卡片 */}
-                      <div className="timeline-content-card">
-                        <div className="report-card-header">
-                          <div className="report-card-title-box">
-                            <span className="report-time">{report.date}</span>
-                            <h4 className="report-version-title">{report.title}</h4>
-                          </div>
-                          <div className="report-card-actions">
-                            <Button
-                              size="small"
-                              type="primary"
-                              ghost
-                              icon={<EditOutlined />}
-                              onClick={() => handleEditReport(report)}
-                            >
-                              编辑
-                            </Button>
-                            <Button
-                              size="small"
-                              icon={<DownloadOutlined />}
-                              onClick={() => handleExportReport(report.title)}
-                            >
-                              导出
-                            </Button>
-                          </div>
+                  {reports.map((report) => {
+                    const isLatest = reports.length > 0 && report.id === reports[0].id;
+                    const isExpanded = expandedReportIds.includes(report.id) || (isLatest && !collapsedReportIds.includes(report.id));
+                    const isGenerating = report.status === 'generating';
+
+                    return (
+                      <div key={report.id} className="timeline-item">
+                        {/* 左侧连线节点 */}
+                        <div className="timeline-node">
+                          <div className="timeline-dot" style={{ background: isGenerating ? '#60a5fa' : '#3366FF' }} />
+                          <div className="timeline-line-connector" />
                         </div>
-                        <div className="report-card-body">
-                          {renderMarkdown(report.content)}
+                        
+                        {/* 右侧阶段报告卡片 */}
+                        <div className="timeline-content-card" style={{ border: isGenerating ? '1px dashed #60a5fa' : '1px solid var(--border-color)' }}>
+                          <div className="report-card-header">
+                            <div className="report-card-title-box">
+                              <span className="report-time">{report.date}</span>
+                              <h4 className="report-version-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                {report.title}
+                                {isGenerating ? (
+                                  <Tag color="processing" icon={<SyncOutlined spin />}>生成中</Tag>
+                                ) : (
+                                  <Tag color="success">已生成</Tag>
+                                )}
+                              </h4>
+                            </div>
+                            <div className="report-card-actions">
+                              <Button
+                                size="small"
+                                type="primary"
+                                ghost
+                                icon={<EditOutlined />}
+                                onClick={() => handleEditReport(report)}
+                                disabled={isGenerating}
+                              >
+                                编辑
+                              </Button>
+                              <Button
+                                size="small"
+                                icon={<DownloadOutlined />}
+                                onClick={() => handleExportReport(report.title)}
+                                disabled={isGenerating}
+                              >
+                                导出
+                              </Button>
+                            </div>
+                          </div>
+
+                          {isGenerating ? (
+                            /* 生成中占位卡片 (骨架屏与动态波浪进度条) */
+                            <div className="report-card-body" style={{ padding: '20px', background: '#f8fafc', borderRadius: '6px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
+                                <LoadingOutlined style={{ fontSize: '18px', color: 'var(--primary-color)' }} spin />
+                                <span style={{ fontSize: '13px', fontWeight: 600, color: '#475569' }}>
+                                  AI 正在深度分析归纳当前时间段舆情，请稍候...
+                                </span>
+                              </div>
+                              {report.template && (
+                                <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '6px' }}>
+                                  <strong>参考模板：</strong>
+                                  {report.template === 'emergency' 
+                                    ? '突发舆情事件快速研判报告模板' 
+                                    : report.template === 'special' 
+                                      ? '专项工作阶段性舆情分析报告模板' 
+                                      : '关于“xxxxx专题”网上舆情综述（综述模板）'}
+                                </div>
+                              )}
+                              {report.timeRange && (
+                                <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '14px' }}>
+                                  <strong>监测区间：</strong>{report.timeRange}
+                                </div>
+                              )}
+                              {/* 模拟进度动画 */}
+                              <div style={{ height: '6px', background: '#e2e8f0', borderRadius: '3px', overflow: 'hidden', position: 'relative' }}>
+                                <div 
+                                  className="progress-bar-glow"
+                                  style={{ 
+                                    height: '100%', 
+                                    width: '60%', 
+                                    background: 'linear-gradient(90deg, #3366FF, #60a5fa)', 
+                                    borderRadius: '3px',
+                                    animation: 'pulse-glow 1.5s infinite ease-in-out'
+                                  }} 
+                                />
+                              </div>
+                              <style>{`
+                                @keyframes pulse-glow {
+                                  0% { width: 10%; opacity: 0.6; }
+                                  50% { width: 75%; opacity: 1; }
+                                  100% { width: 100%; opacity: 0.8; }
+                                }
+                              `}</style>
+                            </div>
+                          ) : (
+                            /* 已生成卡片，支持折叠展开 */
+                            <div 
+                              className="report-card-body" 
+                              style={{ 
+                                position: 'relative',
+                                maxHeight: isExpanded ? 'none' : '120px',
+                                overflow: 'hidden',
+                                transition: 'max-height 0.3s ease-in-out'
+                              }}
+                            >
+                              {renderMarkdown(report.content)}
+                              
+                              {/* 折叠下的渐变白色遮罩层 */}
+                              {!isExpanded && (
+                                <div 
+                                  className="fold-mask-overlay" 
+                                  style={{
+                                    position: 'absolute',
+                                    bottom: 0,
+                                    left: 0,
+                                    right: 0,
+                                    height: '60px',
+                                    background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.95) 75%, rgba(255, 255, 255, 1) 100%)',
+                                    display: 'flex',
+                                    justifyContent: 'center',
+                                    alignItems: 'flex-end',
+                                    paddingBottom: '2px',
+                                    cursor: 'pointer'
+                                  }}
+                                  onClick={() => {
+                                    setExpandedReportIds(prev => [...prev, report.id]);
+                                    setCollapsedReportIds(prev => prev.filter(id => id !== report.id));
+                                  }}
+                                >
+                                  <span style={{ fontSize: '12px', color: '#3366FF', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    展开完整报告 <DownOutlined style={{ fontSize: '10px' }} />
+                                  </span>
+                                </div>
+                              )}
+
+                              {/* 展开下的折叠收起控制行 */}
+                              {isExpanded && (
+                                <div 
+                                  style={{ 
+                                    display: 'flex', 
+                                    justifyContent: 'center', 
+                                    marginTop: '16px', 
+                                    borderTop: '1px dashed #e2e8f0', 
+                                    paddingTop: '8px', 
+                                    cursor: 'pointer' 
+                                  }}
+                                  onClick={() => {
+                                    setExpandedReportIds(prev => prev.filter(id => id !== report.id));
+                                    if (isLatest) {
+                                      setCollapsedReportIds(prev => [...prev, report.id]);
+                                    }
+                                  }}
+                                >
+                                  <span style={{ fontSize: '12px', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    收起报告内容 <UpOutlined style={{ fontSize: '10px' }} />
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
-
-            {/* AI 加载状态全局遮罩（背景内容仍然保留显示，通过透明背景与模糊遮罩层覆盖） */}
-            {generating && (
-              <div
-                className="global-report-loading-overlay"
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  background: 'rgba(255, 255, 255, 0.75)',
-                  backdropFilter: 'blur(2px)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  zIndex: 100,
-                  borderRadius: '8px'
-                }}
-              >
-                <div
-                  className="loading-box"
-                  style={{
-                    background: '#ffffff',
-                    border: '1px solid var(--border-color)',
-                    padding: '30px 40px',
-                    borderRadius: '8px',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                    textAlign: 'center',
-                    maxWidth: '450px'
-                  }}
-                >
-                  <SyncOutlined spin style={{ fontSize: '32px', color: 'var(--primary-color)', marginBottom: '16px' }} />
-                  <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>内容归纳与智能分析中</h3>
-                  <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.6 }}>
-                    AI 正在快速检索并归纳该事件全网舆情数据（新闻、今日头条、微博、微信等），正在自动生成阶段性报告，请稍候...
-                  </p>
-                </div>
-              </div>
-            )}
           </div>
         )}
       </div>
@@ -1874,6 +2071,55 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* 新增优化：AI 舆情报告生成配置弹窗 */}
+      <Modal
+        title={
+          <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)' }}>
+            🤖 AI 舆情报告生成配置
+          </div>
+        }
+        open={configModalOpen}
+        onCancel={() => setConfigModalOpen(false)}
+        okText="开始生成"
+        cancelText="取消"
+        onOk={handleStartGenerateReport}
+        centered
+        width={500}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '18px', marginTop: '16px', marginBottom: '8px' }}>
+          <div>
+            <div style={{ fontWeight: 600, fontSize: '13px', color: '#475569', marginBottom: '8px' }}>
+              请选择参考报告模板
+            </div>
+            <Select
+              style={{ width: '100%' }}
+              value={selectedTemplate}
+              onChange={(value) => setSelectedTemplate(value)}
+              options={[
+                { value: 'summary', label: '关于“xxxxx专题”网上舆情综述（综述模板）' },
+                { value: 'emergency', label: '突发舆情事件快速研判报告模板' },
+                { value: 'special', label: '专项工作阶段性舆情分析报告模板' },
+              ]}
+            />
+          </div>
+          <div>
+            <div style={{ fontWeight: 600, fontSize: '13px', color: '#475569', marginBottom: '8px' }}>
+              请选择作为输入的时间范围
+            </div>
+            <DatePicker.RangePicker
+              showTime
+              style={{ width: '100%' }}
+              value={selectedTimeRange}
+              onChange={(values) => setSelectedTimeRange(values as any)}
+              format="YYYY-MM-DD HH:mm:ss"
+            />
+            <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '6px' }}>
+              💡 默认已自动同步外层任务已选中的舆情监测时间范围。
+            </div>
+          </div>
+        </div>
       </Modal>
 
       {renderDetailDrawer()}
