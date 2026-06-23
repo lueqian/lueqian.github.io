@@ -626,21 +626,39 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
     setGenerating(true);
     setTimeout(() => {
       setGenerating(false);
-      // 初始化新生成的报告模板数据
-      const newVersion = `V${reports.length + 1}`;
-      const newTitle = `阶段性报告 ${newVersion} - 0604中农到市信访局`;
-      const todayDate = new Date().toISOString().replace('T', ' ').substring(0, 16);
       
-      const newContent = `# 0604 中农到市信访局网上情况
-(截至 ${todayDate}:00)
+      const currentActiveTask = sideTasks.find(t => t.id === activeSideTask) || currentTask;
+      const taskName = currentActiveTask.name;
+      const newVersion = `V${reports.length + 1}`;
+      const newTitle = `阶段性报告 ${newVersion} - ${taskName}专题`;
+      
+      const now = new Date();
+      const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
+      const currentDay = String(now.getDate()).padStart(2, '0');
+      const currentHour = String(now.getHours()).padStart(2, '0');
+      const formattedTime = `${currentMonth}月${currentDay}日 ${currentHour}时`;
+      const todayDate = now.toISOString().replace('T', ' ').substring(0, 16);
 
-# 全网舆情态势
-本时段，"0604 中农到市信访局"事件网上相关信息累计监测到 112 篇，较昨日新增 42 篇，累计评论 12 条。其中，新发现舆情信息 98 条，已协同处置 14 条。平台分布依旧呈现碎片化特征，网易、今日头条、微博的讨论热度有所上升。目前舆情引导工作生效明显，整体舆论态势趋于平稳，未见二次爆发性反弹。
+      const newContent = `# 关于“${taskName}专题”网上舆情综述（综述模板）
+(截至 ${formattedTime})
 
-# 重点媒体及资讯平台动态
-本时段，各家自媒体及自营端账号开始深度剖析涉事各方诉求，主要动态如下：
-1. [${todayDate}], [微博] 网民“政法观察哨”《王五，男，41 岁，上海人）发布博文指出“应客观理性看待信访矛盾，注重从法理与关怀双重角度化解难题”，博文阅读量已突破 5 万，社会各界反馈偏向理性。
-2. [${todayDate}], [今日头条] 网民“法理天下”《赵六，女，35 岁，湖北人）发文呼吁“强化属地责任，将问题消解在最初阶段”，该帖文获得 156 次点赞，未见大规模跟风炒作。`;
+目前，互联网公开面“${taskName}”相关信息8.6万余条，2个话题进入抖音等平台热搜热榜，网民评论1.2万余条，舆情热度呈上升趋势。
+
+截至 ${formattedTime}，互联网公开面涉我市清明节假期相关信息8.6万余条（24小时新增8.6万余条，原发 1.8万余条、转发 4.2万余条、评论 2.6万余条）。人民网、重庆日报、华龙网等20余家媒体报道我市平安文明祭祖、文旅消费升级、交通出行向好等情况。
+
+## 媒体报道情况
+1. [重庆日报] 报道，重庆平稳迎来清明祭扫高峰，全市当日19.65万人次现场祭扫，11.74万人选择鲜花、云祭扫等绿色祭扫方式；祭扫全程秩序平稳，未发生火情、安全事故，文明低碳祭扫成主流。
+2. [重庆晨报] 报道，清明春假重庆文旅市场持续火热，清明连休期间全市推出200余项文旅特色活动、119处春季踏青打卡点位；亲子游、家庭近郊游、赏花研学出游热度居高不下。
+3. [华龙网] 报道，清明假期重庆铁路出行数据出炉，4.4-4.6假期重庆火车站累计发送旅客97.2万人次，同比增长28.2%；4月4日单日发送38.2万人次创历史新高，客流主要流向成都、贵阳、昆明、武汉、西安等周边重点城市。
+
+## 热搜话题情况
+1. [微博] 话题“清明期间重庆高速最忙收费站TOP3”位于微博同城榜第11位。
+2. [微博] 话题“重庆火车站单日旅客发送量破纪录”位于微博同城榜第29位。
+
+## 网民观点
+1. [网民观点] 一是热议本地豁达简约、轻松生活化的祭扫民俗，认可心意重于形式的追思理念，鲜花祭扫、云祭扫等文明低碳祭祀方式获广泛支持。
+2. [网民观点] 二是全市文旅市场热度高涨，近郊踏青、两江夜游等出游场景备受青睐，城市消费活力获网友点赞。
+3. [网民观点] 三是集中吐槽景区客流拥挤、交通拥堵、游玩排队耗时等假期常态化民生问题。`;
 
       setCurrentEditingReport({
         id: `report-${reports.length + 1}`,
