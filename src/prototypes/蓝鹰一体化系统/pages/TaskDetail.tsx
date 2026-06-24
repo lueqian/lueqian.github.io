@@ -46,6 +46,12 @@ import {
   FileWordOutlined,
   TableOutlined,
   LoadingOutlined,
+  SettingOutlined,
+  UserOutlined,
+  AreaChartOutlined,
+  LineChartOutlined,
+  DeleteOutlined,
+  PlusOutlined,
 } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import dayjs from 'dayjs';
@@ -300,6 +306,76 @@ const eventList: EventItem[] = [
   },
 ];
 
+export interface ReportTemplate {
+  id: string;
+  name: string;
+  description?: string;
+  modules: string[]; // List of module keys included in this template
+  isCustom?: boolean;
+}
+
+export interface ReportModule {
+  key: string;
+  name: string;
+  description: string;
+  icon: string;
+}
+
+export const REPORT_MODULES: ReportModule[] = [
+  {
+    key: 'data_summary',
+    name: '全网舆情数据汇总与概要',
+    description: '自动统计当前监测区间内全网的声量峰值、增量、转发及情绪比例，生成整体舆论态势的文字概要。',
+    icon: 'FileTextOutlined'
+  },
+  {
+    key: 'official_media',
+    name: '官方媒体发言汇总',
+    description: '汇聚人民网、新华网、央视新闻等中央级及地方主流官媒的观点动向、权威发声与关注焦点。',
+    icon: 'MessageOutlined'
+  },
+  {
+    key: 'big_v_opinion',
+    name: '境内外大V发言汇总',
+    description: '提取新浪微博、微信公众号等平台上粉丝量超百万的头部自媒体（大V）的解读要点与舆情引导倾向。',
+    icon: 'UserOutlined'
+  },
+  {
+    key: 'hot_searches',
+    name: '热搜话题匹配情况',
+    description: '自动检索当前事件在微博、抖音、今日头条、百度等主流平台的热搜榜单、最高排名及在榜时间。',
+    icon: 'LineChartOutlined'
+  },
+  {
+    key: 'netizen_sentiment',
+    name: '普通网民正负面看法汇总',
+    description: '通过智能语义分析，梳理网民跟帖和评论的态度倾向，提炼支持、中性及负面担忧的核心观点。',
+    icon: 'LikeOutlined'
+  },
+  {
+    key: 'trend_chart',
+    name: '发酵趋势数据折线图',
+    description: '绘制事件在各大社交/新闻阵地的声量起伏、发酵与消退趋势，直观掌握传播周期与声量峰值。',
+    icon: 'AreaChartOutlined'
+  },
+  {
+    key: 'platform_pie',
+    name: '各平台声量占比饼图',
+    description: '呈现该舆情事件在微博、微信、抖音、头条及新闻媒体等各大阵地平台的声量比例占比。',
+    icon: 'PieChartOutlined'
+  }
+];
+
+export const initialTemplates: ReportTemplate[] = [
+  {
+    id: 'comprehensive',
+    name: '全量舆情综合分析模板',
+    description: '覆盖所有分析维度，包含全网汇总、媒体、大V、热搜、网民看法及发酵趋势图与声量饼图，适合深度研判。',
+    modules: ['data_summary', 'official_media', 'big_v_opinion', 'hot_searches', 'netizen_sentiment', 'trend_chart', 'platform_pie'],
+    isCustom: true
+  }
+];
+
 export interface OpinionReport {
   id: string;
   version: string;
@@ -406,6 +482,7 @@ interface TaskDetailProps {
 
 const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
   const [activeSideTask, setActiveSideTask] = useState(taskId || '1');
+  const currentActiveTask = sideTasks.find(t => t.id === activeSideTask) || currentTask;
   const [searchValue, setSearchValue] = useState('');
   const [activeTab, setActiveTab] = useState('all');
   const [workView, setWorkView] = useState<'pending' | 'issued'>('pending');
@@ -432,11 +509,18 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
   const [expandedReportIds, setExpandedReportIds] = useState<string[]>([]);
   const [collapsedReportIds, setCollapsedReportIds] = useState<string[]>([]);
   const [configModalOpen, setConfigModalOpen] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState<string>('summary');
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('comprehensive');
   const [selectedTimeRange, setSelectedTimeRange] = useState<[dayjs.Dayjs, dayjs.Dayjs] | null>([
     dayjs('2026-06-21 15:09:30'),
     dayjs('2026-06-22 15:09:30')
   ]);
+
+  // 新增优化：自定义模板列表与状态
+  const [templates, setTemplates] = useState<ReportTemplate[]>(initialTemplates);
+  const [templateManagerOpen, setTemplateManagerOpen] = useState(false);
+  const [selectedTplId, setSelectedTplId] = useState<string>('comprehensive');
+  const [currentEditingTemplate, setCurrentEditingTemplate] = useState<ReportTemplate | null>({ ...initialTemplates[0] });
+  const [isCreatingNewTpl, setIsCreatingNewTpl] = useState(false);
 
   // ECharts refs
   const trendChartRef = useRef<HTMLDivElement>(null);
@@ -473,6 +557,102 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
     if (!md) return null;
     return md.split('\n').map((line, idx) => {
       const trimmed = line.trim();
+      
+      // 新增：拦截走势图组件占位符
+      if (trimmed === '[CHART:TREND]') {
+        return (
+          <div key={idx} className="report-trend-chart-card" style={{ background: 'var(--card-bg)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-color)', margin: '14px 0', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+            <div style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <AreaChartOutlined style={{ color: '#3366FF', fontSize: '15px' }} /> 舆情声量时间发酵走势图 (监测周期内实时数据)
+            </div>
+            <div style={{ display: 'flex', height: '140px', alignItems: 'flex-end', gap: '2%', paddingBottom: '20px', borderBottom: '1px solid var(--border-color)', position: 'relative' }}>
+              <svg viewBox="0 0 500 120" style={{ width: '100%', height: '100%', overflow: 'visible' }}>
+                <defs>
+                  <linearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#3366FF" stopOpacity="0.35"/>
+                    <stop offset="100%" stopColor="#3366FF" stopOpacity="0.01"/>
+                  </linearGradient>
+                </defs>
+                {/* 辅助水平网格线 */}
+                <line x1="0" y1="30" x2="500" y2="30" stroke="var(--border-color)" strokeWidth="0.8" strokeDasharray="3 3" />
+                <line x1="0" y1="60" x2="500" y2="60" stroke="var(--border-color)" strokeWidth="0.8" strokeDasharray="3 3" />
+                <line x1="0" y1="90" x2="500" y2="90" stroke="var(--border-color)" strokeWidth="0.8" strokeDasharray="3 3" />
+                
+                {/* 阴影渐变区域 */}
+                <path d="M0,90 Q40,95 80,75 T160,82 T240,45 T320,15 T400,68 T480,85 L500,90 L500,120 L0,120 Z" fill="url(#trendGrad)" opacity="0.9" />
+                
+                {/* 走势曲线 */}
+                <path d="M0,90 Q40,95 80,75 T160,82 T240,45 T320,15 T400,68 T480,85 L500,90" fill="none" stroke="#3366FF" strokeWidth="2.5" />
+                
+                {/* 峰值标注圆点 */}
+                <circle cx="320" cy="15" r="5" fill="#3366FF" stroke="#ffffff" strokeWidth="2.5" style={{ filter: 'drop-shadow(0px 2px 4px rgba(51,102,255,0.4))' }} />
+                <text x="320" y="-3" textAnchor="middle" fontSize="10.5" fill="#3366FF" fontWeight="bold">峰值: 1.5w条 (舆情爆发期)</text>
+              </svg>
+              {/* 时间刻度轴 */}
+              <div style={{ position: 'absolute', bottom: '2px', left: '0', right: '0', display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'var(--text-secondary)', opacity: 0.8 }}>
+                <span>开始 (15:00)</span>
+                <span>4小时</span>
+                <span>8小时</span>
+                <span>12小时</span>
+                <span>16小时</span>
+                <span>20小时</span>
+                <span>截止 (15:00)</span>
+              </div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginTop: '12px', fontSize: '11px', color: 'var(--text-secondary)' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ width: '8px', height: '8px', background: '#3366FF', borderRadius: '50%', display: 'inline-block' }} /> 全网敏感声量走势
+              </span>
+            </div>
+          </div>
+        );
+      }
+
+      // 新增：拦截饼图组件占位符
+      if (trimmed === '[CHART:PIE]') {
+        return (
+          <div key={idx} className="report-pie-chart-card" style={{ background: 'var(--card-bg)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-color)', margin: '14px 0', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+            <div style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <PieChartOutlined style={{ color: '#3366FF', fontSize: '15px' }} /> 舆情首发/热议阵地平台声量占比饼图
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around', gap: '20px', height: '130px' }}>
+              {/* SVG 环形饼图 */}
+              <svg viewBox="0 0 100 100" style={{ width: '105px', height: '105px', transform: 'rotate(-90deg)', filter: 'drop-shadow(0px 3px 6px rgba(0,0,0,0.05))' }}>
+                {/* 微博 45%: stroke-dasharray="45 100", stroke-dashoffset="0" */}
+                <circle cx="50" cy="50" r="38" fill="none" stroke="#3366FF" strokeWidth="16" strokeDasharray="45 100" strokeDashoffset="0" />
+                {/* 今日头条 25%: stroke-dasharray="25 100", stroke-dashoffset="-45" */}
+                <circle cx="50" cy="50" r="38" fill="none" stroke="#faad14" strokeWidth="16" strokeDasharray="25 100" strokeDashoffset="-45" />
+                {/* 抖音短视频 15%: stroke-dasharray="15 100", stroke-dashoffset="-70" */}
+                <circle cx="50" cy="50" r="38" fill="none" stroke="#13c2c2" strokeWidth="16" strokeDasharray="15 100" strokeDashoffset="-70" />
+                {/* 其他及新闻 15%: stroke-dasharray="15 100", stroke-dashoffset="-85" */}
+                <circle cx="50" cy="50" r="38" fill="none" stroke="#ff4d4f" strokeWidth="16" strokeDasharray="15 100" strokeDashoffset="-85" />
+                
+                {/* 中心孔洞遮罩实现 Donut Chart */}
+                <circle cx="50" cy="50" r="28" fill="var(--card-bg)" />
+              </svg>
+              {/* 右侧指标说明图例 */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px', fontSize: '11px', color: 'var(--text-secondary)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ width: '8px', height: '8px', background: '#3366FF', borderRadius: '2px', display: 'inline-block' }} />
+                  <strong>微博: 45%</strong>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ width: '8px', height: '8px', background: '#faad14', borderRadius: '2px', display: 'inline-block' }} />
+                  <strong>今日头条: 25%</strong>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ width: '8px', height: '8px', background: '#13c2c2', borderRadius: '2px', display: 'inline-block' }} />
+                  <strong>抖音: 15%</strong>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ width: '8px', height: '8px', background: '#ff4d4f', borderRadius: '2px', display: 'inline-block' }} />
+                  <strong>其他/微信: 15%</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
       
       // H1 Header
       if (trimmed.startsWith('# ')) {
@@ -516,7 +696,7 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
           </h3>
         );
       }
-
+ 
       // H3 Header
       if (trimmed.startsWith('### ')) {
         return (
@@ -535,7 +715,7 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
           </h4>
         );
       }
-
+ 
       // 截至时间等斜体/置灰副标题：(截至 xxx)
       if (trimmed.startsWith('(') && trimmed.endsWith(')')) {
         return (
@@ -556,7 +736,7 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
           </div>
         );
       }
-
+ 
       // 数字列表项，形如 "1. [2026-06-09 10:23], [网易]..."
       const numListMatch = trimmed.match(/^(\d+)\.\s+(.*)$/);
       if (numListMatch) {
@@ -619,11 +799,11 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
           </div>
         );
       }
-
+ 
       if (trimmed === '') {
         return <div key={idx} style={{ height: '8px' }} />;
       }
-
+ 
       return (
         <p
           key={idx}
@@ -642,7 +822,7 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
   };
 
   // 报告内容生成器，根据任务、模板及时间段组合高保真 Markdown 文本
-  const generateReportContent = (taskName: string, template: string, startTime: string, endTime: string): string => {
+  const generateReportContent = (taskName: string, templateId: string, startTime: string, endTime: string): string => {
     // 提取截至时间，例如 2026-06-22 15:09:30 格式化为 06月22日 15时
     const formatTimePart = (timeStr: string) => {
       if (!timeStr) return '';
@@ -653,74 +833,173 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
     };
     
     const endFormatted = formatTimePart(endTime);
+ 
+    // 查找对应模板的模块配置
+    const activeTemplate = templates.find(t => t.id === templateId) || templates[0];
+    const modules = activeTemplate.modules;
+ 
+    let contentParts = [];
+    contentParts.push(`# 关于“${taskName}专题”网上舆情报告\n(截至 ${endFormatted})`);
+ 
+    modules.forEach((modKey) => {
+      if (modKey === 'data_summary') {
+        contentParts.push(`## 全网舆情数据汇总与概要
+监测时间范围自 ${startTime} 至 ${endTime}。全网涉“${taskName}”相关公开舆情信息累计达 8.6万余条（24小时内新增 8.6万条，其中原发 1.8万条、转发 4.2万条、评论 2.6万条）。目前整体舆论情绪呈现高度波动的特征，需要持续进行追踪研判。`);
+      } else if (modKey === 'official_media') {
+        contentParts.push(`## 官方媒体发言汇总
+监测期内，主流媒体针对该专题进行积极报道与正向引导：
+1. [人民网] 发表社论指出，应当健全突发信访与社会民生诉求的接诉即办机制，及时开展属地舆情研判与源头化解，确保社会稳定。
+2. [新华网] 深入报道专项工作的执行细节，肯定了多部门协同推进的工作机制，相关贴文阅读量超百万。
+3. [重庆日报] 报道指出相关职能单位已成立专项对接小组深入现场开展政策宣介与答疑，确保秩序平稳。`);
+      } else if (modKey === 'big_v_opinion') {
+        contentParts.push(`## 境内外大V发言汇总
+分析网络中粉丝量超百万的头部自媒体及大V账号发现，舆论主要观点如下：
+1. 微博大V“@政务视点”（粉丝380w）发文表示，基层协调机制在日常工作中需加强风险隐患的排查，政策执行衔接应提升透明度。
+2. 微信公众号“江淮微澜”发文《从热点舆情看基层矛盾化解的机制创新》，深度探讨了常态化改进方案。
+3. 境外部分账号转发了现场图片，主要聚焦于当事人诉求，部分言论存在引伸抹黑的意图，但整体传播范围受限。`);
+      } else if (modKey === 'hot_searches') {
+        contentParts.push(`## 热搜话题匹配情况
+在各大主流媒体热榜上，监测到与本次事件相关的词条匹配如下：
+1. [微博同城榜] 话题“#${taskName}专题工作进展#”登上榜单第 3 位，引发 5.2 万次跟帖讨论。
+2. [抖音热榜] 话题“${taskName}现场答复”登上热榜第 8 位，视频点击量突破 1200 万次。
+3. [今日头条] 话题“${taskName}各方会谈”位居热榜第 14 位。`);
+      } else if (modKey === 'netizen_sentiment') {
+        contentParts.push(`## 普通网民正负面看法汇总
+通过智能语义分析，普通网民的情绪分布如下：
+1. [正面认可 (占 35.5%)] 肯定职能部门愿意下沉一线倾听民意，对通过合理合法途径解决诉求表示支持。
+2. [中性关注 (占 50.2%)] 占大部分，主要以跟帖转发和询问后续处理结果为主，暂无明显情绪倾向。
+3. [负面担忧 (占 14.3%)] 集中在质疑事件起因是否存在人为慢作为，并对后续赔偿或处理落实进度存疑。`);
+      } else if (modKey === 'trend_chart') {
+        contentParts.push(`## 发酵趋势数据折线图
+[CHART:TREND]
+舆情趋势折线图展示了监测期内事件的发酵和起伏过程，整体声量峰值出现在事件发生后的第 3-5 小时内，随着官媒联合澄清，热度在后期趋于平稳下行。`);
+      } else if (modKey === 'platform_pie') {
+        contentParts.push(`## 各平台声量占比饼图
+[CHART:PIE]
+如阵地占比饼图所示，微博作为社交主战场声量占比最高 (45%)，今日头条作为资讯分发核心占比达 25%，抖音等短视频平台占比 15%，微信和论坛等深度平台占比 15%。`);
+      }
+    });
+ 
+    return contentParts.join('\n\n');
+  };
 
-    if (template === 'emergency') {
-      // 突发舆情事件快速研判报告模板
-      return `# 关于“${taskName}”突发舆情事件快速研判报告
-(截至 ${endFormatted})
+  // 模板管理选中的切换逻辑
+  const handleSelectTemplateInManager = (tplId: string) => {
+    setSelectedTplId(tplId);
+    const tpl = templates.find(t => t.id === tplId);
+    if (tpl) {
+      setCurrentEditingTemplate({ ...tpl });
+      setIsCreatingNewTpl(false);
+    }
+  };
 
-## 舆情事件概述
-本时段内，监测到关于“${taskName}”突发事件相关敏感信息在全网广泛传播。监测时间范围自 ${startTime} 至 ${endTime}。全网涉敏感声量累计达 3,450 条，舆情峰值出现在事件发生后 2 小时内，目前整体舆论情绪呈现高度波动的特征。
+  // 模板管理新建模板
+  const handleCreateNewTemplate = () => {
+    const newId = `tpl-${Date.now()}`;
+    const newTpl: ReportTemplate = {
+      id: newId,
+      name: '',
+      description: '用户自定义模板',
+      modules: ['data_summary'],
+      isCustom: true
+    };
+    setSelectedTplId(newId);
+    setCurrentEditingTemplate(newTpl);
+    setIsCreatingNewTpl(true);
+  };
 
-## 主要传播阵地与信源
-1. [今日头条] 网民“快讯博主”发帖曝光现场突发画面，单帖阅读量迅速超过 25 万，成为本轮舆情爆发的核心导火索。
-2. [微博] 话题“#${taskName}突发关注#”登榜同城热搜榜第 3 位，网民跟帖讨论活跃，转发占比高达 68.4%。
-3. [微信] 多个本地资讯类微信公众号推送了相关分析文章，侧重于讨论涉事主体的响应时效。
+  // 模板管理取消/重置
+  const handleCancelTemplateInManager = () => {
+    if (isCreatingNewTpl) {
+      setIsCreatingNewTpl(false);
+      if (templates.length > 0) {
+        setSelectedTplId(templates[0].id);
+        setCurrentEditingTemplate({ ...templates[0] });
+      } else {
+        setSelectedTplId('');
+        setCurrentEditingTemplate(null);
+      }
+    } else {
+      const original = templates.find(t => t.id === selectedTplId);
+      if (original) {
+        setCurrentEditingTemplate({ ...original });
+      }
+    }
+  };
 
-## 研判与应对策略
-1. [快速研判] 事件目前处于发酵中期，网民关注点主要聚焦在官方回应及事实真相上，伴有少量非理性猜测，有进一步扩散风险。
-2. [处置策略] 一是建议属地网信部门迅速对接职能单位，1小时内发布首发事实性说明；二是加强微博、抖音等热搜话题的动态巡查与正向引导；三是联合主流媒体发布辟谣及权威科普信息，阻断谣言二次传播。`;
+  // 模板管理保存模板
+  const handleSaveTemplateInManager = () => {
+    if (!currentEditingTemplate) return;
+    if (!currentEditingTemplate.name.trim()) {
+      message.error('请输入模板名称！');
+      return;
+    }
+    if (currentEditingTemplate.modules.length === 0) {
+      message.error('请至少选择一个报告模块！');
+      return;
     }
 
-    if (template === 'special') {
-      // 专项工作阶段性舆情分析报告模板
-      return `# “${taskName}”专项工作阶段性舆情分析报告
-(截至 ${endFormatted})
+    setTemplates(prev => {
+      const exists = prev.some(t => t.id === currentEditingTemplate.id);
+      if (exists) {
+        return prev.map(t => t.id === currentEditingTemplate.id ? currentEditingTemplate : t);
+      } else {
+        return [...prev, currentEditingTemplate];
+      }
+    });
 
-## 专项舆情分析背景
-本次监测针对“${taskName}”专项推进工作开展舆情阶段性评估。评估周期为 ${startTime} 至 ${endTime}。在此时段内，全网累计监测到相关舆情信息 1.2万条，其中新闻报道占比 45%，自媒体讨论占比 35%，网民跟帖评论占比 20%，整体网络情绪偏向正面与中性。
+    setIsCreatingNewTpl(false);
+    message.success('模板保存成功！');
+    setSelectedTplId(currentEditingTemplate.id);
+  };
 
-## 工作亮点报道及反馈
-1. [人民网] 报道专项工作在民生保障、服务优化等方面的切实成效，获得网民的积极点赞与广泛认可。
-2. [新华网] 深入报道专项工作的执行细节，肯定了多部门协同推进的工作机制，阅读量破百万。
-3. [重庆日报] 发布社论指出，该项工作对于提升城市综合治理水平具有重要示范意义。
-
-## 后续舆情工作建议
-1. [趋势研判] 随着专项工作深入，社会公众对执行实效和透明度提出更高期望，后续应注意防范因个别执行细节偏差被局部放大而引发的次生舆情。
-2. [引导工作] 建议继续保持与权威官媒的联动报道节奏，以真实数据和典型案例做支撑；同时畅通网上民意诉求通道，将潜在隐患消解在源头。`;
+  // 模板管理删除模板
+  const handleDeleteTemplate = (tplId: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    const filtered = templates.filter(t => t.id !== tplId);
+    setTemplates(filtered);
+    message.success('模板删除成功！');
+    
+    if (selectedTplId === tplId) {
+      if (filtered.length > 0) {
+        setSelectedTplId(filtered[0].id);
+        setCurrentEditingTemplate({ ...filtered[0] });
+      } else {
+        setSelectedTplId('');
+        setCurrentEditingTemplate(null);
+      }
     }
+  };
 
-    // 默认模板：关于“xxxxx专题”网上舆情综述（综述模板）
-    return `# 关于“${taskName}专题”网上舆情综述（综述模板）
-(截至 ${endFormatted})
-
-目前，互联网公开面“${taskName}”相关信息8.6万余条，2个话题进入抖音等平台热搜热榜，网民评论1.2万余条，舆情热度呈上升趋势。
-
-截至 ${endFormatted}，互联网公开面涉我市清明节假期相关信息8.6万余条（24小时新增8.6万余条，原发 1.8万余条、转发 4.2万余条、评论 2.6万余条）。监测区间为 ${startTime} 到 ${endTime}。人民网、重庆日报、华龙网等20余家媒体报道我市平安文明祭祖、文旅消费升级、交通出行向好等情况。
-
-## 媒体报道情况
-1. [重庆日报] 报道，重庆平稳迎来清明祭扫高峰，全市当日19.65万人次现场祭扫，11.74万人选择鲜花、云祭扫等绿色祭扫方式；祭扫全程秩序平稳，未发生火情、安全事故，文明低碳祭扫成主流。
-2. [重庆晨报] 报道，清明春假重庆文旅市场持续火热，清明连休期间全市推出200余项文旅特色活动、119处春季踏青打卡点位；亲子游、家庭近郊游、赏花研学出游热度居高不下。
-3. [华龙网] 报道，清明假期重庆铁路出行数据出炉，4.4-4.6假期重庆火车站累计发送旅客97.2万人次，同比增长28.2%；4月4日单日发送38.2万人次创历史新高，客流主要流向成都、贵阳、昆明、武汉、西安等周边重点城市。
-
-## 热搜话题情况
-1. [微博] 话题“清明期间重庆高速最忙收费站TOP3”位于微博同城榜第11位。
-2. [微博] 话题“重庆火车站单日旅客发送量破纪录”位于微博同城榜第29位。
-
-## 网民观点
-1. [网民观点] 一是热议本地豁达简约、轻松生活化的祭扫民俗，认可心意重于形式的追思理念，鲜花祭扫、云祭扫等文明低碳祭祀方式获广泛支持。
-2. [网民观点] 二是全市文旅市场热度高涨，近郊踏青、两江夜游等出游场景备受青睐，城市消费活力获网友点赞。
-3. [网民观点] 三是集中吐槽景区客流拥挤、交通拥堵、游玩排队耗时等假期常态化民生问题。`;
+  // 获取模块对应的图标 React 组件
+  const getModuleIcon = (iconName: string) => {
+    switch (iconName) {
+      case 'FileTextOutlined': return <FileTextOutlined />;
+      case 'MessageOutlined': return <MessageOutlined />;
+      case 'UserOutlined': return <UserOutlined />;
+      case 'LineChartOutlined': return <LineChartOutlined />;
+      case 'LikeOutlined': return <LikeOutlined />;
+      case 'AreaChartOutlined': return <AreaChartOutlined />;
+      case 'PieChartOutlined': return <PieChartOutlined />;
+      default: return <FileTextOutlined />;
+    }
   };
 
   // 生成最新报告事件触发（打开配置弹窗）
   const handleTriggerGenerateReport = () => {
-    setSelectedTemplate('summary');
-    setSelectedTimeRange([
-      dayjs('2026-06-21 15:09:30'),
-      dayjs('2026-06-22 15:09:30')
-    ]);
-    setConfigModalOpen(true);
+    if (templates.length > 0) {
+      setSelectedTemplate(templates[0].id);
+      setSelectedTimeRange([
+        dayjs('2026-06-21 15:09:30'),
+        dayjs('2026-06-22 15:09:30')
+      ]);
+      setConfigModalOpen(true);
+    } else {
+      message.warning('请先在“模板管理”中创建至少一个模板！');
+      setSelectedTplId('');
+      setCurrentEditingTemplate(null);
+      setTemplateManagerOpen(true);
+    }
   };
 
   // 开始异步生成报告工作流（非阻塞后台大模型生成）
@@ -1738,15 +2017,30 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
               <div className="control-left-title" style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>
                 舆情阶段性报告时间线
               </div>
-              <Button
-                type="primary"
-                icon={<BellOutlined />}
-                onClick={handleTriggerGenerateReport}
-                loading={generating}
-                style={{ background: '#3366FF', borderColor: '#3366FF' }}
-              >
-                {generating ? 'AI 正在提取数据并分析生成中...' : '生成最新舆情报告'}
-              </Button>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <Button
+                  icon={<SettingOutlined />}
+                  onClick={() => {
+                    const firstTpl = templates[0];
+                    setSelectedTplId(firstTpl ? firstTpl.id : 'comprehensive');
+                    setCurrentEditingTemplate(firstTpl ? { ...firstTpl } : null);
+                    setIsCreatingNewTpl(false);
+                    setTemplateManagerOpen(true);
+                  }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  模板管理
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<BellOutlined />}
+                  onClick={handleTriggerGenerateReport}
+                  loading={generating}
+                  style={{ background: '#3366FF', borderColor: '#3366FF' }}
+                >
+                  {generating ? 'AI 正在提取数据并分析生成中...' : '生成最新舆情报告'}
+                </Button>
+              </div>
             </div>
 
             {/* 报告时间线（支持后台异步生成与折叠展开） */}
@@ -1825,11 +2119,10 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
                               {report.template && (
                                 <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '6px' }}>
                                   <strong>参考模板：</strong>
-                                  {report.template === 'emergency' 
-                                    ? '突发舆情事件快速研判报告模板' 
-                                    : report.template === 'special' 
-                                      ? '专项工作阶段性舆情分析报告模板' 
-                                      : '关于“xxxxx专题”网上舆情综述（综述模板）'}
+                                  {(() => {
+                                    const t = templates.find(temp => temp.id === report.template);
+                                    return t ? t.name.replace('xxxxx', currentActiveTask.name) : report.template;
+                                  })()}
                                 </div>
                               )}
                               {report.timeRange && (
@@ -2097,12 +2390,40 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
               style={{ width: '100%' }}
               value={selectedTemplate}
               onChange={(value) => setSelectedTemplate(value)}
-              options={[
-                { value: 'summary', label: '关于“xxxxx专题”网上舆情综述（综述模板）' },
-                { value: 'emergency', label: '突发舆情事件快速研判报告模板' },
-                { value: 'special', label: '专项工作阶段性舆情分析报告模板' },
-              ]}
+              options={templates.map(t => ({
+                value: t.id,
+                label: t.name.includes('xxxxx') ? t.name.replace('xxxxx', currentActiveTask.name) : t.name
+              }))}
             />
+            {(() => {
+              const selectedTpl = templates.find(t => t.id === selectedTemplate);
+              if (!selectedTpl) return null;
+              
+              const moduleNames = selectedTpl.modules.map(modKey => {
+                const mod = REPORT_MODULES.find(m => m.key === modKey);
+                return mod ? mod.name : modKey;
+              });
+
+              return (
+                <div style={{ marginTop: '8px', padding: '10px', background: '#f8fafc', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
+                  <div style={{ fontSize: '12px', fontWeight: 600, color: '#475569', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <FileTextOutlined style={{ color: '#3366FF' }} /> 该模板包含以下报告模块 ({selectedTpl.modules.length} 个)：
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    {moduleNames.map((name, i) => (
+                      <Tag key={i} color="blue" style={{ fontSize: '11px', margin: 0 }}>
+                        {name}
+                      </Tag>
+                    ))}
+                  </div>
+                  {selectedTpl.description && (
+                    <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '6px', fontStyle: 'italic' }}>
+                      💡 说明：{selectedTpl.description}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
           <div>
             <div style={{ fontWeight: 600, fontSize: '13px', color: '#475569', marginBottom: '8px' }}>
@@ -2121,7 +2442,231 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
           </div>
         </div>
       </Modal>
+ 
+      {/* 新增：模板管理弹窗 */}
+      <Modal
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '16px', fontWeight: 600 }}>
+            <SettingOutlined style={{ color: '#3366FF' }} /> 舆情综述报告模板管理
+          </div>
+        }
+        open={templateManagerOpen}
+        onCancel={() => {
+          setTemplateManagerOpen(false);
+          setCurrentEditingTemplate(null);
+        }}
+        width={950}
+        centered
+        footer={null}
+        bodyStyle={{ padding: '0px' }}
+      >
+        <div style={{ display: 'flex', height: '580px', borderTop: '1px solid var(--border-color)' }}>
+          {/* 左侧模板列表 */}
+          <div style={{ width: '280px', borderRight: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', background: '#fafafa' }}>
+            <div style={{ padding: '12px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>模板列表</span>
+              <Button 
+                size="small" 
+                type="primary" 
+                icon={<PlusOutlined />} 
+                onClick={handleCreateNewTemplate}
+                style={{ fontSize: '11px', background: '#3366FF', borderColor: '#3366FF' }}
+              >
+                新建模板
+              </Button>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {templates.map(tpl => {
+                  const isActive = selectedTplId === tpl.id && !isCreatingNewTpl;
+                  
+                  return (
+                    <div
+                      key={tpl.id}
+                      onClick={() => handleSelectTemplateInManager(tpl.id)}
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        background: isActive ? '#e6f7ff' : '#ffffff',
+                        border: isActive ? '1px solid #1890ff' : '1px solid #e8e8e8',
+                        position: 'relative',
+                        transition: 'all 0.2s',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '4px'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                        <span style={{ fontWeight: 600, fontSize: '13px', color: isActive ? '#1890ff' : 'var(--text-primary)', wordBreak: 'break-all', flex: 1 }}>
+                          {tpl.name ? tpl.name.replace('xxxxx', currentActiveTask.name) : '(未命名模板)'}
+                        </span>
+                        <Button
+                          type="text"
+                          danger
+                          size="small"
+                          icon={<DeleteOutlined />}
+                          onClick={(e) => handleDeleteTemplate(tpl.id, e)}
+                          style={{ padding: '0 4px', height: 'auto', color: '#ff4d4f' }}
+                        />
+                      </div>
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                        <span style={{ fontSize: '11px', color: '#94a3b8' }}>
+                          {tpl.modules.length} 个模块
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+ 
+          {/* 右侧编辑/查看面板 */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#ffffff', padding: '16px 20px', overflow: 'hidden' }}>
+            {(() => {
+              if (!currentEditingTemplate) {
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#94a3b8' }}>
+                    <FileTextOutlined style={{ fontSize: '48px', marginBottom: '12px', color: '#cbd5e1' }} />
+                    <span>{templates.length === 0 ? '暂无可用模板，请点击左侧“新建模板”开始配置' : '请选择左侧模板或点击“新建模板”进行配置'}</span>
+                  </div>
+                );
+              }
+ 
+              const tplData = currentEditingTemplate;
+ 
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', flex: 1, minHeight: 0 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
+                      {isCreatingNewTpl ? '新建模板' : '编辑模板'}
+                    </h3>
+                  </div>
+ 
+                  {/* 模板名称 */}
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 600, fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                      模板名称 <span style={{ color: 'red' }}>*</span>
+                    </label>
+                    <Input
+                      value={tplData.name}
+                      onChange={(e) => {
+                        if (currentEditingTemplate) {
+                          setCurrentEditingTemplate({ ...currentEditingTemplate, name: e.target.value });
+                        }
+                      }}
+                      placeholder="例如：安保工作专报模板"
+                      style={{ fontSize: '13px' }}
+                    />
+                  </div>
+ 
+                  {/* 模块选择 */}
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                    <label style={{ display: 'block', fontWeight: 600, fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                      选择包含的分析模块 <span style={{ color: 'red' }}>*</span> 
+                      <span style={{ fontWeight: 'normal', color: '#94a3b8', fontSize: '11px', marginLeft: '6px' }}>
+                        (已选择 {tplData.modules.length} / {REPORT_MODULES.length} 个模块)
+                      </span>
+                    </label>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: 1, overflowY: 'auto', paddingRight: '4px' }}>
+                      {REPORT_MODULES.map(mod => {
+                        const isChecked = tplData.modules.includes(mod.key);
+                        
+                        const handleToggleModule = () => {
+                          if (!currentEditingTemplate) return;
+                          const nextModules = isChecked
+                            ? tplData.modules.filter(k => k !== mod.key)
+                            : [...tplData.modules, mod.key];
+                          setCurrentEditingTemplate({ ...currentEditingTemplate, modules: nextModules });
+                        };
+ 
+                        return (
+                          <div
+                            key={mod.key}
+                            onClick={handleToggleModule}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              padding: '10px 14px',
+                              borderRadius: '6px',
+                              border: isChecked ? '1.5px solid #3366FF' : '1px solid var(--border-color)',
+                              background: isChecked ? 'rgba(51, 102, 255, 0.02)' : 'var(--card-bg)',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s',
+                              userSelect: 'none'
+                            }}
+                          >
+                            <div style={{ 
+                              width: '32px', 
+                              height: '32px', 
+                              borderRadius: '50%', 
+                              background: isChecked ? '#3366FF' : '#cbd5e1', 
+                              color: '#ffffff', 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              justifyContent: 'center',
+                              marginRight: '12px',
+                              transition: 'background 0.2s'
+                            }}>
+                              {getModuleIcon(mod.icon)}
+                            </div>
+                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                              <span style={{ fontWeight: 600, fontSize: '13px', color: isChecked ? '#3366FF' : 'var(--text-primary)' }}>
+                                {mod.name}
+                              </span>
+                              <span style={{ fontSize: '11px', color: '#94a3b8', lineHeight: '1.4' }}>
+                                {mod.description}
+                              </span>
+                            </div>
+                            <div>
+                              <Checkbox
+                                checked={isChecked}
+                                onChange={handleToggleModule}
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
 
+                  {/* 模板说明 */}
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 600, fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                      模板说明
+                    </label>
+                    <Input.TextArea
+                      value={tplData.description || ''}
+                      onChange={(e) => {
+                        if (currentEditingTemplate) {
+                          setCurrentEditingTemplate({ ...currentEditingTemplate, description: e.target.value });
+                        }
+                      }}
+                      placeholder="请输入关于该模板的简要说明，以便于在生成报告选择模板时展示"
+                      rows={2}
+                      style={{ fontSize: '13px', resize: 'none' }}
+                    />
+                  </div>
+ 
+                  {/* 保存/取消操作栏 */}
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', borderTop: '1px solid var(--border-color)', paddingTop: '12px', marginTop: 'auto' }}>
+                    <Button onClick={handleCancelTemplateInManager}>
+                      取消
+                    </Button>
+                    <Button type="primary" onClick={handleSaveTemplateInManager} style={{ background: '#3366FF', borderColor: '#3366FF' }}>
+                      保存
+                    </Button>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      </Modal>
+ 
       {renderDetailDrawer()}
     </div>
   );
