@@ -8,6 +8,7 @@ import {
   ToolOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
+  SecurityScanOutlined,
 } from '@ant-design/icons';
 
 export interface NavigationProps {
@@ -24,6 +25,7 @@ interface MenuItem {
 }
 
 const menuItems: MenuItem[] = [
+  { key: 'police-opinion-joint', label: '警舆同处', icon: <SecurityScanOutlined /> },
   { key: 'source-control', label: '源头防控', icon: <SafetyOutlined /> },
   { key: 'monitor-warning', label: '监测预警', icon: <RadarChartOutlined /> },
   { key: 'emergency-response', label: '应急处置', icon: <FileTextOutlined /> },

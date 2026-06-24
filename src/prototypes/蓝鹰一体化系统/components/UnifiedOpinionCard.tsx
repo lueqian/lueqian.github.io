@@ -20,14 +20,14 @@ export interface UnifiedOpinionCardProps {
   platform: string;
   platformIcon?: React.ReactNode;
   time: string;
-  content?: string;
-  summary: string;
-  analysis: string;
-  dataSource: string;
-  tags: string[];
-  rating: number;
+  content?: string | React.ReactNode;
+  summary?: string;
+  analysis?: string;
+  dataSource?: string;
+  tags?: string[];
+  rating?: number;
   ratingText?: string;
-  sentimentIndex: number | string;
+  sentimentIndex?: number | string;
   hot?: boolean;
   warningLabel?: React.ReactNode;
   sensitivityLabel?: React.ReactNode;
@@ -40,6 +40,8 @@ export interface UnifiedOpinionCardProps {
   footerBadges?: React.ReactNode;
   className?: string;
   compact?: boolean;
+  hideIndex?: boolean;
+  mediaPreview?: React.ReactNode;
 }
 
 const renderStars = (rating: number) => (
@@ -64,13 +66,13 @@ const UnifiedOpinionCard: React.FC<UnifiedOpinionCardProps> = ({
   platformIcon,
   time,
   content,
-  summary,
-  analysis,
-  dataSource,
-  tags,
-  rating,
+  summary = '',
+  analysis = '',
+  dataSource = '',
+  tags = [],
+  rating = 0,
   ratingText,
-  sentimentIndex,
+  sentimentIndex = 0,
   hot,
   warningLabel,
   sensitivityLabel,
@@ -83,6 +85,8 @@ const UnifiedOpinionCard: React.FC<UnifiedOpinionCardProps> = ({
   footerBadges,
   className,
   compact,
+  hideIndex = false,
+  mediaPreview,
 }) => {
   const classes = [
     'unified-opinion-card',
@@ -107,11 +111,13 @@ const UnifiedOpinionCard: React.FC<UnifiedOpinionCardProps> = ({
             {warningLabel && <Tag className="unified-opinion-warning-tag">{warningLabel}</Tag>}
             {sensitivityLabel && <Tag className="unified-opinion-sensitive-tag">{sensitivityLabel}</Tag>}
           </div>
-          <div className="unified-opinion-rating">
-            {renderStars(rating)}
-            <strong>{ratingText || `${rating}星`}</strong>
-            {moreSlot}
-          </div>
+          {rating > 0 && (
+            <div className="unified-opinion-rating">
+              {renderStars(rating)}
+              <strong>{ratingText || `${rating}星`}</strong>
+              {moreSlot}
+            </div>
+          )}
         </div>
 
         <div className="unified-opinion-meta">
@@ -136,43 +142,67 @@ const UnifiedOpinionCard: React.FC<UnifiedOpinionCardProps> = ({
 
         {content && <p className="unified-opinion-content">{content}</p>}
 
-        <div className="unified-opinion-analysis-grid">
-          <div className="unified-opinion-ai-stack">
-            <div className="unified-opinion-ai-row summary">
-              <span className="unified-opinion-ai-pill">AI</span>
-              <span className="unified-opinion-ai-label">摘要</span>
-              <p>{summary}</p>
-            </div>
+        {(summary || analysis || hasVideo || mediaPreview) && (
+          <div className="unified-opinion-analysis-grid">
+            {(summary || analysis) ? (
+              <div className="unified-opinion-ai-stack">
+                {summary && (
+                  <div className="unified-opinion-ai-row summary">
+                    <span className="unified-opinion-ai-pill">AI</span>
+                    <span className="unified-opinion-ai-label">摘要</span>
+                    <p>{summary}</p>
+                  </div>
+                )}
 
-            <div className="unified-opinion-ai-row analysis">
-              <span className="unified-opinion-ai-pill">AI</span>
-              <span className="unified-opinion-ai-label">研判</span>
-              <p>{analysis}</p>
-            </div>
-          </div>
-
-          <aside className="unified-opinion-index">
-            {hasVideo && (
-              <div className="unified-opinion-video-preview">
-                <PlayCircleOutlined />
+                {analysis && (
+                  <div className="unified-opinion-ai-row analysis">
+                    <span className="unified-opinion-ai-pill">AI</span>
+                    <span className="unified-opinion-ai-label">研判</span>
+                    <p>{analysis}</p>
+                  </div>
+                )}
               </div>
+            ) : (
+              <div /> /* Empty placeholder to balance grid */
             )}
-            <strong>{sentimentIndex}</strong>
-            <span>舆情指数</span>
-            <i style={{ width: `${Math.min(Number(sentimentIndex) || 0, 100)}%` }} />
-          </aside>
-        </div>
+
+            {(!hideIndex || mediaPreview) && (
+              <aside className="unified-opinion-index">
+                {mediaPreview ? (
+                  mediaPreview
+                ) : (
+                  hasVideo && (
+                    <div className="unified-opinion-video-preview">
+                      <PlayCircleOutlined />
+                    </div>
+                  )
+                )}
+                {!hideIndex && (
+                  <>
+                    <strong>{sentimentIndex}</strong>
+                    <span>舆情指数</span>
+                    <i style={{ width: `${Math.min(Number(sentimentIndex) || 0, 100)}%` }} />
+                  </>
+                )}
+              </aside>
+            )}
+          </div>
+        )}
 
         {processSlot && <div className="unified-opinion-process">{processSlot}</div>}
 
         <div className="unified-opinion-footer">
           <div className="unified-opinion-tags">
-            <span>数据来源：</span>
-            <Tag className="unified-opinion-source-tag">{dataSource}</Tag>
+            {dataSource && (
+              <>
+                <span>数据来源：</span>
+                <Tag className="unified-opinion-source-tag">{dataSource}</Tag>
+              </>
+            )}
             {tags.map((tag) => (
               <Tag key={tag} className="unified-opinion-info-tag">{tag}</Tag>
             ))}
-            {hasVideo === false && <Tag className="unified-opinion-video-tag">未上传视频</Tag>}
+            {hasVideo === false && !mediaPreview && <Tag className="unified-opinion-video-tag">未上传视频</Tag>}
           </div>
           <div className="unified-opinion-actions">
             {footerBadges}

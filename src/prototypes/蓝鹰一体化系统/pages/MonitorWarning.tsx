@@ -9,6 +9,8 @@ import {
   Modal,
   message,
   Dropdown,
+  Checkbox,
+  Badge,
 } from 'antd';
 import {
   SearchOutlined,
@@ -233,6 +235,14 @@ const MonitorWarning: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(10);
+  const [selectedOpinionIds, setSelectedOpinionIds] = useState<string[]>([]);
+
+  // 推送弹窗状态
+  const [isPushModalOpen, setIsPushModalOpen] = useState(false);
+  const [pushTargetType, setPushTargetType] = useState<'joint' | 'source'>('joint');
+  const [pushTargetId, setPushTargetId] = useState<string>('');
+  const [pushOpinionIds, setPushOpinionIds] = useState<string[]>([]);
+  const [pushNotes, setPushNotes] = useState('');
 
   // 常用条件状态
   const [savedConditions, setSavedConditions] = useState<SavedCondition[]>([
@@ -417,7 +427,84 @@ const MonitorWarning: React.FC = () => {
       code: '',
     });
     setSelectedCondition('');
+    setSelectedOpinionIds([]);
     setTimeout(() => executeFilter(), 0);
+  };
+
+  // 全选/取消全选
+  const handleSelectAll = (e: any) => {
+    const checked = e.target.checked;
+    if (checked) {
+      setSelectedOpinionIds(filteredOpinions.map(item => item.id));
+    } else {
+      setSelectedOpinionIds([]);
+    }
+  };
+
+  // 批量处置
+  const handleBatchProcess = () => {
+    if (selectedOpinionIds.length === 0) return;
+    message.success(`批量处置成功，共处置了 ${selectedOpinionIds.length} 条舆情信息`);
+    setSelectedOpinionIds([]);
+  };
+
+  // 批量导出
+  const handleBatchExport = () => {
+    if (selectedOpinionIds.length === 0) return;
+    message.success(`已成功批量导出 ${selectedOpinionIds.length} 条舆情数据`);
+    setSelectedOpinionIds([]);
+  };
+
+  // 推送目标选项列表
+  const jointEvents = [
+    { id: 'ev-1', name: '苏HP9516车辆拉"冤"字横幅' },
+    { id: 'ev-2', name: '网民举报群众赌博' },
+    { id: 'ev-3', name: '网民反映空中房屋遭遇强拆' },
+    { id: 'ev-4', name: '媒体报道淮安一面馆有顾客使用公共...' }
+  ];
+
+  const sourceTasks = [
+    { id: 'sc-1', name: '0510 淮安汛情' },
+    { id: 'sc-2', name: '0118 高张花园' },
+    { id: 'sc-3', name: '5月23日 淮安苏超' }
+  ];
+
+  // 打开单条帖文推送弹窗
+  const handleOpenPushModal = (id: string) => {
+    setPushOpinionIds([id]);
+    setPushTargetType('joint');
+    setPushTargetId('');
+    setPushNotes('');
+    setIsPushModalOpen(true);
+  };
+
+  // 打开批量推送弹窗
+  const handleOpenBatchPushModal = () => {
+    if (selectedOpinionIds.length === 0) return;
+    setPushOpinionIds([...selectedOpinionIds]);
+    setPushTargetType('joint');
+    setPushTargetId('');
+    setPushNotes('');
+    setIsPushModalOpen(true);
+  };
+
+  // 提交推送
+  const handleConfirmPush = () => {
+    if (!pushTargetId) {
+      message.warning('请选择具体的推送目标');
+      return;
+    }
+
+    const typeLabel = pushTargetType === 'joint' ? '警舆同处' : '源头防控';
+    const targetObj = pushTargetType === 'joint'
+      ? jointEvents.find(e => e.id === pushTargetId)
+      : sourceTasks.find(t => t.id === pushTargetId);
+    
+    const targetName = targetObj ? targetObj.name : '指定事件/任务';
+
+    message.success(`已成功推送 ${pushOpinionIds.length} 条帖文至${typeLabel}「${targetName}」中`);
+    setIsPushModalOpen(false);
+    setSelectedOpinionIds([]);
   };
 
   // AI Drawer 状态
@@ -498,72 +585,92 @@ const MonitorWarning: React.FC = () => {
   );
 
   // 渲染舆情卡片
-  const renderOpinionCard = (item: OpinionItem) => (
-    <UnifiedOpinionCard
-      key={item.id}
-      id={item.id}
-      seq={item.seq}
-      title={item.title}
-      author={item.author}
-      postId={item.postId}
-      heat={item.heat}
-      platform={item.platform}
-      platformIcon={<span className="platform-icon">♪</span>}
-      time={item.time}
-      summary={item.aiSummary}
-      analysis={item.aiAnalysis}
-      dataSource={item.dataSource}
-      tags={item.tags}
-      rating={item.rating}
-      sentimentIndex={item.sentimentIndex}
-      hot={item.isHot}
-      actions={
-        <>
-          <Button size="small" className="status-btn">{item.status}</Button>
-          <Button size="small" type="link" className="detail-btn">信息详情</Button>
-          <Button
-            size="small"
-            className="ai-assistant-btn"
-            icon={<RobotOutlined />}
-            onClick={() => handleOpenAIAssistant(item)}
-          >
-            AI 智能助手
-          </Button>
-        </>
-      }
-    />
-  );
+  const renderOpinionCard = (item: OpinionItem) => {
+    const isSelected = selectedOpinionIds.includes(item.id);
+    return (
+      <UnifiedOpinionCard
+        key={item.id}
+        id={item.id}
+        seq={item.seq}
+        title={item.title}
+        author={item.author}
+        postId={item.postId}
+        heat={item.heat}
+        platform={item.platform}
+        platformIcon={<span className="platform-icon">♪</span>}
+        time={item.time}
+        summary={item.aiSummary}
+        analysis={item.aiAnalysis}
+        dataSource={item.dataSource}
+        tags={item.tags}
+        rating={item.rating}
+        sentimentIndex={item.sentimentIndex}
+        hot={item.isHot}
+        selected={isSelected}
+        selectionSlot={
+          <Checkbox
+            checked={isSelected}
+            onChange={(e) => {
+              const checked = e.target.checked;
+              if (checked) {
+                setSelectedOpinionIds(prev => [...prev, item.id]);
+              } else {
+                setSelectedOpinionIds(prev => prev.filter(id => id !== item.id));
+              }
+            }}
+            style={{ marginRight: 8 }}
+          />
+        }
+        actions={
+          <>
+            <Button size="small" className="status-btn">{item.status}</Button>
+            <Button size="small" type="link" className="push-btn" onClick={() => handleOpenPushModal(item.id)}>推送</Button>
+            <Button size="small" type="link" className="detail-btn">信息详情</Button>
+            <Button
+              size="small"
+              className="ai-assistant-btn"
+              icon={<RobotOutlined />}
+              onClick={() => handleOpenAIAssistant(item)}
+            >
+              AI 智能助手
+            </Button>
+          </>
+        }
+      />
+    );
+  };
 
   return (
     <div className="monitor-warning-page">
       {/* 筛选区域 */}
       <div className="filter-section">
-        {/* 常用条件操作区 */}
-        <div className="saved-condition-bar">
-          <span className="saved-condition-label">常用条件：</span>
-          <Dropdown
-            dropdownRender={() => conditionDropdownContent}
-            trigger={['click']}
-            placement="bottomLeft"
-          >
-            <Button className="condition-select-btn">
-              {selectedCondition
-                ? savedConditions.find(c => c.id === selectedCondition)?.name
-                : '请选择常用条件'}
-              <DownOutlined />
-            </Button>
-          </Dropdown>
+        <div className="filter-container">
+          {/* 常用条件 */}
+          <div className="filter-item">
+            <span className="filter-label">常用条件</span>
+            <Dropdown
+              dropdownRender={() => conditionDropdownContent}
+              trigger={['click']}
+              placement="bottomLeft"
+            >
+              <Button className="condition-select-btn">
+                {selectedCondition
+                  ? savedConditions.find(c => c.id === selectedCondition)?.name
+                  : '请选择'}
+                <DownOutlined />
+              </Button>
+            </Dropdown>
+          </div>
           <Button
             icon={<SaveOutlined />}
             className="save-condition-btn"
             onClick={() => setIsSaveModalOpen(true)}
+            style={{ marginRight: 8 }}
           >
-            保存为常用条件
+            保存条件
           </Button>
-        </div>
 
-        {/* 第1行 */}
-        <div className="filter-row">
+          {/* 内容搜索 */}
           <div className="filter-item">
             <span className="filter-label">内容搜索</span>
             <Input
@@ -574,6 +681,8 @@ const MonitorWarning: React.FC = () => {
               onChange={e => setFilters({ ...filters, contentSearch: e.target.value })}
             />
           </div>
+
+          {/* 发布时间 */}
           <div className="filter-item">
             <span className="filter-label">发布时间</span>
             <RangePicker
@@ -584,6 +693,8 @@ const MonitorWarning: React.FC = () => {
               className="date-picker"
             />
           </div>
+
+          {/* 排序方式 */}
           <div className="filter-item">
             <span className="filter-label">排序方式</span>
             <Select
@@ -597,10 +708,8 @@ const MonitorWarning: React.FC = () => {
               ]}
             />
           </div>
-        </div>
 
-        {/* 第2行 */}
-        <div className="filter-row">
+          {/* 信息状态 */}
           <div className="filter-item">
             <span className="filter-label">信息状态</span>
             <Select
@@ -614,6 +723,8 @@ const MonitorWarning: React.FC = () => {
               ]}
             />
           </div>
+
+          {/* 舆情等级 */}
           <div className="filter-item">
             <span className="filter-label">舆情等级</span>
             <Select
@@ -631,6 +742,8 @@ const MonitorWarning: React.FC = () => {
               ]}
             />
           </div>
+
+          {/* 舆情类型 */}
           <div className="filter-item">
             <span className="filter-label">舆情类型</span>
             <Select
@@ -646,6 +759,8 @@ const MonitorWarning: React.FC = () => {
               ]}
             />
           </div>
+
+          {/* 专项任务 */}
           <div className="filter-item">
             <span className="filter-label">专项任务</span>
             <Select
@@ -661,6 +776,8 @@ const MonitorWarning: React.FC = () => {
               ]}
             />
           </div>
+
+          {/* 信源 */}
           <div className="filter-item">
             <span className="filter-label">信源</span>
             <Select
@@ -684,10 +801,8 @@ const MonitorWarning: React.FC = () => {
               ]}
             />
           </div>
-        </div>
 
-        {/* 第3行 */}
-        <div className="filter-row">
+          {/* 责任属地 */}
           <div className="filter-item">
             <span className="filter-label">责任属地</span>
             <Select
@@ -706,6 +821,8 @@ const MonitorWarning: React.FC = () => {
               ]}
             />
           </div>
+
+          {/* 编号 */}
           <div className="filter-item">
             <span className="filter-label">编号</span>
             <Input
@@ -715,6 +832,8 @@ const MonitorWarning: React.FC = () => {
               onChange={e => setFilters({ ...filters, code: e.target.value })}
             />
           </div>
+
+          {/* 操作按钮 */}
           <div className="filter-actions">
             <div className="view-switch">
               <Button
@@ -764,9 +883,48 @@ const MonitorWarning: React.FC = () => {
         {filteredOpinions.map(renderOpinionCard)}
       </div>
 
+      {/* 底部悬浮批量操作栏 */}
+      {selectedOpinionIds.length > 0 && (
+        <div className="batch-action-bar sticky-bottom">
+          <div className="batch-left">
+            <Checkbox
+              checked={filteredOpinions.length > 0 && selectedOpinionIds.length === filteredOpinions.length}
+              indeterminate={selectedOpinionIds.length > 0 && selectedOpinionIds.length < filteredOpinions.length}
+              onChange={handleSelectAll}
+              style={{ color: '#fff', marginRight: 8 }}
+            >
+              <span style={{ color: '#fff' }}>全选</span>
+            </Checkbox>
+            <Badge count={selectedOpinionIds.length} />
+            <span>已选择 {selectedOpinionIds.length} 条数据</span>
+            <Button type="link" onClick={() => setSelectedOpinionIds([])}>取消全选</Button>
+          </div>
+          <div className="batch-right">
+            <Button
+              type="primary"
+              onClick={handleBatchProcess}
+            >
+              批量处置
+            </Button>
+            <Button
+              onClick={handleOpenBatchPushModal}
+              style={{ background: '#7c3aed', color: '#fff', borderColor: '#7c3aed' }}
+            >
+              批量推送
+            </Button>
+            <Button
+              onClick={handleBatchExport}
+              style={{ background: 'transparent', color: '#fff', borderColor: 'rgba(255, 255, 255, 0.4)' }}
+            >
+              批量导出
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* 底部分页 */}
       <div className="pagination-section">
-        <Button className="export-btn">导出数据</Button>
+        <Button className="export-btn" onClick={() => message.success('导出数据中...')}>导出数据</Button>
         <div className="pagination-info">
           <span className="total-text">共 {filteredOpinions.length} 条</span>
           <Pagination
@@ -800,6 +958,62 @@ const MonitorWarning: React.FC = () => {
             onChange={e => setNewConditionName(e.target.value)}
             onPressEnter={handleSaveCondition}
           />
+        </div>
+      </Modal>
+
+      {/* 舆情推送弹窗 */}
+      <Modal
+        title={pushOpinionIds.length > 1 ? "批量推送舆情帖文" : "推送舆情帖文"}
+        open={isPushModalOpen}
+        onOk={handleConfirmPush}
+        onCancel={() => setIsPushModalOpen(false)}
+        okText="确定推送"
+        cancelText="取消"
+        width={480}
+      >
+        <div style={{ padding: '12px 0' }}>
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ marginBottom: 8, fontWeight: 500, color: 'var(--text-primary)' }}>推送至功能模块：</div>
+            <Select
+              value={pushTargetType}
+              onChange={(val) => {
+                setPushTargetType(val);
+                setPushTargetId('');
+              }}
+              style={{ width: '100%' }}
+              options={[
+                { label: '警舆同处事件', value: 'joint' },
+                { label: '源头防控任务', value: 'source' },
+              ]}
+            />
+          </div>
+
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ marginBottom: 8, fontWeight: 500, color: 'var(--text-primary)' }}>
+              选择具体{pushTargetType === 'joint' ? '事件' : '任务'}：
+            </div>
+            <Select
+              placeholder={pushTargetType === 'joint' ? '请选择警舆同处事件' : '请选择源头防控任务'}
+              value={pushTargetId || undefined}
+              onChange={setPushTargetId}
+              style={{ width: '100%' }}
+              options={
+                pushTargetType === 'joint'
+                  ? jointEvents.map(e => ({ label: e.name, value: e.id }))
+                  : sourceTasks.map(t => ({ label: t.name, value: t.id }))
+              }
+            />
+          </div>
+
+          <div>
+            <div style={{ marginBottom: 8, fontWeight: 500, color: 'var(--text-primary)' }}>推送备注说明：</div>
+            <Input.TextArea
+              placeholder="请输入推送的说明或相关处置建议..."
+              value={pushNotes}
+              onChange={e => setPushNotes(e.target.value)}
+              rows={4}
+            />
+          </div>
         </div>
       </Modal>
 

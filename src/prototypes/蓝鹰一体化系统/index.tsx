@@ -8,9 +8,17 @@ import EmergencyResponse from './pages/EmergencyResponse';
 import ReviewSummary from './pages/ReviewSummary';
 import PersonnelLibrary from './pages/PersonnelLibrary';
 import Toolbox from './pages/Toolbox';
+import PoliceOpinionJoint from './pages/PoliceOpinionJoint';
 import './style.css';
 
-export type PageKey = 'source-control' | 'monitor-warning' | 'emergency-response' | 'review-summary' | 'personnel-library' | 'toolbox';
+export type PageKey =
+  | 'police-opinion-joint'
+  | 'source-control'
+  | 'monitor-warning'
+  | 'emergency-response'
+  | 'review-summary'
+  | 'personnel-library'
+  | 'toolbox';
 
 export interface AxureProps {
   onEvent?: (eventName: string, data?: string) => void;
@@ -28,7 +36,7 @@ const BlueEagleIntegratedSystem = forwardRef<AxureHandle, AxureProps>(function B
   { onEvent },
   ref
 ) {
-  const [activePage, setActivePage] = useState<PageKey>('source-control');
+  const [activePage, setActivePage] = useState<PageKey>('police-opinion-joint');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const handleMenuSelect = useCallback((key: string) => {
@@ -40,6 +48,8 @@ const BlueEagleIntegratedSystem = forwardRef<AxureHandle, AxureProps>(function B
 
   const renderPage = () => {
     switch (activePage) {
+      case 'police-opinion-joint':
+        return <PoliceOpinionJoint />;
       case 'source-control':
         return <SourceControl />;
       case 'monitor-warning':
@@ -53,7 +63,7 @@ const BlueEagleIntegratedSystem = forwardRef<AxureHandle, AxureProps>(function B
       case 'toolbox':
         return <Toolbox />;
       default:
-        return <SourceControl />;
+        return <PoliceOpinionJoint />;
     }
   };
 
