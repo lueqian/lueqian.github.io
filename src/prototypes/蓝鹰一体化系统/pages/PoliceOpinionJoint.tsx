@@ -569,7 +569,7 @@ const PoliceOpinionJoint: React.FC = () => {
           <div className="view-card filter-card">
             <div className="filter-grid">
               <div className="filter-item">
-                <span className="filter-label">责任属地</span>
+                <span className="filter-label">责任属地：</span>
                 <Select
                   value={responsibilityArea}
                   onChange={setResponsibilityArea}
@@ -585,7 +585,7 @@ const PoliceOpinionJoint: React.FC = () => {
                 />
               </div>
               <div className="filter-item">
-                <span className="filter-label">时间范围</span>
+                <span className="filter-label">时间范围：</span>
                 <RangePicker 
                   style={{ width: '100%' }} 
                   placeholder={['开始日期', '结束日期']}
@@ -593,7 +593,7 @@ const PoliceOpinionJoint: React.FC = () => {
                 />
               </div>
               <div className="filter-item">
-                <span className="filter-label">舆情类型</span>
+                <span className="filter-label">舆情类型：</span>
                 <Select
                   value={opinionType}
                   onChange={setOpinionType}
@@ -609,7 +609,7 @@ const PoliceOpinionJoint: React.FC = () => {
                 />
               </div>
               <div className="filter-item">
-                <span className="filter-label">风险等级</span>
+                <span className="filter-label">风险等级：</span>
                 <Select
                   value={riskLevel}
                   onChange={setRiskLevel}

@@ -13,6 +13,8 @@ import {
   Modal,
   Select,
   DatePicker,
+  Form,
+  Popconfirm,
 } from 'antd';
 import {
   LeftOutlined,
@@ -107,6 +109,8 @@ interface SideTask {
   status: string;
   eventCount: number;
   isActive: boolean;
+  isEffective: boolean; // 新增：是否布控生效中
+  createTime: string;   // 新增：任务创建时间
 }
 
 interface IssuedInstruction {
@@ -139,11 +143,11 @@ const currentTask: TaskInfo = {
 
 // 侧边任务列表
 const sideTasks: SideTask[] = [
-  { id: '1', code: '0510', name: '淮安汛情', status: 'normal', eventCount: 156, isActive: true },
-  { id: '2', code: '0118', name: '高张花园', status: 'normal', eventCount: 89, isActive: false },
-  { id: '3', code: '0322', name: '交通事故', status: 'urgent', eventCount: 234, isActive: false },
-  { id: '4', code: '0405', name: '校园安全', status: 'normal', eventCount: 45, isActive: false },
-  { id: '5', code: '0512', name: '食品安全', status: 'normal', eventCount: 78, isActive: false },
+  { id: '1', code: '0510', name: '淮安汛情', status: 'normal', eventCount: 156, isActive: true, isEffective: true, createTime: '2026-05-10 09:30:00' },
+  { id: '2', code: '0118', name: '高张花园', status: 'normal', eventCount: 89, isActive: false, isEffective: false, createTime: '2026-01-18 10:00:00' },
+  { id: '3', code: '0322', name: '交通事故', status: 'urgent', eventCount: 234, isActive: false, isEffective: true, createTime: '2026-03-22 14:20:00' },
+  { id: '4', code: '0405', name: '校园安全', status: 'normal', eventCount: 45, isActive: false, isEffective: false, createTime: '2026-04-05 16:45:00' },
+  { id: '5', code: '0512', name: '食品安全', status: 'normal', eventCount: 78, isActive: false, isEffective: true, createTime: '2026-05-12 11:15:00' },
 ];
 
 const issuedInstructions: IssuedInstruction[] = [
@@ -481,9 +485,56 @@ interface TaskDetailProps {
 }
 
 const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
+  const [sideTaskList, setSideTaskList] = useState<SideTask[]>(sideTasks);
   const [activeSideTask, setActiveSideTask] = useState(taskId || '1');
-  const currentActiveTask = sideTasks.find(t => t.id === activeSideTask) || currentTask;
+  const currentActiveTask = sideTaskList.find(t => t.id === activeSideTask) || currentTask;
   const [searchValue, setSearchValue] = useState('');
+
+  // 任务编辑状态
+  const [editingTask, setEditingTask] = useState<SideTask | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editForm] = Form.useForm();
+
+  // 根据当前编辑任务自动填表
+  useEffect(() => {
+    if (editingTask) {
+      editForm.setFieldsValue({
+        name: editingTask.name,
+        status: editingTask.status,
+        isEffective: editingTask.isEffective,
+      });
+    }
+  }, [editingTask, editForm]);
+
+  // 处理删除任务
+  const handleDeleteTask = (targetTaskId: string) => {
+    const newList = sideTaskList.filter(t => t.id !== targetTaskId);
+    setSideTaskList(newList);
+    message.success('任务删除成功');
+    if (activeSideTask === targetTaskId) {
+      if (newList.length > 0) {
+        setActiveSideTask(newList[0].id);
+      } else {
+        setActiveSideTask('');
+      }
+    }
+  };
+
+  // 处理编辑保存
+  const handleSaveTask = (values: { name: string; status: string; isEffective: boolean }) => {
+    if (editingTask) {
+      setSideTaskList(prev =>
+        prev.map(t =>
+          t.id === editingTask.id
+            ? { ...t, name: values.name, status: values.status, isEffective: values.isEffective }
+            : t
+        )
+      );
+      message.success('任务修改成功');
+    }
+    setIsEditModalOpen(false);
+    setEditingTask(null);
+  };
   const [activeTab, setActiveTab] = useState('all');
   const [workView, setWorkView] = useState<'pending' | 'issued'>('pending');
   const [selectedEventIds, setSelectedEventIds] = useState<string[]>([]);
@@ -1007,7 +1058,7 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
     setConfigModalOpen(false);
     setGenerating(true);
     
-    const currentActiveTask = sideTasks.find(t => t.id === activeSideTask) || currentTask;
+    const currentActiveTask = sideTaskList.find(t => t.id === activeSideTask) || currentTask;
     const taskName = currentActiveTask.name;
     const newVersion = `V${reports.length + 1}`;
     const newTitle = `阶段性报告 ${newVersion} - ${taskName}专题`;
@@ -2232,7 +2283,7 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
       <div className="task-sidebar">
         <div className="sidebar-header">
           <h3 className="sidebar-title">任务列表</h3>
-          <Badge count={sideTasks.length} className="task-count-badge" />
+          <Badge count={sideTaskList.length} className="task-count-badge" />
         </div>
         <div className="sidebar-search">
           <Input
@@ -2244,23 +2295,44 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
           />
         </div>
         <div className="task-list">
-          {sideTasks.map((task) => (
-            <div
-              key={task.id}
-              className={`side-task-item ${task.isActive ? 'active' : ''}`}
-              onClick={() => setActiveSideTask(task.id)}
-            >
-              <div className="side-task-header">
-                <span className="side-task-code">{task.code}</span>
-                <span className="side-task-name">{task.name}</span>
-              </div>
-              <div className="side-task-meta">
-                <Tag className={`status-tag-small ${task.status}`}>
-                  {task.status === 'normal' ? '常态' : '紧急'}
-                </Tag>
-                <span className="event-count">
-                  <FileTextOutlined /> {task.eventCount}条
-                </span>
+          {sideTaskList
+            .filter(task => task.name.includes(searchValue) || task.code.includes(searchValue))
+            .sort((a, b) => {
+              if (a.isEffective !== b.isEffective) {
+                return a.isEffective ? -1 : 1;
+              }
+              return new Date(b.createTime).getTime() - new Date(a.createTime).getTime();
+            })
+            .map((task) => (
+              <div
+                key={task.id}
+                className={`side-task-text-item ${task.id === activeSideTask ? 'active' : ''} ${!task.isEffective ? 'expired' : ''}`}
+                onClick={() => setActiveSideTask(task.id)}
+              >
+              <span className="side-task-text-name" title={task.name}>
+                {task.name}
+              </span>
+              <div className="side-task-actions">
+                <EditOutlined
+                  className="action-icon edit-icon"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditingTask(task);
+                    setIsEditModalOpen(true);
+                  }}
+                />
+                <Popconfirm
+                  title="确定要删除该任务吗？"
+                  okText="确定"
+                  cancelText="取消"
+                  onConfirm={() => handleDeleteTask(task.id)}
+                  onCancel={(e) => e?.stopPropagation()}
+                >
+                  <DeleteOutlined
+                    className="action-icon delete-icon"
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </Popconfirm>
               </div>
             </div>
           ))}
@@ -2668,6 +2740,61 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
       </Modal>
  
       {renderDetailDrawer()}
+
+      {/* 新增：编辑任务弹窗 */}
+      <Modal
+        title="编辑任务"
+        open={isEditModalOpen}
+        onCancel={() => {
+          setIsEditModalOpen(false);
+          setEditingTask(null);
+        }}
+        onOk={() => {
+          editForm.validateFields().then(values => {
+            handleSaveTask(values as { name: string; status: string; isEffective: boolean });
+          });
+        }}
+        destroyOnClose
+        okText="保存"
+        cancelText="取消"
+      >
+        <Form
+          form={editForm}
+          layout="vertical"
+          style={{ marginTop: '16px' }}
+        >
+          <Form.Item
+            name="name"
+            label="任务名称"
+            rules={[
+              { required: true, message: '请输入任务名称' },
+              { whitespace: true, message: '任务名称不能为空白' }
+            ]}
+          >
+            <Input placeholder="请输入任务名称" maxLength={50} />
+          </Form.Item>
+          <Form.Item
+            name="status"
+            label="任务状态"
+            rules={[{ required: true, message: '请选择任务状态' }]}
+          >
+            <Select placeholder="请选择任务状态">
+              <Select.Option value="normal">常态</Select.Option>
+              <Select.Option value="urgent">紧急</Select.Option>
+            </Select>
+          </Form.Item>
+          <Form.Item
+            name="isEffective"
+            label="布控状态"
+            rules={[{ required: true, message: '请选择布控状态' }]}
+          >
+            <Select placeholder="请选择布控状态">
+              <Select.Option value={true}>生效中</Select.Option>
+              <Select.Option value={false}>已失效</Select.Option>
+            </Select>
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 };
