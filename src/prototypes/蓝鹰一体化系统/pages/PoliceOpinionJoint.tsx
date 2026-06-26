@@ -729,45 +729,45 @@ const PoliceOpinionJoint: React.FC = () => {
             <div className="step-item step-completed">
               <div className="step-indicator">
                 <FileTextOutlined className="step-icon" />
-                <div className="step-line" />
               </div>
               <div className="step-info">
                 <div className="step-title">事件详情</div>
                 <div className="step-desc">上报与审批信息</div>
               </div>
+              <div className="step-line" />
             </div>
 
             <div className="step-item step-active">
               <div className="step-indicator">
                 <RadarChartOutlined className="step-icon" />
-                <div className="step-line" />
               </div>
               <div className="step-info">
                 <div className="step-title">布控</div>
                 <div className="step-desc">现场及网上布控</div>
               </div>
+              <div className="step-line" />
             </div>
 
             <div className="step-item">
               <div className="step-indicator">
                 <SettingOutlined className="step-icon" />
-                <div className="step-line" />
               </div>
               <div className="step-info">
                 <div className="step-title">处置</div>
                 <div className="step-desc">网上及网群处置</div>
               </div>
+              <div className="step-line" />
             </div>
 
             <div className="step-item">
               <div className="step-indicator">
                 <FileTextOutlined className="step-icon" />
-                <div className="step-line" />
               </div>
               <div className="step-info">
                 <div className="step-title">报告</div>
                 <div className="step-desc">形成阶段性报告</div>
               </div>
+              <div className="step-line" />
             </div>
 
             <div className="step-item step-last">
