@@ -9761,4 +9761,12 @@
   font-size: 12px;
 }
 
+/* ============ 检索框精简单行化 ============ */
+.ot-entry-search-bar {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  align-items: center;
+}
+
 

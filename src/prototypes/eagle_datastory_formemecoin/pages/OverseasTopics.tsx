@@ -361,8 +361,8 @@ const renderELMAvatar = () => (
 // ============ 主组件 ============
 
 const OverseasTopics: React.FC = function () {
-  // 搜索关键词 (默认填写，配合截图效果)
-  const [keyword, setKeyword] = useState('虚拟币');
+  // 搜索关键词 (默认为空)
+  const [keyword, setKeyword] = useState('');
   // 时间范围
   const [dateRange, setDateRange] = useState<[dayjs.Dayjs, dayjs.Dayjs]>([
     dayjs().subtract(7, 'days').startOf('day'),
@@ -391,7 +391,7 @@ const OverseasTopics: React.FC = function () {
 
   // 检索触发态与加载
   const [isSearched, setIsSearched] = useState(false); // 默认未搜索，优先展示搜索入口页
-  const [resultsKeyword, setResultsKeyword] = useState('虚拟币');
+  const [resultsKeyword, setResultsKeyword] = useState('');
   const [activePlatformTab, setActivePlatformTab] = useState('all'); // 左侧平台 Tab 激活项
   const [selectedResultIds, setSelectedResultIds] = useState<string[]>([]); // 复选框勾选的 IDs
 
@@ -672,26 +672,24 @@ const OverseasTopics: React.FC = function () {
           </div>
 
           {/* 搜索框 */}
-          <div className="ot-right-search-box" style={{ padding: '24px' }}>
-            <Input.TextArea
-              placeholder="请输入检索关键词，支持多个词、特殊符号等高级逻辑运算模式"
-              rows={4}
-              value={keyword}
-              onChange={function (e) { setKeyword(e.target.value); }}
-              onPressEnter={function (e) { if (!e.shiftKey) { e.preventDefault(); handleSearch(); } }}
-              className="ot-search-textarea"
-              maxLength={200}
-              showCount
-            />
-            <div className="ot-search-btn-group">
+          <div className="ot-right-search-box" style={{ padding: '20px' }}>
+            <div className="ot-entry-search-bar">
+              <Input
+                placeholder="请输入检索关键词，回车直接检索..."
+                size="large"
+                value={keyword}
+                onChange={function (e) { setKeyword(e.target.value); }}
+                onPressEnter={handleSearch}
+                style={{ flex: 1 }}
+              />
               <Button type="primary" size="large" icon={<SearchOutlined />} onClick={handleSearch}>
                 检索搜索
               </Button>
               <Button size="large" icon={<TranslationOutlined />}>翻译助手</Button>
               <Button size="large" onClick={handleResetFilters}>重置条件</Button>
             </div>
-            <div className="text-gray-400 text-xs flex justify-between items-center mt-1">
-              <span>例如输入：虚拟币, 敏感头像</span>
+            <div className="text-gray-400 text-xs flex justify-between items-center mt-1 w-full">
+              <span>如输入关键词进行多维分析，支持多词、特殊逻辑运算符</span>
               <a href="#" className="text-blue-500 hover:underline">了解检索语法规范</a>
             </div>
           </div>
@@ -1070,27 +1068,20 @@ const OverseasTopics: React.FC = function () {
         <div className="ot-right-panel">
           
           {/* 搜索多行文本区 */}
-          <div className="ot-right-search-box">
-            <Input.TextArea
-              placeholder="请输入检索关键词，支持多个词、特殊符号等高级逻辑运算模式"
-              rows={4}
+          <div className="ot-right-search-box" style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <Input
+              placeholder="请输入检索关键词..."
               value={keyword}
               onChange={function (e) { setKeyword(e.target.value); }}
-              onPressEnter={function (e) { if (!e.shiftKey) { e.preventDefault(); handleSearch(); } }}
-              className="ot-search-textarea"
-              maxLength={200}
-              showCount
+              onPressEnter={handleSearch}
+              style={{ width: '100%' }}
             />
-            <div className="ot-search-btn-group">
-              <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch}>
+            <div className="ot-search-btn-group" style={{ display: 'flex', gap: '6px' }}>
+              <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch} style={{ flex: 1 }}>
                 搜索
               </Button>
-              <Button icon={<TranslationOutlined />}>翻译助手</Button>
+              <Button icon={<TranslationOutlined />} onClick={function () { message.info('翻译助手正在启动...'); }} title="翻译助手" />
               <Button onClick={handleResetFilters}>重置</Button>
-            </div>
-            <div className="text-gray-400 text-xs flex justify-between items-center">
-              <span>如：虚拟币, 涉政</span>
-              <a href="#" className="text-blue-500 hover:underline">了解检索语法规范</a>
             </div>
           </div>
 
