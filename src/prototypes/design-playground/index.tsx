@@ -28,6 +28,7 @@ import { HomeIntro } from './pages/HomeIntro';
 import { ShadowCardBefore, ShadowCardAfter, ShadowCardPlayground } from './pages/ShadowCard';
 import { FormSpacingBefore, FormSpacingAfter, FormSpacingPlayground } from './pages/FormSpacing';
 import { ArticleCardBefore, ArticleCardAfter, ArticleCardPlayground } from './pages/ArticleCard';
+import { GridAdaptiveBefore, GridAdaptiveAfter, GridAdaptivePlayground } from './pages/GridAdaptive';
 
 export default function DesignPlayground() {
   const [currentId, setCurrentId] = useState<string>('home');
@@ -141,6 +142,40 @@ export default function DesignPlayground() {
       BeforeComponent: ArticleCardBefore,
       AfterComponent: ArticleCardAfter,
       PlaygroundComponent: ArticleCardPlayground
+    },
+    {
+      id: 'grid-adaptive',
+      name: 'N宫格自适应排版微调',
+      category: '信息与布局',
+      description: `### 需求背景与痛点
+当看板模块采用N宫格展示内容时，各版块内容的文本量差异极大（如“工作要求”文字长而多，而其他任务列表仅有一两行）。
+如果强行采用等宽等高的 1:1:1 平铺方案，在内容极少时会留下大面积空白“空腔”，造成空间利用率极低；而内容过多时又不得不滚动或截断。
+如果采用完全高度自适应，则会导致各板块底部参差不齐，破坏控制台精巧的网格对齐线。
+
+### 重构设计方案
+为实现优雅的自适应体验，我们规划了以下策略：
+1. **单板块状态自适应**：当仅有一个板块时，将其宽度限制在 1/2，避免铺满全屏导致单行文字过宽不利于阅读。
+2. **多版块智能堆叠（推荐）**：对于3个板块的典型场景（含有“工作要求”），不使用 1:1:1 平铺。而是采用“左一右二堆叠”方案：左侧“工作要求”全高占 5/12 宽度，右侧两个列表板在一列中上下垂直堆叠，高度平分。这可以使整体高度严丝合缝，避免大片留白。
+3. **弹性比例稀释**：若强行横排，则让文字偏多的“工作要求”列宽占比为 40%，其他板块占 30%，利用横向宽度减少纵向的高度差。`,
+      beforeCode: `/* 优化前：强制等宽等高 (3列 1:1:1) */
+<div className="grid grid-cols-3 gap-5 h-[480px]">
+  <WorkReqCard className="h-full" />
+  <NormalCard className="h-full" />
+  <NormalCard className="h-full" />
+</div>`,
+      afterCode: `/* 优化后：空间折叠混合堆叠 (左一全高，右二垂直平分) */
+<div className="grid grid-cols-12 gap-5 h-[480px]">
+  <div className="col-span-5 h-full">
+    <WorkReqCard className="h-full" />
+  </div>
+  <div className="col-span-7 h-full flex flex-col gap-4">
+    <NormalCard className="flex-1" />
+    <NormalCard className="flex-1" />
+  </div>
+</div>`,
+      BeforeComponent: GridAdaptiveBefore,
+      AfterComponent: GridAdaptiveAfter,
+      PlaygroundComponent: GridAdaptivePlayground
     }
   ];
 
