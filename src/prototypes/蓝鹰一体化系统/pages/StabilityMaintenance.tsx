@@ -22,1219 +22,677 @@ import {
 import {
   SearchOutlined,
   CommentOutlined,
-  UsergroupAddOutlined,
   PlusOutlined,
   SolutionOutlined,
-  MessageOutlined,
   SendOutlined,
   EyeOutlined,
-  ArrowLeftOutlined,
   DeleteOutlined,
   EditOutlined,
-  UploadOutlined,
   UserOutlined,
   LinkOutlined,
-  DisconnectOutlined,
-  FileImageOutlined,
+  FileSearchOutlined,
+  FolderOpenOutlined,
+  BellOutlined,
   CheckCircleOutlined,
-  MergeCellsOutlined,
+  CloseCircleOutlined,
+  PartitionOutlined,
+  EnvironmentOutlined,
+  InfoCircleOutlined,
 } from '@ant-design/icons';
-import { initialPeopleData, PersonItem } from './PeopleDatabase';
+import { generateMockPeople, PersonItem, SocialAccount, PostItem } from './PeopleDatabase';
 
-// 私域群聊重点人类型
-export interface GroupMemberItem {
+// 涉稳情报接口
+export interface StabilityIntelligence {
   id: string;
-  nickname: string;
-  roleType: 'moderator' | 'activist' | 'responder'; // 群主，高频发声者，积极响应者
-  personId?: string; // 关联人员库ID
-  tempNote?: string; // 未建档临时备注
+  title: string; // 情报标题
+  content: string; // 详实摘要/内容描述
+  event: string; // 指向事件
+  groupTag: '房产维权' | '环保维权' | '医患群体' | '退役军人' | '涉法涉诉'; // 所属重点群体
+  category: '串联煽动' | '拉横幅聚集' | '舆论造谣' | '阻碍执法'; // 情报类别
+  location: '淮安区' | '清江浦区' | '洪泽区'; // 事关地
+  adopted: 'yes' | 'no'; // 是否采用
+  registerTime: string; // 登记时间
+  department: string; // 责任分局/机构
+  reporter: string; // 上报民警
+  relatedPeopleIds: string[]; // 关联的重点人ID
 }
 
-export interface GroupItem {
-  id: string;
-  name: string;
-  channel: 'wechat' | 'qq' | 'dingtalk' | 'other';
-  memberRange: '50' | '100' | '200' | '500'; // 50人以下, 51-100人, 101-200人, 201-500人
-  memberCount: number;
-  riskRating: 'high' | 'medium' | 'low' | 'blue'; // 红，橙，黄，蓝
-  department: string; // 责任单位
-  type: string; // 群类型标签
-  groupCode: string; // 特征码/群ID
-  qrCodeUrl?: string; // 二维码
-  lastActive: string;
-  members: GroupMemberItem[];
-  bulletins: { time: string; content: string; reporter: string; level: 'red' | 'orange' | 'yellow' | 'blue'; imageUrl?: string }[];
-}
-
-const initialGroupData: GroupItem[] = [
+// 模拟初始涉稳情报数据
+const initialIntelligenceList: StabilityIntelligence[] = [
   {
-    id: 'G001',
-    name: '金地花园业主常委会',
-    channel: 'wechat',
-    memberRange: '500',
-    memberCount: 450,
-    riskRating: 'high',
-    department: '区住建局',
-    type: '房产维权',
-    groupCode: 'wx_group_jindi990',
-    qrCodeUrl: 'https://images.unsplash.com/photo-1557200134-90327ee9fafa?w=150&auto=format&fit=crop&q=60',
-    lastActive: '2026-07-07 15:40',
-    members: [
-      { id: 'GM001', nickname: '业主张老三', roleType: 'moderator', personId: 'P001' },
-      { id: 'GM002', nickname: '维权代表-李', roleType: 'activist', tempNote: '新发现金地三期维权积极分子，正调查' },
-    ],
-    bulletins: [
-      { time: '2026-07-07 14:10', content: '业主张老三(张建国)在群里号召大家准备下午的住建局集体上访，现场预计超50人。', reporter: '网警大队-刘工', level: 'red' },
-      { time: '2026-07-05 09:30', content: '群员李某在群内转发了不实延期交付文章，涉嫌造谣。', reporter: '值班员-张工', level: 'yellow' }
-    ]
+    id: 'INTEL_001',
+    title: '金地花园业主拉横幅聚集赴住建局维权动向',
+    content: '重点人张建国在私域社群发帖动员，准备本周三上午组织业主代表约50人，前往区住建局聚集静坐拉横幅请愿，诉求为查明房屋预售资金流向。',
+    event: '0510 金地烂尾维权',
+    groupTag: '房产维权',
+    category: '拉横幅聚集',
+    location: '淮安区',
+    adopted: 'yes',
+    registerTime: '2026-07-07 14:10',
+    department: '区住建局专班',
+    reporter: '警员-李明',
+    relatedPeopleIds: ['PERSON_1'] // 关联 Mock人员的第 1 个张建国
   },
   {
-    id: 'G002',
-    name: '洪泽环保同盟二群',
-    channel: 'qq',
-    memberRange: '200',
-    memberCount: 180,
-    riskRating: 'high',
-    department: '区环保局',
-    type: '劳资维权',
-    groupCode: 'qq_group_hzhb332',
-    qrCodeUrl: 'https://images.unsplash.com/photo-1557200134-90327ee9fafa?w=150&auto=format&fit=crop&q=60',
-    lastActive: '2026-07-07 11:20',
-    members: [
-      { id: 'GM003', nickname: '绿水发言人', roleType: 'moderator', personId: 'P003' },
-      { id: 'GM004', nickname: '环保小强', roleType: 'responder', tempNote: '多次参与垃圾厂聚集活动，暂无人员库档案' }
-    ],
-    bulletins: [
-      { time: '2026-07-07 09:10', content: '核心骨干王强发帖上传了垃圾焚烧厂清晨黑烟的恶臭视频，正组织村民周四聚集。', reporter: '洪泽舆情室', level: 'red' }
-    ]
+    id: 'INTEL_002',
+    title: '洪泽垃圾焚烧厂扩建引发村民串联聚集线索',
+    content: '监测到抖音拍客上传厂区清晨黑烟的恶臭视频，并呼吁周边三个村庄的代表于周四在厂门口进行堵路聚集，阻碍垃圾车进厂。',
+    event: '洪泽垃圾厂扩建舆情',
+    groupTag: '环保维权',
+    category: '串联煽动',
+    location: '洪泽区',
+    adopted: 'yes',
+    registerTime: '2026-07-07 09:10',
+    department: '洪泽环保中队',
+    reporter: '警员-王伟',
+    relatedPeopleIds: ['PERSON_12']
   },
   {
-    id: 'G003',
-    name: '淮安自媒体资讯分享群',
-    channel: 'wechat',
-    memberRange: '500',
-    memberCount: 350,
-    riskRating: 'medium',
-    department: '网信办',
-    type: '劳资维权',
-    groupCode: 'wx_group_media12',
-    qrCodeUrl: '',
-    lastActive: '2026-07-06 22:15',
-    members: [
-      { id: 'GM005', nickname: '淮安爆料中心', roleType: 'moderator', personId: 'P002' }
-    ],
-    bulletins: [
-      { time: '2026-07-06 20:00', content: '群里讨论本地自来水发黄事件，自媒体博主意图扩大爆料，已进行线上警示。', reporter: '网警大队-刘工', level: 'orange' }
-    ]
+    id: 'INTEL_003',
+    title: '涉三院医闹纠纷网民串联聚集舆情线索',
+    content: '患者家属在论坛发布歪曲医疗事故的贴文，煽动亲戚代表于明日到市第三人民医院挂牌静坐索要高额赔偿，存在阻碍医疗秩序的隐患。',
+    event: '三院医闹纠纷',
+    groupTag: '医患群体',
+    category: '阻碍执法',
+    location: '清江浦区',
+    adopted: 'no',
+    registerTime: '2026-07-06 18:22',
+    department: '清江浦公安局',
+    reporter: '网警大队-徐工',
+    relatedPeopleIds: []
   }
 ];
 
 const StabilityMaintenance: React.FC = () => {
-  const [groupList, setGroupList] = useState<GroupItem[]>(initialGroupData);
-  const [peopleDatabase, setPeopleDatabase] = useState<PersonItem[]>(initialPeopleData);
-  
-  // 页面状态视图: "list" (列表页) 或 "workspace" (群档案详情页)
-  const [activeView, setActiveView] = useState<'list' | 'workspace'>('list');
-  const [selectedGroup, setSelectedGroup] = useState<GroupItem | null>(null);
+  const [intelList, setIntelList] = useState<StabilityIntelligence[]>(initialIntelligenceList);
+  const [peopleDatabase, setPeopleDatabase] = useState<PersonItem[]>(generateMockPeople());
 
-  // 筛选状态
+  // 筛选过滤状态
   const [searchText, setSearchText] = useState('');
-  const [selectedChannel, setSelectedChannel] = useState<string>('all');
-  const [selectedSize, setSelectedSize] = useState<string>('all');
-  const [selectedDept, setSelectedDept] = useState<string>('all');
+  const [filterAdopted, setFilterAdopted] = useState<string>('all');
+  const [filterGroup, setFilterGroup] = useState<string>('all');
+  const [filterLocation, setFilterLocation] = useState<string>('all');
 
-  // 重点人快捷关联 Dialog
-  const [linkModalVisible, setLinkModalVisible] = useState(false);
-  const [linkSearchText, setLinkSearchText] = useState('');
-  const [activeMemberRow, setActiveMemberRow] = useState<GroupMemberItem | null>(null);
+  // 手工登记情报 Modal 控制
+  const [registerVisible, setRegisterVisible] = useState(false);
+  const [registerForm] = Form.useForm();
 
-  // 反向建档表单
-  const [reverseRegisterForm] = Form.useForm();
+  // 查看情报详情 Modal
+  const [detailVisible, setDetailVisible] = useState(false);
+  const [selectedIntel, setSelectedIntel] = useState<StabilityIntelligence | null>(null);
 
-  // 侧边穿透抽屉
+  // 人员双源头画像侧边抽屉穿透控制
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [drawerPerson, setDrawerPerson] = useState<PersonItem | null>(null);
 
-  // 表单与图片模拟
-  const [clueForm] = Form.useForm();
-  const [staticForm] = Form.useForm();
-  const [qrCodePreview, setQrCodePreview] = useState<string | null>(null);
-
-  // 1. 群聊列表删除操作
-  const handleDeleteGroup = (groupId: string) => {
-    setGroupList(groupList.filter((g) => g.id !== groupId));
-    message.warning('该私域群聊台账已被物理移除');
+  // 删除情报操作
+  const handleDeleteIntel = (id: string) => {
+    setIntelList(intelList.filter(item => item.id !== id));
+    message.warning('该涉稳情报台账已被安全移除！');
   };
 
-  // 进入详情工作台页
-  const handleEnterWorkspace = (group: GroupItem) => {
-    setSelectedGroup(group);
-    setQrCodePreview(group.qrCodeUrl || null);
-    setActiveView('workspace');
-    staticForm.setFieldsValue({
-      name: group.name,
-      groupCode: group.groupCode,
-      channel: group.channel,
-      memberRange: group.memberRange,
-      memberCount: group.memberCount,
-      department: group.department,
-      type: group.type,
-      riskRating: group.riskRating,
-    });
-  };
+  // 手工情报录入提交
+  const handleRegisterSubmit = () => {
+    registerForm.validateFields().then((values) => {
+      const newIntel: StabilityIntelligence = {
+        id: `INTEL_${Date.now()}`,
+        title: values.title,
+        content: values.content,
+        event: values.event || '未指向特定事件',
+        groupTag: values.groupTag,
+        category: values.category,
+        location: values.location,
+        adopted: values.adopted,
+        registerTime: new Date().toISOString().replace('T', ' ').substring(0, 16),
+        department: '网安专案班',
+        reporter: '值班网警',
+        relatedPeopleIds: values.relatedPeopleIds || []
+      };
 
-  // 保存群基础静态档案 (卡片A)
-  const handleSaveStaticInfo = () => {
-    if (!selectedGroup) return;
-    staticForm.validateFields().then((values) => {
-      const updatedList = groupList.map((g) => {
-        if (g.id === selectedGroup.id) {
-          const updatedG = {
-            ...g,
-            ...values,
-            qrCodeUrl: qrCodePreview || '',
-          };
-          setSelectedGroup(updatedG);
-          return updatedG;
-        }
-        return g;
-      });
-      setGroupList(updatedList);
-      message.success('群基础静态档案已成功更新并归档！');
-    });
-  };
-
-  // 跨库快捷关联真实身份提交 (卡片B - 直接关联已有网民)
-  const handleAssociatePerson = (person: PersonItem) => {
-    if (!selectedGroup || !activeMemberRow) return;
-
-    const updatedList = groupList.map((g) => {
-      if (g.id === selectedGroup.id) {
-        const updatedMembers = g.members.map((m) => {
-          if (m.id === activeMemberRow.id) {
-            return { ...m, personId: person.id, tempNote: undefined };
-          }
-          return m;
-        });
-        const updatedG = { ...g, members: updatedMembers };
-        setSelectedGroup(updatedG);
-        return updatedG;
-      }
-      return g;
-    });
-
-    setGroupList(updatedList);
-    message.success(`群重点人已成功快捷绑定「人员库」真实档案: ${person.name}`);
-    setLinkModalVisible(false);
-  };
-
-  // 反向登记建档并防重合并提交 (卡片B - 反向登记)
-  const handleReverseRegister = () => {
-    if (!selectedGroup || !activeMemberRow) return;
-
-    reverseRegisterForm.validateFields().then((values) => {
-      const { name, idCard, riskLevel, socialId, department } = values;
-
-      // 1. 防重检索：根据姓名或身份证判定人员库中是否已存在
-      const existingPerson = peopleDatabase.find(
-        (p) => (idCard && p.idCard === idCard) || p.name === name
-      );
-
-      if (existingPerson) {
-        // 画像合并：如果已存在，将新社交账号追加至已有人员的 socialAccounts 中
-        const currentChannel = selectedGroup.channel;
-        const existsSocial = existingPerson.socialAccounts.some(
-          (sa) => sa.id === socialId && sa.platform === currentChannel
-        );
-
-        let updatedAccounts = [...existingPerson.socialAccounts];
-        if (!existsSocial && socialId) {
-          updatedAccounts.push({
-            platform: currentChannel as any,
-            username: activeMemberRow.nickname,
-            id: socialId,
-            followers: '未知',
-            url: currentChannel === 'wechat' ? '微信内网封包' : 'QQ特征群包',
-            status: 'monitored',
-          });
-        }
-
-        const updatedDatabase = peopleDatabase.map((p) => {
-          if (p.id === existingPerson.id) {
+      setIntelList([newIntel, ...intelList]);
+      message.success(`成功登记涉稳情报: ${values.title}`);
+      
+      // 如果该情报被采用，且关联了人员，模拟自动为人员标记“涉稳登记来源”或“both”
+      if (values.relatedPeopleIds && values.relatedPeopleIds.length > 0) {
+        const updatedPeople = peopleDatabase.map((p) => {
+          if (values.relatedPeopleIds.includes(p.id)) {
+            const currentSource = p.source;
+            const targetSource: 'opinion' | 'stability' | 'both' = currentSource === 'opinion' ? 'both' : 'stability';
             return {
               ...p,
-              socialAccounts: updatedAccounts,
-              // 如果已有标签不含当前性质，则追加
-              tags: Array.from(new Set([...p.tags, selectedGroup.type])),
+              source: targetSource,
+              groupTag: values.groupTag,
+              tags: Array.from(new Set([...p.tags, '涉稳登记', values.groupTag]))
             };
           }
           return p;
         });
-
-        setPeopleDatabase(updatedDatabase);
-
-        // 绑定群重点人行
-        const updatedList = groupList.map((g) => {
-          if (g.id === selectedGroup.id) {
-            const updatedMembers = g.members.map((m) => {
-              if (m.id === activeMemberRow.id) {
-                return { ...m, personId: existingPerson.id, tempNote: undefined };
-              }
-              return m;
-            });
-            const updatedG = { ...g, members: updatedMembers };
-            setSelectedGroup(updatedG);
-            return updatedG;
-          }
-          return g;
-        });
-        setGroupList(updatedList);
-
-        Modal.success({
-          title: '人员画像智能合并归集成功！',
-          icon: <MergeCellsOutlined style={{ color: '#52c41a' }} />,
-          content: (
-            <div>
-              <p>系统检索到「人员库」中已存在 <strong>{name}</strong> 的重点人档案（ID: {existingPerson.id}）。</p>
-              <p>已自动将当前群聊账号 <strong>{socialId}</strong> 作为新账号归集进该网民的社交矩阵中，画像已成功合并，免去重复建档！</p>
-            </div>
-          ),
-        });
-
-      } else {
-        // 全新建档：生成全新 PersonItem，推入人员库中并完成绑定
-        const newPersonId = `P_REV_${Date.now().toString().slice(-4)}`;
-        const birthYear = 1980 + (Math.floor(Math.random() * 20));
-        const defaultIdCard = idCard || `320802${birthYear}05120${Math.floor(Math.random() * 9)}X`;
-        
-        const newPerson: PersonItem = {
-          id: newPersonId,
-          name,
-          gender: '男',
-          age: 2026 - birthYear,
-          nation: '汉族',
-          birthday: `${birthYear}-05-12`,
-          idCard: defaultIdCard,
-          phone: `135****${1000 + Math.floor(Math.random() * 9000)}`,
-          residentAddress: `江苏省淮安市${department}重点关注网民纳管区`,
-          registeredAddress: `江苏省淮安市${department}流均镇重点区`,
-          type: '重点关注人员',
-          riskLevel: riskLevel || 'medium',
-          tags: ['反向登记', selectedGroup.type],
-          socialAccounts: socialId ? [
-            {
-              platform: selectedGroup.channel as any,
-              username: activeMemberRow.nickname,
-              id: socialId,
-              followers: '群发言人',
-              url: '内网审计',
-              status: 'monitored',
-            }
-          ] : [],
-          department: department || selectedGroup.department,
-          status: 'monitored',
-          lastActive: new Date().toISOString().replace('T', ' ').substring(0, 16),
-          incidentCount: 1,
-          recordList: [
-            {
-              id: `POST_REV_${Date.now()}`,
-              content: `【涉群聊言论】在「${selectedGroup.name}」群内发表言论，被反向审计归档。`,
-              publishTime: new Date().toISOString().replace('T', ' ').substring(0, 16),
-              platform: selectedGroup.channel as any,
-              author: activeMemberRow.nickname,
-              authorId: socialId || 'unknown',
-              reposts: 0,
-              comments: 0,
-              likes: 0,
-              ipAddress: '10.32.188.99',
-              captureTime: new Date().toISOString().replace('T', ' ').substring(0, 16),
-            }
-          ],
-          note: `该人员因在群聊「${selectedGroup.name}」中表现活跃，且人员库中原本未收录其身份。已于群聊台账工作台快捷反向登记建档入库。`
-        };
-
-        // 更新全局人员库 state
-        setPeopleDatabase([...peopleDatabase, newPerson]);
-
-        // 绑定群重点人行
-        const updatedList = groupList.map((g) => {
-          if (g.id === selectedGroup.id) {
-            const updatedMembers = g.members.map((m) => {
-              if (m.id === activeMemberRow.id) {
-                return { ...m, personId: newPersonId, tempNote: undefined };
-              }
-              return m;
-            });
-            const updatedG = { ...g, members: updatedMembers };
-            setSelectedGroup(updatedG);
-            return updatedG;
-          }
-          return g;
-        });
-        setGroupList(updatedList);
-
-        Modal.success({
-          title: '重点人反向建档登记成功！',
-          icon: <CheckCircleOutlined style={{ color: '#1890ff' }} />,
-          content: (
-            <div>
-              <p>全新受控重点人 <strong>{name}</strong> 档案创建完毕。</p>
-              <p>该档案已实时同步写入内网人员库中（生成档案号: {newPersonId}），并成功绑定至当前群聊成员的真实身份栏！</p>
-            </div>
-          ),
-        });
+        setPeopleDatabase(updatedPeople);
       }
 
-      setLinkModalVisible(false);
-      reverseRegisterForm.resetFields();
+      setRegisterVisible(false);
+      registerForm.resetFields();
     });
   };
 
-  // 解除关联绑定
-  const handleUnlinkPerson = (memberId: string) => {
-    if (!selectedGroup) return;
-    const updatedList = groupList.map((g) => {
-      if (g.id === selectedGroup.id) {
-        const updatedMembers = g.members.map((m) => {
-          if (m.id === memberId) {
-            return { ...m, personId: undefined, tempNote: undefined };
-          }
-          return m;
-        });
-        const updatedG = { ...g, members: updatedMembers };
-        setSelectedGroup(updatedG);
-        return updatedG;
-      }
-      return g;
-    });
-    setGroupList(updatedList);
-    message.warning('已解除身份关联绑定');
-  };
-
-  // 手工上报动态情报线索 (卡片C)
-  const handleReportClue = () => {
-    if (!selectedGroup) return;
-    clueForm.validateFields().then((values) => {
-      const updatedList = groupList.map((g) => {
-        if (g.id === selectedGroup.id) {
-          const newBulletin = {
-            time: values.time || new Date().toISOString().replace('T', ' ').substring(0, 16),
-            content: values.content,
-            reporter: values.reporter || '当前内网业务员',
-            level: values.level || 'blue',
-            imageUrl: values.imageUrl || '',
-          };
-          const updatedG = {
-            ...g,
-            bulletins: [newBulletin, ...g.bulletins],
-            lastActive: new Date().toISOString().replace('T', ' ').substring(0, 16),
-          };
-          setSelectedGroup(updatedG);
-          return updatedG;
-        }
-        return g;
-      });
-      setGroupList(updatedList);
-      message.success('情报舆情异动线索成功手工上报！');
-      clueForm.resetFields();
-    });
-  };
-
-  // 开启侧边穿透 Drawer 展现详情
-  const handleOpenDrawer = (personId: string) => {
+  // 侧滑拉出升级版的“双源头合并画像”抽屉
+  const handleOpenPersonDrawer = (personId: string) => {
     const person = peopleDatabase.find(p => p.id === personId);
     if (person) {
       setDrawerPerson(person);
       setDrawerVisible(true);
+    } else {
+      message.error('无法定位该网民的全量身份画像！');
     }
   };
 
-  // 列表筛选
-  const filteredGroups = groupList.filter((g) => {
-    const matchSearch = g.name.includes(searchText) || g.groupCode.includes(searchText);
-    const matchChannel = selectedChannel === 'all' || g.channel === selectedChannel;
-    const matchSize = selectedSize === 'all' || g.memberRange === selectedSize;
-    const matchDept = selectedDept === 'all' || g.department === selectedDept;
+  // 情报过滤算法
+  const getFilteredIntel = () => {
+    return intelList.filter((item) => {
+      // 1. 全局搜索
+      if (searchText) {
+        const query = searchText.toLowerCase();
+        const matchTitle = item.title.toLowerCase().includes(query);
+        const matchContent = item.content.toLowerCase().includes(query);
+        const matchEvent = item.event.toLowerCase().includes(query);
+        if (!matchTitle && !matchContent && !matchEvent) return false;
+      }
+      // 2. 采用状态
+      if (filterAdopted !== 'all' && item.adopted !== filterAdopted) return false;
+      // 3.群体
+      if (filterGroup !== 'all' && item.groupTag !== filterGroup) return false;
+      // 4. 事关地
+      if (filterLocation !== 'all' && item.location !== filterLocation) return false;
 
-    return matchSearch && matchChannel && matchSize && matchDept;
-  });
+      return true;
+    });
+  };
 
-  // 跨库关联过滤
-  const filteredCrossPeople = peopleDatabase.filter((p) => {
-    return p.name.includes(linkSearchText) || p.idCard.includes(linkSearchText) || p.tags.some(t => t.includes(linkSearchText));
-  });
-
-  const listColumns = [
-    {
-      title: '群名称',
-      dataIndex: 'name',
-      key: 'name',
-      render: (text: string, record: GroupItem) => (
-        <Space>
-          <Avatar style={{ backgroundColor: record.channel === 'wechat' ? '#52c41a' : record.channel === 'qq' ? '#1890ff' : '#eb2f96' }}>
-            {record.channel === 'wechat' ? '微' : record.channel === 'qq' ? 'Q' : '钉'}
-          </Avatar>
-          <strong>{text}</strong>
-        </Space>
-      ),
-    },
-    {
-      title: '群ID (QQ号/特征码)',
-      dataIndex: 'groupCode',
-      key: 'groupCode',
-    },
-    {
-      title: '渠道',
-      dataIndex: 'channel',
-      key: 'channel',
-      render: (channel: string) => {
-        const text = channel === 'wechat' ? '微信群' : channel === 'qq' ? 'QQ群' : channel === 'dingtalk' ? '钉钉' : '其他';
-        return <Tag color="geekblue">{text}</Tag>;
-      },
-    },
-    {
-      title: '群规模',
-      dataIndex: 'memberCount',
-      key: 'memberCount',
-      render: (count: number) => <span>{count} 人</span>,
-    },
-    {
-      title: '群类型标签',
-      dataIndex: 'type',
-      key: 'type',
-      render: (type: string) => <Tag color="cyan">{type}</Tag>,
-    },
-    {
-      title: '最新动态时间',
-      dataIndex: 'lastActive',
-      key: 'lastActive',
-    },
-    {
-      title: '风险等级',
-      dataIndex: 'riskRating',
-      key: 'riskRating',
-      render: (rating: string) => {
-        let color = 'blue';
-        let text = '低风险 (蓝)';
-        if (rating === 'high') {
-          color = 'red';
-          text = '高风险 (红)';
-        } else if (rating === 'medium') {
-          color = 'orange';
-          text = '中风险 (橙)';
-        } else if (rating === 'yellow') {
-          color = 'yellow';
-          text = '关注级 (黄)';
-        }
-        return <Tag color={color}>{text}</Tag>;
-      },
-    },
-    {
-      title: '操作',
-      key: 'action',
-      render: (_: any, record: GroupItem) => (
-        <Space>
-          <Button
-            type="primary"
-            ghost
-            size="small"
-            icon={<EyeOutlined />}
-            onClick={() => handleEnterWorkspace(record)}
-          >
-            进群档案
-          </Button>
-          <Button
-            danger
-            type="text"
-            size="small"
-            icon={<DeleteOutlined />}
-            onClick={() => handleDeleteGroup(record.id)}
-          >
-            删除
-          </Button>
-        </Space>
-      ),
-    },
-  ];
+  const currentList = getFilteredIntel();
 
   return (
     <div className="dark-watermark-container">
       <div className="custom-page-container">
-        {activeView === 'list' ? (
-          /* ==================== 1. 群聊列表页 ==================== */
-          <Card
-            title={
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Space>
-                  <MessageOutlined />
-                  <span>私域涉稳群聊手工台账</span>
-                </Space>
-                <div style={{ fontSize: '12px', color: '#999', fontWeight: 'normal' }}>
-                  * 全量由网安及住建部门纯手工盘点入库，确保内网封闭流转
-                </div>
+        {/* 顶部检索区与手工录入动作 */}
+        <Card size="small" style={{ marginBottom: '16px' }}>
+          <Row gutter={12} align="middle">
+            {/* 模糊搜索 */}
+            <Col span={6}>
+              <Input
+                placeholder="搜索情报标题、正文或指向事件..."
+                prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                allowClear
+              />
+            </Col>
+
+            {/* 所属重点群体 */}
+            <Col span={4}>
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <span style={{ fontSize: '12px', color: '#555', marginRight: '6px', whiteSpace: 'nowrap' }}>群体:</span>
+                <Select
+                  style={{ width: '100%' }}
+                  value={filterGroup}
+                  onChange={setFilterGroup}
+                  options={[
+                    { value: 'all', label: '全部群体' },
+                    { value: '房产维权', label: '房产维权' },
+                    { value: '环保维权', label: '环保维权' },
+                    { value: '医患群体', label: '医患群体' },
+                    { value: '退役军人', label: '退役军人' },
+                    { value: '涉法涉诉', label: '涉法涉诉' },
+                  ]}
+                />
               </div>
-            }
-            bordered={false}
-          >
-            {/* 筛选区 */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
-              <Space>
-                <Input
-                  placeholder="检索群聊名称/群ID特征码..."
-                  value={searchText}
-                  onChange={(e) => setSearchText(e.target.value)}
-                  style={{ width: 240 }}
-                  prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
-                  allowClear
-                />
-                <Select
-                  value={selectedChannel}
-                  onChange={setSelectedChannel}
-                  style={{ width: 120 }}
-                  options={[
-                    { value: 'all', label: '全部渠道' },
-                    { value: 'wechat', label: '微信群' },
-                    { value: 'qq', label: 'QQ群' },
-                    { value: 'dingtalk', label: '钉钉' },
-                    { value: 'other', label: '其他' },
-                  ]}
-                />
-                <Select
-                  value={selectedSize}
-                  onChange={setSelectedSize}
-                  style={{ width: 130 }}
-                  options={[
-                    { value: 'all', label: '全部规模段' },
-                    { value: '50', label: '50人以下' },
-                    { value: '100', label: '51-100人' },
-                    { value: '200', label: '101-200人' },
-                    { value: '500', label: '201-500人' },
-                  ]}
-                />
-                <Select
-                  value={selectedDept}
-                  onChange={setSelectedDept}
-                  style={{ width: 140 }}
-                  options={[
-                    { value: 'all', label: '全部责任单位' },
-                    { value: '区住建局', label: '区住建局' },
-                    { value: '区环保局', label: '区环保局' },
-                    { value: '网信办', label: '网信办' },
-                  ]}
-                />
-              </Space>
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={() => {
-                  const newId = `G${String(groupList.length + 1).padStart(3, '0')}`;
-                  const newG: GroupItem = {
-                    id: newId,
-                    name: '新登记涉稳业主群',
-                    channel: 'wechat',
-                    memberRange: '100',
-                    memberCount: 88,
-                    riskRating: 'medium',
-                    department: '区住建局',
-                    type: '房产维权',
-                    groupCode: `wx_group_${Date.now().toString().slice(-6)}`,
-                    lastActive: new Date().toISOString().replace('T', ' ').substring(0, 16),
-                    members: [],
-                    bulletins: [],
-                  };
-                  setGroupList([...groupList, newG]);
-                  message.success('已新建一条空白群聊台账，点击“进群档案”可补充静态信息与成员。');
-                }}
-              >
-                手工登记新群
-              </Button>
-            </div>
+            </Col>
 
-            <Table
-              dataSource={filteredGroups}
-              columns={listColumns}
-              rowKey="id"
-              pagination={{ pageSize: 5 }}
-              size="middle"
-              bordered
-            />
-          </Card>
-        ) : (
-          /* ==================== 2. 群档案详情与编辑工作台 ==================== */
-          <div>
-            {/* 顶部面包屑/操作 */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <Button
-                icon={<ArrowLeftOutlined />}
-                onClick={() => {
-                  setActiveView('list');
-                  setSelectedGroup(null);
-                }}
-              >
-                返回群聊台账列表
-              </Button>
-              <span style={{ fontSize: '12px', color: '#888' }}>
-                档案序列号: <strong>{selectedGroup?.id}</strong> | 最新动态: {selectedGroup?.lastActive}
-              </span>
-            </div>
+            {/* 事关地 */}
+            <Col span={4}>
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <span style={{ fontSize: '12px', color: '#555', marginRight: '6px', whiteSpace: 'nowrap' }}>事关地:</span>
+                <Select
+                  style={{ width: '100%' }}
+                  value={filterLocation}
+                  onChange={setFilterLocation}
+                  options={[
+                    { value: 'all', label: '全部地' },
+                    { value: '淮安区', label: '淮安区' },
+                    { value: '清江浦区', label: '清江浦区' },
+                    { value: '洪泽区', label: '洪泽区' },
+                  ]}
+                />
+              </div>
+            </Col>
 
-            {selectedGroup && (
-              <Row gutter={16}>
-                {/* 页面左侧：【卡片 A：群基础静态信息表单】 */}
-                <Col span={10}>
-                  <Card
-                    title="卡片 A：群基础静态资料档案"
-                    extra={<Button type="primary" size="small" onClick={handleSaveStaticInfo}>保存归档修改</Button>}
-                    style={{ height: '100%' }}
+            {/* 是否采用 */}
+            <Col span={4}>
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <span style={{ fontSize: '12px', color: '#555', marginRight: '6px', whiteSpace: 'nowrap' }}>采用:</span>
+                <Select
+                  style={{ width: '100%' }}
+                  value={filterAdopted}
+                  onChange={setFilterAdopted}
+                  options={[
+                    { value: 'all', label: '全部' },
+                    { value: 'yes', label: '已采用情报' },
+                    { value: 'no', label: '未采用' },
+                  ]}
+                />
+              </div>
+            </Col>
+
+            {/* 手工登记 */}
+            <Col span={6} style={{ textAlign: 'right' }}>
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => setRegisterVisible(true)}>
+                手工登记涉稳情报
+              </Button>
+            </Col>
+          </Row>
+        </Card>
+
+        {/* 涉稳情报列表 Table 展现 */}
+        <Card size="small">
+          <Table
+            dataSource={currentList}
+            rowKey="id"
+            bordered
+            size="middle"
+            columns={[
+              {
+                title: '情报标题',
+                dataIndex: 'title',
+                key: 'title',
+                render: (text, record) => (
+                  <span
+                    style={{ fontWeight: 600, color: '#1890ff', cursor: 'pointer', textDecoration: 'underline' }}
+                    onClick={() => {
+                      setSelectedIntel(record);
+                      setDetailVisible(true);
+                    }}
                   >
-                    <Form
-                      form={staticForm}
-                      layout="vertical"
+                    {text}
+                  </span>
+                )
+              },
+              {
+                title: '指向事件',
+                dataIndex: 'event',
+                key: 'event',
+                width: 140,
+                render: (text) => <Tag color="blue">{text}</Tag>
+              },
+              {
+                title: '重点群体',
+                dataIndex: 'groupTag',
+                key: 'groupTag',
+                width: 110,
+                render: (text) => <Tag color="purple">{text}</Tag>
+              },
+              {
+                title: '情报类别',
+                dataIndex: 'category',
+                key: 'category',
+                width: 110,
+                render: (text) => <Tag color="cyan">{text}</Tag>
+              },
+              {
+                title: '事关地',
+                dataIndex: 'location',
+                key: 'location',
+                width: 100,
+                render: (text) => (
+                  <span>
+                    <EnvironmentOutlined style={{ marginRight: '4px', color: '#999' }} />
+                    {text}
+                  </span>
+                )
+              },
+              {
+                title: '采用状态',
+                dataIndex: 'adopted',
+                key: 'adopted',
+                width: 100,
+                render: (adopted) => (
+                  adopted === 'yes' 
+                    ? <Tag color="green" icon={<CheckCircleOutlined />}>已采用</Tag>
+                    : <Tag color="default" icon={<CloseCircleOutlined />}>未采用</Tag>
+                )
+              },
+              {
+                title: '关联人员 (点击穿透画像)',
+                dataIndex: 'relatedPeopleIds',
+                key: 'relatedPeopleIds',
+                render: (ids: string[]) => {
+                  if (!ids || ids.length === 0) return <span style={{ color: '#ccc' }}>无关联重点人</span>;
+                  return (
+                    <Space size={4} wrap>
+                      {ids.map((id) => {
+                        const person = peopleDatabase.find(p => p.id === id);
+                        if (!person) return null;
+                        return (
+                          <Tag
+                            color="red"
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => handleOpenPersonDrawer(id)}
+                            key={id}
+                          >
+                            👤 {person.name}
+                          </Tag>
+                        );
+                      })}
+                    </Space>
+                  );
+                }
+              },
+              {
+                title: '操作',
+                key: 'actions',
+                width: 150,
+                render: (_, record) => (
+                  <Space>
+                    <Button
                       size="small"
+                      icon={<EyeOutlined />}
+                      onClick={() => {
+                        setSelectedIntel(record);
+                        setDetailVisible(true);
+                      }}
                     >
-                      <Form.Item
-                        name="name"
-                        label="群名称"
-                        rules={[{ required: true }]}
-                      >
-                        <Input />
-                      </Form.Item>
-                      <Form.Item
-                        name="groupCode"
-                        label="群特征码/群ID"
-                        rules={[{ required: true }]}
-                      >
-                        <Input placeholder="输入特征ID，如: wx_group_xxx" />
-                      </Form.Item>
-
-                      <Row gutter={8}>
-                        <Col span={12}>
-                          <Form.Item name="channel" label="所属渠道平台">
-                            <Select
-                              options={[
-                                { value: 'wechat', label: '微信群' },
-                                { value: 'qq', label: 'QQ群' },
-                                { value: 'dingtalk', label: '钉钉' },
-                                { value: 'other', label: '其他' },
-                              ]}
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                          <Form.Item name="memberRange" label="涵盖人数范围">
-                            <Select
-                              options={[
-                                { value: '50', label: '50人以下' },
-                                { value: '100', label: '51-100人' },
-                                { value: '200', label: '101-200人' },
-                                { value: '500', label: '201-500人' },
-                              ]}
-                            />
-                          </Form.Item>
-                        </Col>
-                      </Row>
-
-                      <Row gutter={8}>
-                        <Col span={12}>
-                          <Form.Item name="department" label="监管责任单位">
-                            <Input />
-                          </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                          <Form.Item name="type" label="主要群聊性质分类">
-                            <Select
-                              options={[
-                                { value: '房产维权', label: '房产维权' },
-                                { value: '劳资维权', label: '劳资维权' },
-                                { value: '医疗纠纷', label: '医疗纠纷' },
-                                { value: '环保抗议', label: '环保抗议' },
-                                { value: '退役军人诉求', label: '退役诉求' },
-                              ]}
-                            />
-                          </Form.Item>
-                        </Col>
-                      </Row>
-
-                      <Form.Item name="riskRating" label="安全预警级别">
-                        <Select
-                          options={[
-                            { value: 'high', label: '高风险 (Red)' },
-                            { value: 'medium', label: '中风险 (Orange)' },
-                            { value: 'yellow', label: '关注级 (Yellow)' },
-                            { value: 'blue', label: '低风险 (Blue)' },
-                          ]}
-                        />
-                      </Form.Item>
-
-                      <Divider style={{ margin: '12px 0' }} />
-
-                      {/* 群二维码/成员截图附件区 */}
-                      <div>
-                        <div style={{ fontSize: '12px', fontWeight: 600, color: '#666', marginBottom: '8px' }}>
-                          群二维码 / 成员列表截图附件区
-                        </div>
-                        {qrCodePreview ? (
-                          <div style={{ position: 'relative', width: '120px', height: '120px', border: '1px solid #ddd', borderRadius: '4px', overflow: 'hidden', background: '#fafafa', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <img src={qrCodePreview} alt="QR Code" style={{ maxWidth: '100%', maxHeight: '100%' }} />
-                            <div
-                              onClick={() => setQrCodePreview(null)}
-                              style={{ position: 'absolute', top: 0, right: 0, background: 'rgba(255,0,0,0.8)', color: '#fff', padding: '2px 6px', fontSize: '10px', cursor: 'pointer' }}
-                            >
-                              移出
-                            </div>
-                          </div>
-                        ) : (
-                          <div
-                            onClick={() => setQrCodePreview('https://images.unsplash.com/photo-1557200134-90327ee9fafa?w=150&auto=format&fit=crop&q=60')}
-                            style={{ width: '120px', height: '120px', border: '1px dashed #ccc', borderRadius: '4px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#fafafa', color: '#999' }}
-                          >
-                            <FileImageOutlined style={{ fontSize: '24px', marginBottom: '6px' }} />
-                            <span style={{ fontSize: '10px' }}>点击模拟上传截图</span>
-                          </div>
-                        )}
-                      </div>
-                    </Form>
-                  </Card>
-                </Col>
-
-                <Col span={14}>
-                  <Space direction="vertical" style={{ width: '100%' }} size={16}>
-                    {/* 右侧(上)：【卡片 B：重点人员管理】 */}
-                    <Card
-                    title="卡片 B：群重点人与「人员库」关联"
-                      extra={
-                        <Button
-                          size="small"
-                          type="primary"
-                          ghost
-                          icon={<PlusOutlined />}
-                          onClick={() => {
-                            const newM: GroupMemberItem = {
-                              id: `GM_${Date.now()}`,
-                              nickname: '新发掘发言网民',
-                              roleType: 'activist',
-                            };
-                            const updatedList = groupList.map((g) => {
-                              if (g.id === selectedGroup.id) {
-                                const updatedG = { ...g, members: [...g.members, newM] };
-                                setSelectedGroup(updatedG);
-                                return updatedG;
-                              }
-                              return g;
-                            });
-                            setGroupList(updatedList);
-                            message.success('已新增一行空白群成员记录，请点击右侧进行身份快捷关联。');
-                          }}
-                        >
-                          发掘新重点人
-                        </Button>
-                      }
+                      查看
+                    </Button>
+                    <Button
+                      size="small"
+                      danger
+                      icon={<DeleteOutlined />}
+                      onClick={() => handleDeleteIntel(record.id)}
                     >
-                      <Table
-                        dataSource={selectedGroup.members}
-                        rowKey="id"
-                        size="small"
-                        pagination={false}
-                        bordered
-                        columns={[
-                          {
-                            title: '群内昵称',
-                            dataIndex: 'nickname',
-                            key: 'nickname',
-                            render: (text: string, record: GroupMemberItem) => (
-                              <Input
-                                defaultValue={text}
-                                size="small"
-                                style={{ width: '120px' }}
-                                onChange={(e) => {
-                                  record.nickname = e.target.value;
-                                }}
-                              />
-                            )
-                          },
-                          {
-                            title: '成员类型',
-                            dataIndex: 'roleType',
-                            key: 'roleType',
-                            render: (type: string, record: GroupMemberItem) => (
-                              <Select
-                                defaultValue={type}
-                                size="small"
-                                style={{ width: '130px' }}
-                                onChange={(value) => {
-                                  record.roleType = value as any;
-                                }}
-                                options={[
-                                  { value: 'moderator', label: '群主/创建者' },
-                                  { value: 'activist', label: '高频发言者' },
-                                  { value: 'responder', label: '积极响应者' },
-                                ]}
-                              />
-                            ),
-                          },
-                          {
-                            title: '关联真实身份 (穿透人员库)',
-                            key: 'associatedPerson',
-                            render: (_: any, record: GroupMemberItem) => {
-                              if (record.personId) {
-                                const person = peopleDatabase.find(p => p.id === record.personId);
-                                return (
-                                  <Space>
-                                    <strong
-                                      style={{ color: '#1890ff', textDecoration: 'underline', cursor: 'pointer' }}
-                                      onClick={() => handleOpenDrawer(record.personId!)}
-                                      title="点击弹出网民内网画像档案"
-                                    >
-                                      {person?.name || '未知人员'}
-                                    </strong>
-                                    <Tag color={person?.riskLevel === 'high' ? 'red' : 'orange'}>
-                                      {person?.riskLevel === 'high' ? '高危' : '中危'}
-                                    </Tag>
-                                  </Space>
-                                );
-                              }
-                              if (record.tempNote) {
-                                return <Tag color="default">未建档: {record.tempNote}</Tag>;
-                              }
-                              return <span style={{ color: '#aaa', fontSize: '12px' }}>未绑定身份</span>;
-                            },
-                          },
-                          {
-                            title: '操作',
-                            key: 'action',
-                            render: (_: any, record: GroupMemberItem) => (
-                              <Space>
-                                <Button
-                                  type="link"
-                                  size="small"
-                                  icon={<LinkOutlined />}
-                                  onClick={() => {
-                                    setActiveMemberRow(record);
-                                    setLinkSearchText('');
-                                    setLinkModalVisible(true);
-                                    // 自动初始化反向登记表单中的社交账号和属地字段
-                                    reverseRegisterForm.setFieldsValue({
-                                      name: '',
-                                      idCard: '',
-                                      riskLevel: 'medium',
-                                      socialId: `wxid_${Math.random().toString(36).substring(3, 9)}`,
-                                      department: selectedGroup.department
-                                    });
-                                  }}
-                                >
-                                  关联
-                                </Button>
-                                {(record.personId || record.tempNote) && (
-                                  <Button
-                                    type="text"
-                                    danger
-                                    size="small"
-                                    icon={<DisconnectOutlined />}
-                                    onClick={() => handleUnlinkPerson(record.id)}
-                                  >
-                                    解绑
-                                  </Button>
-                                )}
-                              </Space>
-                            ),
-                          },
-                        ]}
-                      />
-                    </Card>
-
-                    {/* 右侧(下)：【卡片 C：动态线索手动上报】 */}
-                    <Card title="卡片 C：动态舆情线索手动上报 (时间轴)">
-                      {/* 上报表单 */}
-                      <Form
-                        form={clueForm}
-                        layout="vertical"
-                        size="small"
-                        onFinish={handleReportClue}
-                      >
-                        <Row gutter={8}>
-                          <Col span={12}>
-                            <Form.Item name="time" label="线索发生时间">
-                              <Input placeholder="不填则默认为当前时间" />
-                            </Form.Item>
-                          </Col>
-                          <Col span={12}>
-                            <Form.Item name="level" label="预警评估评级">
-                              <Select
-                                options={[
-                                  { value: 'red', label: '红色 (高危发酵)' },
-                                  { value: 'orange', label: '橙色 (需警示约谈)' },
-                                  { value: 'yellow', label: '黄色 (舆情关注)' },
-                                  { value: 'blue', label: '蓝色 (日常动态)' },
-                                ]}
-                              />
-                            </Form.Item>
-                          </Col>
-                        </Row>
-
-                        <Form.Item
-                          name="content"
-                          label="动态摘要情报"
-                          rules={[{ required: true, message: '请输入情报线索正文' }]}
-                        >
-                          <Input.TextArea placeholder="录入群内发生的聚会串联、敏感爆料或违规言论的细节..." rows={2} />
-                        </Form.Item>
-
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Form.Item name="reporter" noStyle>
-                            <Input placeholder="线索上报人" style={{ width: '160px' }} size="small" />
-                          </Form.Item>
-                          <Button
-                            type="primary"
-                            icon={<SendOutlined />}
-                            htmlType="submit"
-                          >
-                            立即上报情报
-                          </Button>
-                        </div>
-                      </Form>
-
-                      <Divider style={{ margin: '16px 0 12px' }} />
-
-                      {/* 线索历史时间轴 */}
-                      <div style={{ maxHeight: '200px', overflowY: 'auto', paddingRight: '8px' }}>
-                        <Timeline mode="left">
-                          {selectedGroup.bulletins.map((b, idx) => (
-                            <Timeline.Item
-                              key={idx}
-                              label={<span style={{ fontSize: '11px', color: '#999' }}>{b.time}</span>}
-                              color={b.level === 'red' ? 'red' : b.level === 'orange' ? 'orange' : b.level === 'yellow' ? 'gold' : 'blue'}
-                            >
-                              <div style={{ fontSize: '12px', background: '#fafafa', border: '1px solid #eee', borderRadius: '4px', padding: '8px' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#999', marginBottom: '4px' }}>
-                                  <span>评估级：<strong>{b.level.toUpperCase()}</strong></span>
-                                  <span>上报：{b.reporter}</span>
-                                </div>
-                                <div style={{ fontSize: '12px', color: '#333' }}>{b.content}</div>
-                              </div>
-                            </Timeline.Item>
-                          ))}
-                          {selectedGroup.bulletins.length === 0 && (
-                            <div style={{ textAlign: 'center', color: '#ccc', padding: '16px', fontSize: '12px' }}>
-                              本群暂无历史手工情报线索
-                            </div>
-                          )}
-                        </Timeline>
-                      </div>
-                    </Card>
+                      删除
+                    </Button>
                   </Space>
-                </Col>
-              </Row>
-            )}
-          </div>
-        )}
+                )
+              }
+            ]}
+          />
+        </Card>
 
-        {/* 跨库快捷检索关联身份 Dialog (Dialog 嵌套) */}
+        {/* 1. 涉稳情报登记 Modal 弹窗 */}
         <Modal
           title={
             <span>
-              <UsergroupAddOutlined style={{ color: '#1890ff' }} /> 跨库关联网民人员身份
+              <PlusOutlined style={{ color: '#722ed1' }} /> 手工录入涉稳情报台账
             </span>
           }
-          open={linkModalVisible}
-          onCancel={() => setLinkModalVisible(false)}
-          footer={null}
+          open={registerVisible}
+          onOk={handleRegisterSubmit}
+          onCancel={() => setRegisterVisible(false)}
+          okText="确认登记"
+          cancelText="取消"
+          width={600}
+          centered
+        >
+          <Form form={registerForm} layout="vertical">
+            <Form.Item name="title" label="情报标题" rules={[{ required: true, message: '请填写情报标题' }]}>
+              <Input placeholder="输入精简的情报标题" />
+            </Form.Item>
+
+            <Form.Item name="content" label="情报正文详细摘要" rules={[{ required: true, message: '请填写情报正文' }]}>
+              <Input.TextArea placeholder="输入重点网民串联聚集、拉横幅或网上煽动的详细时间、地点、人数等摘要..." rows={4} />
+            </Form.Item>
+
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item name="event" label="指向舆情事件名称">
+                  <Input placeholder="例如: 金地花园烂尾维权" />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item name="groupTag" label="所涉重点群体" rules={[{ required: true }]} initialValue="房产维权">
+                  <Select
+                    options={[
+                      { value: '房产维权', label: '房产维权群体' },
+                      { value: '环保维权', label: '环保维权群体' },
+                      { value: '医患群体', label: '医患纠纷群体' },
+                      { value: '退役军人', label: '退役安置诉求群体' },
+                      { value: '涉法涉诉', label: '涉法涉诉申诉群体' },
+                    ]}
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Row gutter={16}>
+              <Col span={8}>
+                <Form.Item name="category" label="情报类别" rules={[{ required: true }]} initialValue="拉横幅聚集">
+                  <Select
+                    options={[
+                      { value: '拉横幅聚集', label: '拉横幅聚集' },
+                      { value: '串联煽动', label: '串联煽动' },
+                      { value: '舆论造谣', label: '舆论造谣' },
+                      { value: '阻碍执法', label: '阻碍执法' },
+                    ]}
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={8}>
+                <Form.Item name="location" label="事关地" rules={[{ required: true }]} initialValue="淮安区">
+                  <Select
+                    options={[
+                      { value: '淮安区', label: '淮安区' },
+                      { value: '清江浦区', label: '清江浦区' },
+                      { value: '洪泽区', label: '洪泽区' },
+                    ]}
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={8}>
+                <Form.Item name="adopted" label="是否采用" rules={[{ required: true }]} initialValue="yes">
+                  <Select
+                    options={[
+                      { value: 'yes', label: '已采用' },
+                      { value: 'no', label: '未采用' },
+                    ]}
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+
+            {/* 快捷关联人员库网民 */}
+            <Form.Item name="relatedPeopleIds" label="关联涉稳重点人员 (下拉多选搜索人员库)">
+              <Select
+                mode="multiple"
+                placeholder="点击选择或搜索姓名"
+                optionFilterProp="label"
+                options={peopleDatabase.map(p => ({
+                  value: p.id,
+                  label: `${p.name} (身份证: ${p.idCard.substring(0,6)}****${p.idCard.substring(14)})`
+                }))}
+              />
+            </Form.Item>
+          </Form>
+        </Modal>
+
+        {/* 2. 情报详情 Modal 弹窗 */}
+        <Modal
+          title={
+            <span>
+              <InfoCircleOutlined /> 涉稳情报台账详细摘要
+            </span>
+          }
+          open={detailVisible}
+          onCancel={() => setDetailVisible(false)}
+          footer={[
+            <Button key="close" type="primary" onClick={() => setDetailVisible(false)}>
+              关闭详情
+            </Button>
+          ]}
           width={650}
           centered
         >
-          {activeMemberRow && selectedGroup && (
+          {selectedIntel && (
             <div>
               <Alert
-                message={`当前正在为群内成员「${activeMemberRow.nickname}」寻找真实受控身份档案。`}
+                message={`登记属地分局: ${selectedIntel.department}  |  上报民警: ${selectedIntel.reporter}`}
                 type="info"
-                showIcon
                 style={{ marginBottom: '16px' }}
               />
 
-              <div style={{ marginBottom: '12px' }}>
-                <Input
-                  placeholder="按受控网民姓名、脱敏身份证或标签模糊检索人员库..."
-                  value={linkSearchText}
-                  onChange={(e) => setLinkSearchText(e.target.value)}
-                  prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
-                  allowClear
-                />
+              <Descriptions bordered column={2} size="small" style={{ marginBottom: '16px' }}>
+                <Descriptions.Item label="情报标题" span={2}><strong>{selectedIntel.title}</strong></Descriptions.Item>
+                <Descriptions.Item label="指向事件"><Tag color="blue">{selectedIntel.event}</Tag></Descriptions.Item>
+                <Descriptions.Item label="采用状态">
+                  {selectedIntel.adopted === 'yes' 
+                    ? <Tag color="green">已采用</Tag>
+                    : <Tag color="default">未采用</Tag>}
+                </Descriptions.Item>
+                <Descriptions.Item label="涉稳群体"><Tag color="purple">{selectedIntel.groupTag}</Tag></Descriptions.Item>
+                <Descriptions.Item label="情报类别"><Tag color="cyan">{selectedIntel.category}</Tag></Descriptions.Item>
+                <Descriptions.Item label="事关地"><span>{selectedIntel.location}</span></Descriptions.Item>
+                <Descriptions.Item label="登记时间"><span>{selectedIntel.registerTime}</span></Descriptions.Item>
+              </Descriptions>
+
+              <div style={{ background: '#f9f9f9', padding: '12px', borderRadius: '4px', borderLeft: '4px solid #722ed1', marginBottom: '16px' }}>
+                <div style={{ fontWeight: 600, color: '#333', marginBottom: '6px' }}>情报正文详细内容：</div>
+                <div style={{ fontSize: '13px', lineHeight: '1.6', color: '#555' }}>
+                  {selectedIntel.content}
+                </div>
               </div>
 
-              {/* 搜索表格 */}
-              <Table
-                dataSource={filteredCrossPeople}
-                rowKey="id"
-                size="small"
-                pagination={{ pageSize: 3 }}
-                bordered
-                columns={[
-                  {
-                    title: '受控网民姓名',
-                    dataIndex: 'name',
-                    key: 'name',
-                    render: (text: string, record: PersonItem) => (
-                      <div>
-                        <strong>{text}</strong>
-                        <div style={{ fontSize: '10px', color: '#999' }}>身份证: {record.idCard.substring(0, 6)}...{record.idCard.substring(14)}</div>
-                      </div>
-                    )
-                  },
-                  {
-                    title: '评估等级',
-                    dataIndex: 'riskLevel',
-                    key: 'riskLevel',
-                    render: (risk: string) => (
-                      <Tag color={risk === 'high' ? 'red' : risk === 'medium' ? 'orange' : 'blue'}>
-                        {risk === 'high' ? '高风险' : '中风险'}
-                      </Tag>
-                    ),
-                  },
-                  {
-                    title: '责任属地',
-                    dataIndex: 'department',
-                    key: 'department',
-                  },
-                  {
-                    title: '操作',
-                    key: 'action',
-                    render: (_: any, record: PersonItem) => (
-                      <Button
-                        type="primary"
-                        size="small"
-                        onClick={() => handleAssociatePerson(record)}
-                      >
-                        选择关联
-                      </Button>
-                    ),
-                  },
-                ]}
-              />
-
-              <Divider style={{ margin: '16px 0' }} />
-
-              {/* 一键反向登记建档（快捷填报区域，支持重复画像智能合并归集） */}
-              <div style={{ background: '#f5f7fa', padding: '16px', border: '1px dashed #1890ff', borderRadius: '6px' }}>
-                <div style={{ fontSize: '12.5px', fontWeight: 600, color: '#0050b3', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <PlusOutlined />
-                  <span>未收录？一键反向登记建档（数据自动防重与多号合并归集）</span>
-                </div>
-                
-                <Form
-                  form={reverseRegisterForm}
-                  layout="vertical"
-                  size="small"
-                >
-                  <Row gutter={12}>
-                    <Col span={8}>
-                      <Form.Item name="name" label="真实姓名" rules={[{ required: true, message: '姓名必填' }]}>
-                        <Input placeholder="姓名(重名将自动画像合并)" />
-                      </Form.Item>
-                    </Col>
-                    <Col span={8}>
-                      <Form.Item name="idCard" label="身份证号">
-                        <Input placeholder="选填(身份证匹配最精准)" />
-                      </Form.Item>
-                    </Col>
-                    <Col span={8}>
-                      <Form.Item name="riskLevel" label="安全风险评级">
-                        <Select
-                          options={[
-                            { value: 'high', label: '高风险 (红)' },
-                            { value: 'medium', label: '中风险 (橙)' },
-                            { value: 'yellow', label: '关注级 (黄)' },
-                            { value: 'blue', label: '低风险 (蓝)' },
-                          ]}
-                        />
-                      </Form.Item>
-                    </Col>
-                  </Row>
-
-                  <Row gutter={12}>
-                    <Col span={12}>
-                      <Form.Item name="socialId" label={`当前绑定群账号ID (${selectedGroup.channel === 'wechat' ? '微信ID' : 'QQ特征码'})`} rules={[{ required: true, message: '必填' }]}>
-                        <Input placeholder="输入群成员的微信号或QQID" />
-                      </Form.Item>
-                    </Col>
-                    <Col span={12}>
-                      <Form.Item name="department" label="责任纳管属地">
-                        <Select
-                          options={[
-                            { value: '淮安区', label: '淮安区' },
-                            { value: '清江浦区', label: '清江浦区' },
-                            { value: '洪泽区', label: '洪泽区' },
-                          ]}
-                        />
-                      </Form.Item>
-                    </Col>
-                  </Row>
-
-                  <div style={{ textAlign: 'right', marginTop: '4px' }}>
-                    <Button
-                      type="primary"
-                      icon={<CheckCircleOutlined />}
-                      onClick={handleReverseRegister}
-                    >
-                      一键反向登记建档
-                    </Button>
+              {/* 关联人员 */}
+              <div>
+                <div style={{ fontWeight: 600, color: '#333', marginBottom: '8px' }}>关联受控重点人员：</div>
+                {selectedIntel.relatedPeopleIds.length === 0 ? (
+                  <span style={{ color: '#ccc', fontSize: '12px' }}>暂无关联网民人员</span>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '8px' }}>
+                    {selectedIntel.relatedPeopleIds.map((id) => {
+                      const person = peopleDatabase.find(p => p.id === id);
+                      if (!person) return null;
+                      return (
+                        <Card
+                          key={id}
+                          size="small"
+                          hoverable
+                          onClick={() => handleOpenPersonDrawer(id)}
+                          style={{ border: '1px solid #e8e8e8' }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Avatar size="small">{person.name[0]}</Avatar>
+                            <div>
+                              <strong style={{ fontSize: '12.5px', color: '#1890ff', textDecoration: 'underline' }}>{person.name}</strong>
+                              <div style={{ fontSize: '10px', color: '#999' }}>{person.gender} | {person.age}岁</div>
+                            </div>
+                          </div>
+                        </Card>
+                      );
+                    })}
                   </div>
-                </Form>
+                )}
               </div>
             </div>
           )}
         </Modal>
 
-        {/* 侧边穿透抽屉 (模拟点击姓名穿透查询重点网民画像档案) */}
+        {/* 3. 侧滑穿透重点人融合画像 Drawer */}
         <Drawer
-          title="网民重点人员内网画像档案"
+          title="蓝鹰网民全量特征融合画像"
           placement="right"
-          width={500}
+          width={650}
           onClose={() => setDrawerVisible(false)}
           open={drawerVisible}
         >
           {drawerPerson && (
             <div>
-              <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                <Avatar size={64} icon={<UserOutlined />} style={{ backgroundColor: '#1890ff' }} />
-                <h3 style={{ margin: '10px 0 2px 0', fontSize: '18px' }}>{drawerPerson.name}</h3>
-                <Tag color={drawerPerson.riskLevel === 'high' ? 'red' : 'orange'}>
-                  {drawerPerson.riskLevel === 'high' ? '极高涉稳风险' : '中度舆情风险'}
-                </Tag>
+              {/* 基本摘要 */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', background: '#f5f7fa', padding: '16px', borderRadius: '6px', marginBottom: '16px' }}>
+                <Avatar size={50} style={{ backgroundColor: '#87d068' }}>{drawerPerson.name[0]}</Avatar>
+                <div>
+                  <h3 style={{ margin: '0 0 4px 0', fontSize: '16px' }}>
+                    {drawerPerson.name}
+                    <span style={{ fontSize: '12px', color: '#999', fontWeight: 'normal', marginLeft: '10px' }}>
+                      {drawerPerson.gender} | {drawerPerson.age}岁
+                    </span>
+                  </h3>
+                  <Space>
+                    {drawerPerson.riskLevel === 'high' ? (
+                      <Tag color="red">🔴 极高风险</Tag>
+                    ) : drawerPerson.riskLevel === 'medium' ? (
+                      <Tag color="orange">🟡 中度风险</Tag>
+                    ) : (
+                      <Tag color="blue">🔵 一般关注</Tag>
+                    )}
+                    <Tag color="cyan">{drawerPerson.department}分局</Tag>
+                  </Space>
+                </div>
               </div>
 
-              <Descriptions bordered column={1} size="small">
-                <Descriptions.Item label="档案编号">{drawerPerson.id}</Descriptions.Item>
-                <Descriptions.Item label="身份证号">{drawerPerson.idCard}</Descriptions.Item>
-                <Descriptions.Item label="纳管单位">{drawerPerson.department}分局网安大队</Descriptions.Item>
-                <Descriptions.Item label="关注性质标签">
-                  <div>
-                    {drawerPerson.tags.map((t, idx) => (
-                      <Tag color="cyan" key={idx}>{t}</Tag>
-                    ))}
-                  </div>
+              {/* 来源与身份双重融合特征 */}
+              <Descriptions bordered size="small" column={1} style={{ marginBottom: '16px' }}>
+                <Descriptions.Item label="脱敏身份证"><code>{drawerPerson.idCard.substring(0, 6)}********{drawerPerson.idCard.substring(14)}</code></Descriptions.Item>
+                <Descriptions.Item label="脱敏手机号"><span>{drawerPerson.phone.substring(0, 3)}****{drawerPerson.phone.substring(7)}</span></Descriptions.Item>
+                <Descriptions.Item label="双源头来源属性">
+                  {drawerPerson.source === 'both' ? (
+                    <Space>
+                      <Tag color="red">双源头融合身份</Tag>
+                      <Tag color="blue">舆情指令</Tag>
+                      <Tag color="purple">涉稳登记</Tag>
+                    </Space>
+                  ) : drawerPerson.source === 'opinion' ? (
+                    <Tag color="blue">舆情指令录入</Tag>
+                  ) : (
+                    <Tag color="purple">涉稳台账登记</Tag>
+                  )}
                 </Descriptions.Item>
-                <Descriptions.Item label="备注记录">{drawerPerson.note}</Descriptions.Item>
+                
+                {/* 融合属性 */}
+                {drawerPerson.source === 'both' && (
+                  <>
+                    <Descriptions.Item label="网民类型 (舆情特征)"><Tag color="blue">自媒体大V</Tag></Descriptions.Item>
+                    <Descriptions.Item label="涉稳群体 (涉稳特征)"><Tag color="purple">{drawerPerson.groupTag}</Tag></Descriptions.Item>
+                  </>
+                )}
+                {drawerPerson.source === 'opinion' && (
+                  <Descriptions.Item label="网民类型 (舆情特征)">
+                    <strong>{drawerPerson.peopleType === 'media' ? '自媒体大V' : '普通关注网民'}</strong>
+                  </Descriptions.Item>
+                )}
+                {drawerPerson.source === 'stability' && (
+                  <Descriptions.Item label="涉稳群体 (涉稳特征)">
+                    <strong>{drawerPerson.groupTag}</strong>
+                  </Descriptions.Item>
+                )}
+                
+                <Descriptions.Item label="详细现住址">{drawerPerson.residentAddress}</Descriptions.Item>
               </Descriptions>
 
-              <Divider orientation={"left" as any} style={{ margin: '20px 0 10px' }}><span style={{ fontSize: '13px' }}>绑定社媒矩阵</span></Divider>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                {drawerPerson.socialAccounts.map((sa, idx) => (
-                  <Card key={idx} size="small" style={{ borderLeft: '3px solid #52c41a' }}>
-                    <div style={{ fontSize: '12px' }}>
-                      <div>平台: <Tag color="green">{sa.platform.toUpperCase()}</Tag></div>
-                      <div>账号: <strong>{sa.username}</strong></div>
-                      <div>ID特征: <code>{sa.id}</code></div>
-                    </div>
-                  </Card>
-                ))}
+              {/* 社交账号 */}
+              <div style={{ marginBottom: '16px' }}>
+                <div style={{ fontWeight: 600, color: '#333', marginBottom: '8px', fontSize: '13px' }}>监控社媒矩阵</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                  {drawerPerson.socialAccounts.map((account, index) => (
+                    <Card key={index} size="small" style={{ background: '#fafafa' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>👤 {account.username}</span>
+                        <Tag color="blue">{account.platform.toUpperCase()}</Tag>
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#999', marginTop: '4px' }}>
+                        ID: <code>{account.id}</code>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
               </div>
 
-              <Divider orientation={"left" as any} style={{ margin: '20px 0 10px' }}><span style={{ fontSize: '13px' }}>涉事客观帖文脉络</span></Divider>
-              <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+              {/* 客观帖文脉络 */}
+              <div>
+                <div style={{ fontWeight: 600, color: '#333', marginBottom: '8px', fontSize: '13px' }}>客观取证帖文流 (不提供AI摘要)</div>
                 <Timeline>
-                  {drawerPerson.recordList.map((post, idx) => (
-                    <Timeline.Item key={idx}>
-                      <div style={{ fontSize: '11px', color: '#999' }}>{post.publishTime}</div>
-                      <div style={{ fontSize: '12px', color: '#333' }}>{post.content}</div>
+                  {drawerPerson.recordList.map((post) => (
+                    <Timeline.Item key={post.id} color="red">
+                      <div style={{ fontSize: '12px', color: '#333', fontWeight: 600 }}>{post.content.substring(0, 30)}...</div>
+                      <div style={{ fontSize: '11px', color: '#666', marginTop: '4px' }}>
+                        发布时间: {post.publishTime}  |  平台: {post.platform.toUpperCase()}
+                      </div>
                     </Timeline.Item>
                   ))}
                 </Timeline>

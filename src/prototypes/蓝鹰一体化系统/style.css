@@ -6842,3 +6842,29 @@
   border-color: #d3adf7;
   color: #722ed1;
 }
+
+/* ==================== Segmented 大 Tab 自定义高亮样式 ==================== */
+.custom-segmented-tab.ant-segmented {
+  background-color: #f0f2f5 !important;
+  border: 1px solid #d9d9d9 !important;
+  padding: 2px !important;
+}
+
+.custom-segmented-tab .ant-segmented-item-selected {
+  background-color: #1d39c4 !important; /* 深蓝色底色 */
+  color: #ffffff !important; /* 浅色/白色文字 */
+  font-weight: 600;
+  box-shadow: 0 2px 4px rgba(29, 57, 196, 0.2) !important;
+}
+
+.custom-segmented-tab .ant-segmented-item-selected .ant-segmented-item-label {
+  color: #ffffff !important;
+}
+
+.custom-segmented-tab .ant-segmented-item-selected .anticon {
+  color: #ffffff !important;
+}
+
+.custom-segmented-tab .ant-segmented-item:hover:not(.ant-segmented-item-selected) {
+  background-color: #e6f7ff !important;
+}

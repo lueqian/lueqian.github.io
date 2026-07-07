@@ -18,6 +18,10 @@ import {
   Timeline,
   Row,
   Col,
+  Alert,
+  Dropdown,
+  Menu,
+  Tooltip,
 } from 'antd';
 import {
   SearchOutlined,
@@ -37,6 +41,13 @@ import {
   LinkOutlined,
   GlobalOutlined,
   FileTextOutlined,
+  SwapOutlined,
+  TeamOutlined,
+  PartitionOutlined,
+  PhoneOutlined,
+  IdcardOutlined,
+  CheckCircleOutlined,
+  ExclamationCircleOutlined,
 } from '@ant-design/icons';
 
 // 导出社交账号定义，供跨库使用
@@ -86,607 +97,920 @@ export interface PersonItem {
   incidentCount: number; // 关联事件总数
   recordList: PostItem[]; // 客观帖文脉络流
   note: string; // 备注
+  
+  // 新增双源头相关字段
+  source: 'opinion' | 'stability' | 'both'; // 舆情指令来源 / 涉稳登记来源 / 双源头融合
+  peopleType: 'media' | 'normal'; // 网民类型: 自媒体 / 普通网民
+  groupTag?: string; // 涉稳群体类别
 }
 
-const generateMockPeople = (): PersonItem[] => {
+export const generateMockPeople = (): PersonItem[] => {
   const list: PersonItem[] = [];
-  
-  // 基础姓氏与名字
   const lastNames = ['张', '李', '王', '刘', '陈', '杨', '赵', '黄', '周', '吴', '徐', '孙', '胡', '朱', '高', '林', '何', '郭', '马', '罗'];
   const maleNames = ['建国', '强', '刚', '伟', '勇', '军', '平', '保国', '超', '杰', '明', '辉', '波', '健', '涛', '飞', '鑫', '亮', '洋', '帅'];
   const femaleNames = ['梅', '娜', '丽', '敏', '静', '雅', '萍', '红', '玲', '芳', '倩', '婷', '娟', '燕', '莉', '霞', '丹', '洁', '慧', '欣'];
-  
-  // 属地列表
   const depts = ['淮安区', '清江浦区', '洪泽区'];
   
-  // 7个细分类别
   const categories = [
-    { key: '房产维权', parent: '维权群体', tags: ['维权群体', '房产维权', '业主骨干'] },
-    { key: '环保维权', parent: '维权群体', tags: ['维权群体', '环保维权', '村民代表'] },
-    { key: '医患群体', parent: '维权群体', tags: ['维权群体', '医患群体', '医疗纠纷'] },
-    { key: '自媒体', parent: '网络大V', tags: ['网络大V', '自媒体', '爆料拍客', '淮安生活圈'] },
-    { key: '本地生活', parent: '网络大V', tags: ['网络大V', '本地生活', '房产参谋', '买房避坑'] },
-    { key: '退役军人', parent: '特殊诉求', tags: ['特殊诉求', '退役军人', '安置诉求'] },
-    { key: '涉法涉诉', parent: '特殊诉求', tags: ['特殊诉求', '涉法涉诉', '申诉上访'] },
+    { key: '房产维权', parent: '维权群体', tags: ['维权群体', '房产维权', '业主骨干'], source: 'stability' as const },
+    { key: '环保维权', parent: '维权群体', tags: ['维权群体', '环保维权', '村民代表'], source: 'stability' as const },
+    { key: '医患群体', parent: '维权群体', tags: ['维权群体', '医患群体', '医疗纠纷'], source: 'stability' as const },
+    { key: '自媒体', parent: '网络大V', tags: ['网络大V', '自媒体', '爆料拍客', '淮安生活圈'], source: 'opinion' as const },
+    { key: '本地生活', parent: '网络大V', tags: ['网络大V', '本地生活', '房产参谋', '买房避坑'], source: 'opinion' as const },
+    { key: '退役军人', parent: '特殊诉求', tags: ['特殊诉求', '退役军人', '安置诉求'], source: 'stability' as const },
+    { key: '涉法涉诉', parent: '特殊诉求', tags: ['特殊诉求', '涉法涉诉', '申诉上访'], source: 'stability' as const },
   ];
 
   let idCounter = 1;
 
   categories.forEach((cat) => {
-    // 每个类别生成 10 个账号
+    // 每个类别生成 10 个账号 (共 70 个账号)
     for (let i = 1; i <= 10; i++) {
-      const isMale = Math.random() > 0.3; // 偏向男性
-      const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+      const isMale = Math.random() > 0.3;
+      const lastName = lastNames[(i * 7 + idCounter) % lastNames.length];
       const firstName = isMale 
         ? maleNames[(i * 3 + idCounter) % maleNames.length]
-        : femaleNames[(i * 3 + idCounter) % femaleNames.length];
+        : femaleNames[(i * 5 + idCounter) % femaleNames.length];
       const name = lastName + firstName;
       
       const gender = isMale ? '男' : '女';
       const age = 26 + (idCounter % 38);
-      const nation = '汉族';
       const birthYear = 2026 - age;
-      const birthday = `${birthYear}-${String((idCounter * 7) % 12 + 1).padStart(2, '0')}-${String((idCounter * 11) % 28 + 1).padStart(2, '0')}`;
+      const birthday = `${birthYear}-05-12`;
       
-      // 脱敏号码
-      const idCard = `320802${birthYear}${String((idCounter * 7) % 12 + 1).padStart(2, '0')}0${idCounter % 9 + 1}X`;
-      const phone = `13${(3 + idCounter % 7)}****${String(1000 + idCounter * 13)}`;
+      // 真实身份证，固定几个前缀以便于后面进行碰撞测试
+      // 比如，让第 1 个人的身份证固定为 320802198506101234
+      const idCard = idCounter === 1 
+        ? '320802198506101234'
+        : `320802${birthYear}05120${idCounter % 9 + 1}X`;
+      const phone = idCounter === 1
+        ? '13905178888'
+        : `13${(3 + idCounter % 7)}7233${1000 + idCounter}`;
       
       const dept = depts[idCounter % depts.length];
-      
-      // 各种地址
-      const residentAddress = `江苏省淮安市${dept}开明路${10 + i * 2}号院${i}号楼30${i % 9 + 1}室`;
-      const registeredAddress = `江苏省淮安市${dept}流均镇${lastName}庄村${i * 3}号`;
-      
+      const residentAddress = `江苏省淮安市${dept}开明路${10 + i * 2}号院${i}号楼301室`;
+      const registeredAddress = `江苏省淮安市${dept}流均镇庄村${i * 3}号`;
       const riskLevel = i % 3 === 0 ? 'high' : i % 3 === 1 ? 'medium' : 'low';
       
-      // 社媒绑定
       const socialAccounts: SocialAccount[] = [];
-      if (cat.key === '自媒体' || cat.key === '本地生活') {
-        socialAccounts.push({
-          platform: 'douyin',
-          username: `淮安${cat.key === '自媒体' ? '现场爆料' : '吃喝买房'}_${name}`,
-          id: `dy_${idCounter * 889}`,
-          followers: `${i * 3 + 2}万`,
-          url: `https://douyin.com/user_${idCounter}`,
-          status: 'monitored'
-        });
-      }
-      
       socialAccounts.push({
         platform: idCounter % 2 === 0 ? 'weibo' : 'wechat',
-        username: idCounter % 2 === 0 ? `淮安关注_${name}` : `${name}_业主圈`,
-        id: idCounter % 2 === 0 ? `weibo_${idCounter * 211}` : `wxid_sys_${idCounter * 109}`,
-        followers: idCounter % 2 === 0 ? `${i * 500}` : '300+',
-        url: idCounter % 2 === 0 ? `https://weibo.com/user_${idCounter}` : '微信内网封包',
+        username: idCounter % 2 === 0 ? `淮安热议_${name}` : `${name}_社群代表`,
+        id: idCounter % 2 === 0 ? `wb_${idCounter * 123}` : `wx_${idCounter * 321}`,
+        followers: idCounter % 2 === 0 ? `${i * 1200}` : '500+',
+        url: '内网取证映射链接',
         status: 'active'
       });
 
-      // 帖文脉络生成 (贴合实际、极具逻辑性)
+      // 帖文脉络
       const recordList: PostItem[] = [];
-      const index = i;
-      
-      if (cat.key === '房产维权') {
-        const estates = ['金地花园', '恒大悦府', '碧桂园天玺', '吾悦住宅区', '绿地学府'];
-        const est = estates[index % estates.length];
-        recordList.push({
-          id: `POST_${idCounter}_1`,
-          content: `关于${est}延期交房的联名请愿书：各位邻居，我们已经交房延迟大半年，开发商至今避而不见。我们准备于本周三上午组织业主前往区住建局集体上访，请大家踊跃报名参与。必须维权到底！`,
-          publishTime: `2026-07-07 10:${String(10 + i).padStart(2, '0')}`,
-          platform: socialAccounts[0].platform,
-          author: socialAccounts[0].username,
-          authorId: socialAccounts[0].id,
-          reposts: i * 2,
-          comments: i * 3,
-          likes: i * 15,
-          ipAddress: `10.32.100.${50 + i}`,
-          captureTime: `2026-07-07 10:${String(12 + i).padStart(2, '0')}`
-        });
-      } else if (cat.key === '环保维权') {
-        const projects = ['垃圾厂扩建', '清江浦化工园废气', '盐河污水偷排', '高良涧化工厂'];
-        const proj = projects[index % projects.length];
-        recordList.push({
-          id: `POST_${idCounter}_1`,
-          content: `大家快来看看，这是${proj}今天早上的黑烟！异味极其难闻，周边的孩子们课都上不了了，这剧毒气体到底谁来管！水井里的水也开始发涩发苦！[视频]`,
-          publishTime: `2026-07-07 08:${String(10 + i).padStart(2, '0')}`,
-          platform: socialAccounts[0].platform,
-          author: socialAccounts[0].username,
-          authorId: socialAccounts[0].id,
-          reposts: i * 4,
-          comments: i * 5,
-          likes: i * 25,
-          ipAddress: `10.40.110.${50 + i}`,
-          captureTime: `2026-07-07 08:${String(15 + i).padStart(2, '0')}`
-        });
-      } else if (cat.key === '医患群体') {
-        const hospitals = ['区人民医院', '中医院', '妇幼保健院', '康复医院'];
-        const hosp = hospitals[index % hospitals.length];
-        recordList.push({
-          id: `POST_${idCounter}_1`,
-          content: `无德医院，草菅人命！家人在${hosp}做常规手术，竟然因为医生推诿发生医疗事故不幸去世！院方不仅推卸责任，还推搡家属，天理何在！请大家帮我转发曝光！`,
-          publishTime: `2026-07-06 14:${String(10 + i).padStart(2, '0')}`,
-          platform: socialAccounts[0].platform,
-          author: socialAccounts[0].username,
-          authorId: socialAccounts[0].id,
-          reposts: i * 3,
-          comments: i * 6,
-          likes: i * 18,
-          ipAddress: `10.35.50.${50 + i}`,
-          captureTime: `2026-07-06 14:${String(12 + i).padStart(2, '0')}`
-        });
-      } else if (cat.key === '自媒体') {
-        recordList.push({
-          id: `POST_${idCounter}_1`,
-          content: `【粉丝爆料】淮安某路段今日清晨发生多车相撞突发事件，现场拉起警戒线，传闻有严重肢体冲突，是否有人员涉稳伤亡？希望官方尽快出面澄清。[图片]`,
-          publishTime: `2026-07-07 11:${String(10 + i).padStart(2, '0')}`,
-          platform: socialAccounts[0].platform,
-          author: socialAccounts[0].username,
-          authorId: socialAccounts[0].id,
-          reposts: i * 50,
-          comments: i * 20,
-          likes: i * 150,
-          ipAddress: `10.38.10.${50 + i}`,
-          captureTime: `2026-07-07 11:${String(12 + i).padStart(2, '0')}`
-        });
-      } else if (cat.key === '本地生活') {
-        recordList.push({
-          id: `POST_${idCounter}_1`,
-          content: `今天聊聊淮安目前的几个烂尾楼盘。很多买房人在后台私信我，说维权无门。其实像恒大、金地这几个小区的买房人真的很惨，一辈子的积蓄都搭进去了，希望相关部门切实解决。`,
-          publishTime: `2026-07-06 19:${String(10 + i).padStart(2, '0')}`,
-          platform: socialAccounts[0].platform,
-          author: socialAccounts[0].username,
-          authorId: socialAccounts[0].id,
-          reposts: i * 10,
-          comments: i * 8,
-          likes: i * 80,
-          ipAddress: `10.38.11.${50 + i}`,
-          captureTime: `2026-07-06 19:${String(12 + i).padStart(2, '0')}`
-        });
-      } else if (cat.key === '退役军人') {
-        recordList.push({
-          id: `POST_${idCounter}_1`,
-          content: `退伍老兵维权：我们退役军人辛辛苦苦为国奉献，退伍安置待遇却被推诿克扣！我们要去退役军人事务厅递交材料，依法维权，争取我们应有的尊严和权益！`,
-          publishTime: `2026-07-05 10:${String(10 + i).padStart(2, '0')}`,
-          platform: socialAccounts[0].platform,
-          author: socialAccounts[0].username,
-          authorId: socialAccounts[0].id,
-          reposts: i * 2,
-          comments: i * 4,
-          likes: i * 30,
-          ipAddress: `10.45.20.${50 + i}`,
-          captureTime: `2026-07-05 10:${String(12 + i).padStart(2, '0')}`
-        });
-      } else if (cat.key === '涉法涉诉') {
-        recordList.push({
-          id: `POST_${idCounter}_1`,
-          content: `流转土地补偿款拖欠三年至今未发，村委会推卸责任，老百姓告状无门。希望上级纪委部门严查其中的克扣挪用行为！我们要联合上访！坚决要回我们的血汗钱！`,
-          publishTime: `2026-07-07 13:${String(10 + i).padStart(2, '0')}`,
-          platform: socialAccounts[0].platform,
-          author: socialAccounts[0].username,
-          authorId: socialAccounts[0].id,
-          reposts: i * 3,
-          comments: i * 5,
-          likes: i * 40,
-          ipAddress: `10.48.30.${50 + i}`,
-          captureTime: `2026-07-07 13:${String(12 + i).padStart(2, '0')}`
-        });
+      recordList.push({
+        id: `POST_${idCounter}_1`,
+        content: `【原帖快照】针对本地当前热议维权诉求，本人号召大伙前往有关部门反应情况，合理维权，大家不要退缩！`,
+        publishTime: `2026-07-07 10:20`,
+        platform: socialAccounts[0].platform,
+        author: socialAccounts[0].username,
+        authorId: socialAccounts[0].id,
+        reposts: i * 2,
+        comments: i * 3,
+        likes: i * 12,
+        ipAddress: '10.32.122.45',
+        captureTime: `2026-07-07 10:25`
+      });
+
+      // 设定是否为双源头融合（让第1, 11, 21个用户默认为 both，模拟已经过碰撞合并的情况）
+      let finalSource: 'opinion' | 'stability' | 'both' = cat.source;
+      if (idCounter === 1 || idCounter === 11 || idCounter === 21) {
+        finalSource = 'both';
       }
 
       list.push({
-        id: `P${String(idCounter).padStart(3, '0')}`,
+        id: `PERSON_${idCounter}`,
         name,
         gender,
         age,
-        nation,
+        nation: '汉族',
         birthday,
         idCard,
         phone,
         residentAddress,
         registeredAddress,
-        type: cat.key === '自媒体' || cat.key === '本地生活' ? '网络舆论大V' : '重点关注人员',
+        type: cat.parent,
         riskLevel,
         tags: cat.tags,
         socialAccounts,
         department: dept,
-        status: i % 4 === 0 ? 'monitored' : i % 4 === 1 ? 'convinced' : i % 4 === 2 ? 'left' : 'normal',
-        lastActive: recordList[0]?.publishTime || `2026-07-07 12:00`,
-        incidentCount: recordList.length,
+        status: 'monitored',
+        lastActive: '2026-07-07 10:20',
+        incidentCount: i + 1,
         recordList,
-        note: `该人员因「${cat.key}」问题已被纳入公安局重点人群研判台账，最后涉事属地为${dept}分局辖区，需强化对其线上传播轨迹的密切监视。`
+        note: '内网涉稳与舆情重点关注对象',
+        
+        // 关键扩展字段
+        source: finalSource,
+        peopleType: cat.key === '自媒体' ? 'media' : 'normal',
+        groupTag: cat.source === 'stability' ? cat.key : undefined
       });
-
+      
       idCounter++;
+    }
+  });
+
+  // 随机挑选 20 个用户索引进行多事件关联、多个类型标签、多账号绑定的深度扩容
+  const expandIndices = [1, 4, 7, 11, 14, 17, 21, 24, 27, 31, 34, 37, 41, 44, 47, 51, 54, 57, 61, 64];
+  expandIndices.forEach((idx) => {
+    if (idx < list.length) {
+      const p = list[idx];
+      // 1. 多事件关联：设定关联事件数为 4-8 件
+      p.incidentCount = (idx * 3) % 5 + 4;
+      
+      // 2. 增加多条不同指向事件的客观取证发帖
+      p.recordList.push(
+        {
+          id: `POST_${idx}_ADD_1`,
+          content: `【二次取证快照】关于洪泽垃圾焚烧厂清晨偷偷排放黄色有毒气体的视频转发！环保指标弄虚作假，周边庄稼水井均受波及，请环保局给合理解释！`,
+          publishTime: `2026-07-06 15:30`,
+          platform: 'douyin',
+          author: p.socialAccounts[0]?.username || p.name,
+          authorId: p.socialAccounts[0]?.id || `dy_${idx}`,
+          reposts: idx + 5,
+          comments: idx + 8,
+          likes: idx * 8
+        },
+        {
+          id: `POST_${idx}_ADD_2`,
+          content: `【上访动向取证】关于流均镇承包土地流转补偿款拖欠三年的维权联署发帖。农民讨生活艰难，必须讨要说法，各位本周三上午准时在翔宇大道路口集合！`,
+          publishTime: `2026-07-05 11:15`,
+          platform: 'weibo',
+          author: p.socialAccounts[0]?.username || p.name,
+          authorId: p.socialAccounts[0]?.id || `wb_${idx}`,
+          reposts: idx + 10,
+          comments: idx + 15,
+          likes: idx * 10
+        }
+      );
+
+      // 3. 多个类型标签重合：融合另一个方向的标签
+      if (p.tags.includes('房产维权')) {
+        p.tags = [...p.tags, '环保维权', '阻碍厂区', '多度预警'];
+        p.groupTag = '房产及环保双重诉求';
+      } else if (p.tags.includes('退役军人')) {
+        p.tags = [...p.tags, '房产维权', '涉法涉诉', '重点上访人'];
+        p.groupTag = '安置及房产诉求';
+      } else {
+        p.tags = [...p.tags, '舆情带头人', '自媒体炒作', '高频串联'];
+        p.peopleType = 'media'; // 标记为自媒体大V特征
+      }
+
+      // 4. 追加社媒账号绑定，体现社媒矩阵监控
+      p.socialAccounts.push(
+        {
+          platform: 'douyin',
+          username: `淮安说事_${p.name}`,
+          id: `dy_story_${idx * 99}`,
+          followers: '2.5万',
+          url: '内网取证绑定',
+          status: 'monitored'
+        },
+        {
+          platform: 'wechat',
+          username: `${p.name}_正义发声`,
+          id: `wx_justice_${idx * 88}`,
+          followers: '450+',
+          url: '内网封包映射',
+          status: 'active'
+        }
+      );
     }
   });
 
   return list;
 };
 
-export const initialPeopleData: PersonItem[] = generateMockPeople();
+// 群体/多级标签折叠折缩函数：超过2个，只展示第1个，其余部分以 +n 带有 Tooltip 展现
+export const renderTagsWithCollapse = (tags: string[]) => {
+  if (!tags || tags.length === 0) return <span style={{ color: '#ccc', fontSize: '10px' }}>无标签</span>;
+  
+  if (tags.length <= 2) {
+    return (
+      <Space size={4} wrap>
+        {tags.map((t, idx) => (
+          <Tag color="blue" style={{ margin: 0, fontSize: '10px' }} key={idx}>{t}</Tag>
+        ))}
+      </Space>
+    );
+  }
+  
+  const visibleTag = tags[0];
+  const remainingCount = tags.length - 1;
+  const remainingTags = tags.slice(1).join('、');
 
-const labelTreeData = [
+  return (
+    <Space size={4} align="center">
+      <Tag color="blue" style={{ margin: 0, fontSize: '10px' }}>{visibleTag}</Tag>
+      <Tooltip title={`其余标签: ${remainingTags}`} placement="top">
+        <Tag color="default" style={{ margin: 0, fontSize: '10px', cursor: 'pointer', border: '1px solid #d9d9d9' }}>
+          +{remainingCount}
+        </Tag>
+      </Tooltip>
+    </Space>
+  );
+};
+
+// 预制标签分类树
+const initialCategoryTree = [
   {
-    title: '全部分类',
-    key: 'all',
+    title: '网络大V',
+    key: '大V',
     children: [
-      {
-        title: '维权群体',
-        key: '维权群体',
-        children: [
-          { title: '房产维权', key: '房产维权' },
-          { title: '环保维权', key: '环保维权' },
-          { title: '医患群体', key: '医患群体' },
-        ],
-      },
-      {
-        title: '网络大V / 自媒体',
-        key: '网络大V',
-        children: [
-          { title: '自媒体运营', key: '自媒体' },
-          { title: '本地生活大V', key: '本地生活' },
-        ],
-      },
-      {
-        title: '特殊诉求群体',
-        key: '特殊诉求',
-        children: [
-          { title: '退役军人', key: '退役军人' },
-          { title: '涉法涉诉', key: '涉法涉诉' },
-        ],
-      },
+      { title: '自媒体', key: '自媒体' },
+      { title: '本地生活', key: '本地生活' },
+    ],
+  },
+  {
+    title: '维权群体',
+    key: '维权',
+    children: [
+      { title: '房产维权', key: '房产维权' },
+      { title: '环保维权', key: '环保维权' },
+      { title: '医患群体', key: '医患群体' },
+    ],
+  },
+  {
+    title: '特殊诉求群体',
+    key: '特殊',
+    children: [
+      { title: '退役军人', key: '退役军人' },
+      { title: '涉法涉诉', key: '涉法涉诉' },
     ],
   },
 ];
 
 const PeopleDatabase: React.FC = () => {
-  const [peopleList, setPeopleList] = useState<PersonItem[]>(initialPeopleData);
+  const [peopleList, setPeopleList] = useState<PersonItem[]>(generateMockPeople());
+  const [viewMode, setViewMode] = useState<'card' | 'table'>('card'); // 默认卡片视图
+  
+  // 筛选状态
   const [searchText, setSearchText] = useState('');
   const [selectedRisk, setSelectedRisk] = useState<string>('all');
   const [selectedDept, setSelectedDept] = useState<string>('all');
-  const [selectedTagKey, setSelectedTagKey] = useState<string>('all');
+  const [selectedTreeKey, setSelectedTreeKey] = useState<string>('all');
+  
+  // 新增：人员来源筛选状态 (默认选中舆情指令来源板块)
+  const [selectedSource, setSelectedSource] = useState<'all' | 'opinion' | 'stability'>('opinion');
 
-  // 视图切换状态: "table" (列表视图) 或 "card" (卡片视图)
-  const [viewType, setViewType] = useState<'table' | 'card'>('card');
-
-  // 大号居中详情 Modal 控制
+  // 人员详情 Modal
   const [detailVisible, setDetailVisible] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState<PersonItem | null>(null);
 
-  // 帖文穿透模拟弹窗控制
+  // 取证穿透 Modal
   const [penetrateVisible, setPenetrateVisible] = useState(false);
   const [penetratePost, setPenetratePost] = useState<PostItem | null>(null);
 
-  // 登记人员 Modal 控制
-  const [registerVisible, setRegisterVisible] = useState(false);
-  const [form] = Form.useForm();
+  // 两套独立录入登记弹窗控制
+  const [opinionModalVisible, setOpinionModalVisible] = useState(false);
+  const [stabilityModalVisible, setStabilityModalVisible] = useState(false);
 
-  // 过滤网民列表
-  const filteredData = peopleList.filter((item) => {
-    const matchSearch =
-      item.name.includes(searchText) ||
-      item.idCard.includes(searchText) ||
-      item.phone.includes(searchText) ||
-      item.socialAccounts.some((acc) => acc.username.includes(searchText));
+  // 碰撞合并警告 Modal 控制
+  const [collisionVisible, setCollisionVisible] = useState(false);
+  
+  // 用于存储当前正在试图登记但发生冲突的人员表单快照和重合的现有档案人员
+  const [pendingRegisterData, setPendingRegisterData] = useState<any>(null);
+  const [collidedPerson, setCollidedPerson] = useState<PersonItem | null>(null);
+  const [collisionSourceType, setCollisionSourceType] = useState<'opinion' | 'stability'>('opinion');
 
-    const matchRisk = selectedRisk === 'all' || item.riskLevel === selectedRisk;
-    const matchDept = selectedDept === 'all' || item.department === selectedDept;
-    const matchTag =
-      selectedTagKey === 'all' ||
-      selectedTagKey === 'all-nodes' ||
-      item.tags.some((t) => t.includes(selectedTagKey) || selectedTagKey.includes(t));
+  const [opinionForm] = Form.useForm();
+  const [stabilityForm] = Form.useForm();
 
-    return matchSearch && matchRisk && matchDept && matchTag;
-  });
+  // 触发防重检测碰撞逻辑
+  const checkCollision = (idCard: string, phone: string, platform?: string, accountId?: string) => {
+    // 检测身份证或手机号
+    const match = peopleList.find(
+      p => (idCard && p.idCard === idCard) || (phone && p.phone === phone)
+    );
+    if (match) return match;
 
-  // 处理人员手动登记
-  const handleRegisterSubmit = () => {
-    form.validateFields().then((values) => {
-      // 动态子表单中录入的社交账号列表
-      const socialList = (values.socialAccounts || []).map((acc: any) => ({
-        platform: acc.platform || 'wechat',
-        username: acc.username || '未命名账号',
-        id: acc.id || `id_${Math.floor(Math.random() * 100000)}`,
-        followers: acc.followers || '0',
-        url: acc.url || '内网封闭地址',
-        status: 'active',
-      }));
+    // 检测社交账号 ID 碰撞
+    if (platform && accountId) {
+      const matchSocial = peopleList.find(p =>
+        p.socialAccounts.some(sa => sa.platform === platform && sa.id === accountId)
+      );
+      if (matchSocial) return matchSocial;
+    }
+    return null;
+  };
 
-      // 生成新登记人员记录
+  // 舆情指令来源人员登记提交
+  const handleOpinionSubmit = () => {
+    opinionForm.validateFields().then((values) => {
+      const collision = checkCollision(values.idCard, values.phone, values.platform, values.accountId);
+      if (collision) {
+        // 发生碰撞！拦截并弹出碰撞 Modal
+        setCollidedPerson(collision);
+        setPendingRegisterData(values);
+        setCollisionSourceType('opinion');
+        setCollisionVisible(true);
+        return;
+      }
+
+      // 未碰撞，正常录入新网民人员
       const newPerson: PersonItem = {
-        id: `P${String(peopleList.length + 1).padStart(3, '0')}`,
+        id: `PERSON_${Date.now()}`,
         name: values.name,
-        gender: values.gender || '男',
-        age: Number(values.age) || 30,
-        nation: values.nation || '汉族',
-        birthday: values.birthday || '1990-01-01',
+        gender: '男',
+        age: 35,
+        nation: '汉族',
+        birthday: '1991-05-12',
         idCard: values.idCard,
         phone: values.phone,
-        residentAddress: values.residentAddress || '江苏省淮安市未知地址',
-        registeredAddress: values.registeredAddress || '江苏省淮安市未知户籍地',
-        type: values.type || '关注人员',
-        riskLevel: values.riskLevel || 'low',
-        tags: values.tags ? values.tags.split(',') : ['其他群体'],
-        socialAccounts: socialList.length > 0 ? socialList : [
-          { platform: 'wechat', username: `${values.name}_微信`, id: `wxid_${Math.floor(Math.random() * 1000)}`, followers: '100+', url: '未知链接', status: 'active' }
+        residentAddress: '江苏省淮安市清江浦区淮海路1号',
+        registeredAddress: '江苏省淮安市清江浦区淮海路1号',
+        type: '网络大V',
+        riskLevel: 'medium',
+        tags: ['舆情录入', '自媒体大V'],
+        socialAccounts: [
+          {
+            platform: values.platform,
+            username: values.nickname,
+            id: values.accountId,
+            followers: '10万+',
+            url: '内网封包映射',
+            status: 'active'
+          }
         ],
-        department: values.department || '淮安区',
+        department: '清江浦区',
         status: 'monitored',
-        lastActive: new Date().toISOString().replace('T', ' ').substring(0, 16),
+        lastActive: '2026-07-07 10:20',
         incidentCount: 1,
-        note: values.note || '无备注信息',
         recordList: [
           {
             id: `POST_${Date.now()}`,
-            content: values.note || '手工录入该网民时建立的初始化第一条涉事内容轨迹记录。',
-            publishTime: new Date().toISOString().replace('T', ' ').substring(0, 16),
-            platform: 'wechat',
-            author: values.name,
-            authorId: 'wxid_sys',
-            reposts: 0,
-            comments: 0,
-            likes: 0,
-            ipAddress: '10.32.22.11',
-            captureTime: new Date().toISOString().replace('T', ' ').substring(0, 16),
+            content: `【网民原始言论快照】：${values.nickname} 发表在 ${values.platform} 的涉舆敏感贴文快照记录。`,
+            publishTime: '2026-07-07 10:20',
+            platform: values.platform,
+            author: values.nickname,
+            authorId: values.accountId,
+            reposts: 5,
+            comments: 12,
+            likes: 45
           }
-        ]
+        ],
+        note: '由舆情指令来源快速建档登记',
+        source: 'opinion',
+        peopleType: values.peopleType || 'media'
       };
 
       setPeopleList([newPerson, ...peopleList]);
-      message.success(`成功手工登记网民「${values.name}」的身份和社交账号矩阵！`);
-      setRegisterVisible(false);
-      form.resetFields();
+      message.success(`成功在人员库中建立【舆情来源】档案: ${values.name}`);
+      setOpinionModalVisible(false);
+      opinionForm.resetFields();
     });
   };
 
-  // 表格视图列定义
-  const tableColumns = [
-    {
-      title: '基本信息 (脱敏)',
-      dataIndex: 'name',
-      key: 'name',
-      render: (text: string, record: PersonItem) => (
-        <Space>
-          <Avatar style={{ backgroundColor: record.riskLevel === 'high' ? '#ff4d4f' : record.riskLevel === 'medium' ? '#faad14' : '#1890ff' }}>
-            {text[0]}
-          </Avatar>
-          <div>
-            <div style={{ fontWeight: 600 }}>{text}</div>
-            <div style={{ fontSize: '11px', color: '#999' }}>
-              身份证: {record.idCard.substring(0, 6)}********{record.idCard.substring(14)}
-            </div>
-          </div>
-        </Space>
-      ),
-    },
-    {
-      title: '涉事总次数',
-      dataIndex: 'incidentCount',
-      key: 'incidentCount',
-      render: (count: number) => <strong style={{ fontSize: '13px' }}>{count} 次</strong>,
-    },
-    {
-      title: '评估等级',
-      dataIndex: 'riskLevel',
-      key: 'riskLevel',
-      render: (risk: string) => (
-        <Tag color={risk === 'high' ? 'red' : risk === 'medium' ? 'orange' : 'blue'} style={{ fontWeight: 500 }}>
-          {risk === 'high' ? '高风险' : risk === 'medium' ? '中风险' : '低风险'}
-        </Tag>
-      ),
-    },
-    {
-      title: '主要标签',
-      dataIndex: 'tags',
-      key: 'tags',
-      render: (tags: string[]) => (
-        <div>
-          {tags.slice(0, 3).map((tag, idx) => (
-            <Tag key={idx} color="cyan">{tag}</Tag>
-          ))}
-        </div>
-      ),
-    },
-    {
-      title: '最新涉事时间',
-      dataIndex: 'lastActive',
-      key: 'lastActive',
-    },
-    {
-      title: '操作',
-      key: 'action',
-      render: (_: any, record: PersonItem) => (
-        <Button
-          type="link"
-          icon={<FileSearchOutlined />}
-          onClick={() => {
-            setSelectedPerson(record);
-            setDetailVisible(true);
-          }}
-        >
-          查看详情
-        </Button>
-      ),
-    },
-  ];
+  // 涉稳登记来源人员登记提交
+  const handleStabilitySubmit = () => {
+    stabilityForm.validateFields().then((values) => {
+      const collision = checkCollision(values.idCard, values.phone, values.platform, values.accountId);
+      if (collision) {
+        // 发生碰撞！拦截并弹出碰撞 Modal
+        setCollidedPerson(collision);
+        setPendingRegisterData(values);
+        setCollisionSourceType('stability');
+        setCollisionVisible(true);
+        return;
+      }
 
-  // 辅助函数：根据帖文正文获取原生态标题 (最长30字)
+      // 未碰撞，正常录入新网民人员
+      const newPerson: PersonItem = {
+        id: `PERSON_${Date.now()}`,
+        name: values.name,
+        gender: '男',
+        age: 38,
+        nation: '汉族',
+        birthday: '1988-06-10',
+        idCard: values.idCard,
+        phone: values.phone,
+        residentAddress: '江苏省淮安市淮安区翔宇大道100号',
+        registeredAddress: '江苏省淮安市淮安区翔宇大道100号',
+        type: '维权群体',
+        riskLevel: 'high',
+        tags: ['涉稳登记', values.groupTag],
+        socialAccounts: [
+          {
+            platform: values.platform,
+            username: values.nickname,
+            id: values.accountId,
+            followers: '100+',
+            url: '内网封包映射',
+            status: 'monitored'
+          }
+        ],
+        department: '淮安区',
+        status: 'monitored',
+        lastActive: '2026-07-07 10:20',
+        incidentCount: 1,
+        recordList: [
+          {
+            id: `POST_${Date.now()}`,
+            content: `【涉稳网民快照】：在社群中发表涉群体性聚集的相关串联快照。`,
+            publishTime: '2026-07-07 10:20',
+            platform: values.platform,
+            author: values.nickname,
+            authorId: values.accountId,
+            reposts: 0,
+            comments: 2,
+            likes: 4
+          }
+        ],
+        note: '由涉稳渠道来源手工建档登记',
+        source: 'stability',
+        peopleType: 'normal',
+        groupTag: values.groupTag
+      };
+
+      setPeopleList([newPerson, ...peopleList]);
+      message.success(`成功在人员库中建立【涉稳来源】档案: ${values.name}`);
+      setStabilityModalVisible(false);
+      stabilityForm.resetFields();
+    });
+  };
+
+  // 防重碰撞合并画像逻辑
+  const handleExecuteMerge = () => {
+    if (!collidedPerson || !pendingRegisterData) return;
+
+    const updated = peopleList.map((p) => {
+      if (p.id === collidedPerson.id) {
+        // 画像融合合并
+        const mergedSource: 'both' = 'both';
+        
+        // 保留原有的和新录入的特质
+        const updatedPeopleType = collisionSourceType === 'opinion' 
+          ? pendingRegisterData.peopleType 
+          : p.peopleType;
+
+        const updatedGroupTag = collisionSourceType === 'stability'
+          ? pendingRegisterData.groupTag
+          : p.groupTag;
+
+        // 追加社媒账号
+        const hasSocial = p.socialAccounts.some(
+          sa => sa.platform === pendingRegisterData.platform && sa.id === pendingRegisterData.accountId
+        );
+        const newSocialList = [...p.socialAccounts];
+        if (!hasSocial && pendingRegisterData.platform && pendingRegisterData.accountId) {
+          newSocialList.push({
+            platform: pendingRegisterData.platform,
+            username: pendingRegisterData.nickname,
+            id: pendingRegisterData.accountId,
+            followers: '新录入绑定',
+            url: '内网封包映射',
+            status: 'monitored'
+          });
+        }
+
+        // 追加标签
+        const newTags = Array.from(new Set([
+          ...p.tags, 
+          '双源头融合', 
+          collisionSourceType === 'opinion' ? '自媒体' : pendingRegisterData.groupTag
+        ].filter(Boolean) as string[]));
+
+        return {
+          ...p,
+          source: mergedSource,
+          peopleType: updatedPeopleType,
+          groupTag: updatedGroupTag,
+          socialAccounts: newSocialList,
+          tags: newTags,
+          incidentCount: p.incidentCount + 1
+        };
+      }
+      return p;
+    });
+
+    setPeopleList(updated);
+    message.success(`画像已成功碰撞合并！网民 ${collidedPerson.name} 的档案已升级为双源头融合形态，社交账号已追加。`);
+    
+    // 关闭所有 Modal 弹窗
+    setCollisionVisible(false);
+    setOpinionModalVisible(false);
+    setStabilityModalVisible(false);
+    
+    // 重置表单
+    opinionForm.resetFields();
+    stabilityForm.resetFields();
+  };
+
+  // 数据过滤逻辑
+  const getFilteredPeople = () => {
+    return peopleList.filter((p) => {
+      // 1. 全局搜索
+      if (searchText) {
+        const query = searchText.toLowerCase();
+        const matchName = p.name.toLowerCase().includes(query);
+        const matchCard = p.idCard.includes(query);
+        const matchPhone = p.phone.includes(query);
+        const matchSocial = p.socialAccounts.some(sa => sa.username.toLowerCase().includes(query) || sa.id.includes(query));
+        if (!matchName && !matchCard && !matchPhone && !matchSocial) return false;
+      }
+      // 2. 风险等级
+      if (selectedRisk !== 'all' && p.riskLevel !== selectedRisk) return false;
+      // 3. 属地
+      if (selectedDept !== 'all' && p.department !== selectedDept) return false;
+      // 4. 左侧标签树
+      if (selectedTreeKey !== 'all') {
+        const matchTree = p.tags.some(tag => tag === selectedTreeKey);
+        if (!matchTree) return false;
+      }
+      // 5. 新增：人员来源筛选
+      if (selectedSource !== 'all') {
+        if (selectedSource === 'opinion' && p.source !== 'opinion' && p.source !== 'both') return false;
+        if (selectedSource === 'stability' && p.source !== 'stability' && p.source !== 'both') return false;
+      }
+
+      return true;
+    });
+  };
+
+  const currentList = getFilteredPeople();
+
+  // 获取卡片展示平台图标
+  const renderPlatformIcons = (accounts: SocialAccount[]) => {
+    return (
+      <Space size={6} style={{ marginTop: '6px' }}>
+        {accounts.some(a => a.platform === 'weibo') && <WeiboOutlined style={{ color: '#df2029', fontSize: '15px' }} />}
+        {accounts.some(a => a.platform === 'wechat') && <WechatOutlined style={{ color: '#09bb07', fontSize: '15px' }} />}
+        {accounts.some(a => a.platform === 'douyin') && <SwapOutlined style={{ color: '#000', fontSize: '15px' }} />}
+      </Space>
+    );
+  };
+
+  // 得到卡片帖文标题
   const getPostDisplayTitle = (post: PostItem) => {
     if (post.title) return post.title;
-    const body = post.content || '';
-    if (body.length <= 40) return body;
-    return body.substring(0, 38) + '...';
+    return post.content.length > 25 ? post.content.substring(0, 25) + '...' : post.content;
+  };
+
+  const handleOpenPenetrate = (post: PostItem) => {
+    setPenetratePost(post);
+    setPenetrateVisible(true);
   };
 
   return (
     <div className="dark-watermark-container">
       <div className="custom-page-container">
-        {/* 顶部操作与筛选栏 */}
-        <Card bordered={false} size="small" style={{ marginBottom: '8px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-            <Space style={{ flexWrap: 'wrap' }}>
-              <Input
-                placeholder="全局搜索姓名/脱敏信息/社交账号"
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                style={{ width: 240 }}
-                prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
-                allowClear
-              />
-              <Select
-                value={selectedRisk}
-                onChange={setSelectedRisk}
-                style={{ width: 120 }}
-                options={[
-                  { value: 'all', label: '全部评估等级' },
-                  { value: 'high', label: '高风险' },
-                  { value: 'medium', label: '中风险' },
-                  { value: 'low', label: '低风险' },
-                ]}
-              />
-              <Select
-                value={selectedDept}
-                onChange={setSelectedDept}
-                style={{ width: 130 }}
-                options={[
-                  { value: 'all', label: '全部所属区域' },
-                  { value: '淮安区', label: '淮安分局' },
-                  { value: '清江浦区', label: '清江浦分局' },
-                  { value: '洪泽区', label: '洪泽分局' },
-                ]}
-              />
-            </Space>
+        {/* 数据指标看板 */}
+        <Row gutter={16} style={{ marginBottom: '16px' }}>
+          <Col span={6}>
+            <Card size="small" style={{ background: '#fff1f0', borderLeft: '4px solid #ff4d4f' }}>
+              <div style={{ color: '#666', fontSize: '12px' }}>高风险人员 (Red)</div>
+              <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#cf1322', marginTop: '4px' }}>
+                {peopleList.filter(p => p.riskLevel === 'high').length} <span style={{ fontSize: '12px', fontWeight: 'normal', color: '#999' }}>人</span>
+              </div>
+            </Card>
+          </Col>
+          <Col span={6}>
+            <Card size="small" style={{ background: '#f6ffed', borderLeft: '4px solid #52c41a' }}>
+              <div style={{ color: '#666', fontSize: '12px' }}>在库重点人员总数</div>
+              <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#389e0d', marginTop: '4px' }}>
+                {peopleList.length} <span style={{ fontSize: '12px', fontWeight: 'normal', color: '#999' }}>人</span>
+              </div>
+            </Card>
+          </Col>
+          <Col span={6}>
+            <Card size="small" style={{ background: '#e6f7ff', borderLeft: '4px solid #1890ff' }}>
+              <div style={{ color: '#666', fontSize: '12px' }}>已绑定监控账号</div>
+              <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#096dd9', marginTop: '4px' }}>
+                {peopleList.reduce((acc, curr) => acc + curr.socialAccounts.length, 0)} <span style={{ fontSize: '12px', fontWeight: 'normal', color: '#999' }}>个</span>
+              </div>
+            </Card>
+          </Col>
+          <Col span={6}>
+            <Card size="small" style={{ background: '#f9f0ff', borderLeft: '4px solid #722ed1' }}>
+              <div style={{ color: '#666', fontSize: '12px' }}>双源头融合画像人员</div>
+              <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#531dab', marginTop: '4px' }}>
+                {peopleList.filter(p => p.source === 'both').length} <span style={{ fontSize: '12px', fontWeight: 'normal', color: '#999' }}>人</span>
+              </div>
+            </Card>
+          </Col>
+        </Row>
 
-            <Space>
-              {/* 视图切换 Segmented */}
-              <Segmented
-                value={viewType}
-                onChange={(value) => setViewType(value as 'table' | 'card')}
-                options={[
-                  { value: 'table', label: '列表视图', icon: <UnorderedListOutlined /> },
-                  { value: 'card', label: '卡片视图', icon: <AppstoreOutlined /> },
-                ]}
-              />
-              <Button
-                type="primary"
-                icon={<UserAddOutlined />}
-                onClick={() => setRegisterVisible(true)}
-              >
-                手工登记人员
-              </Button>
-            </Space>
-          </div>
-        </Card>
-
-        {/* 主体架构 (左侧树 + 右侧视图) */}
-        <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: '16px' }}>
+        {/* 主体双栏布局 */}
+        <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: '16px' }}>
           {/* 左侧多级标签树 */}
-          <Card className="filter-sidebar-card" bordered={false}>
-            <div className="sidebar-title">
-              <ProfileOutlined />
-              <span>多级标签分类树</span>
+          <Card size="small" className="filter-sidebar-card" style={{ height: 'calc(100vh - 270px)', overflowY: 'auto' }}>
+            <div className="sidebar-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <PartitionOutlined />
+              <span>人员属性多级分类</span>
             </div>
             <Tree
               defaultExpandAll
-              treeData={labelTreeData}
-              onSelect={(selectedKeys) => {
-                if (selectedKeys.length > 0) {
-                  setSelectedTagKey(selectedKeys[0] as string);
-                } else {
-                  setSelectedTagKey('all');
+              treeData={[
+                { title: '展示全部人员', key: 'all' },
+                ...initialCategoryTree
+              ]}
+              onSelect={(keys) => {
+                if (keys.length > 0) {
+                  setSelectedTreeKey(keys[0] as string);
                 }
               }}
             />
           </Card>
 
-          {/* 右侧数据展示区 */}
-          <div style={{ minHeight: 'calc(100vh - 240px)' }}>
-            {viewType === 'table' ? (
-              /* 表格视图 */
-              <Card bordered={false}>
+          {/* 右侧主区域 */}
+          <div>
+            {/* 新增：人员来源大 Tab 切换（带各来源人数动态统计，以 Segmented 渲染） */}
+            <div style={{ marginBottom: '12px' }}>
+              <Segmented
+                size="large"
+                className="custom-segmented-tab"
+                value={selectedSource}
+                onChange={(val) => setSelectedSource(val as any)}
+                options={[
+                  {
+                    label: (
+                      <div style={{ padding: '2px 12px', fontSize: '13.5px' }}>
+                        <FileTextOutlined style={{ color: '#1890ff', marginRight: '6px' }} />
+                        舆情指令人员库 ({peopleList.filter(p => p.source === 'opinion' || p.source === 'both').length}人)
+                      </div>
+                    ),
+                    value: 'opinion',
+                  },
+                  {
+                    label: (
+                      <div style={{ padding: '2px 12px', fontSize: '13.5px' }}>
+                        <TeamOutlined style={{ color: '#722ed1', marginRight: '6px' }} />
+                        涉稳登记人员库 ({peopleList.filter(p => p.source === 'stability' || p.source === 'both').length}人)
+                      </div>
+                    ),
+                    value: 'stability',
+                  },
+                  {
+                    label: (
+                      <div style={{ padding: '2px 12px', fontSize: '13.5px' }}>
+                        <UsergroupAddOutlined style={{ color: '#52c41a', marginRight: '6px' }} />
+                        全部人员总台账 ({peopleList.length}人)
+                      </div>
+                    ),
+                    value: 'all',
+                  },
+                ]}
+                style={{ background: '#fff', border: '1px solid #d9d9d9', borderRadius: '6px' }}
+              />
+            </div>
+
+            {/* 顶部综合筛选区 */}
+            <Card size="small" style={{ marginBottom: '12px' }}>
+              <Row gutter={12} align="middle">
+                {/* 搜索 */}
+                <Col span={7}>
+                  <Input
+                    placeholder="姓名/身份证号/手机号/社交ID..."
+                    prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
+                    value={searchText}
+                    onChange={(e) => setSearchText(e.target.value)}
+                    allowClear
+                  />
+                </Col>
+
+                {/* 风险等级 */}
+                <Col span={5}>
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <span style={{ fontSize: '12px', color: '#555', marginRight: '6px', whiteSpace: 'nowrap' }}>风险:</span>
+                    <Select
+                      style={{ width: '100%' }}
+                      value={selectedRisk}
+                      onChange={setSelectedRisk}
+                      options={[
+                        { value: 'all', label: '全部' },
+                        { value: 'high', label: '高风险' },
+                        { value: 'medium', label: '中风险' },
+                        { value: 'low', label: '低风险' },
+                      ]}
+                    />
+                  </div>
+                </Col>
+
+                {/* 责任属地 */}
+                <Col span={5}>
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <span style={{ fontSize: '12px', color: '#555', marginRight: '6px', whiteSpace: 'nowrap' }}>属地:</span>
+                    <Select
+                      style={{ width: '100%' }}
+                      value={selectedDept}
+                      onChange={setSelectedDept}
+                      options={[
+                        { value: 'all', label: '全部' },
+                        { value: '淮安区', label: '淮安区' },
+                        { value: '清江浦区', label: '清江浦区' },
+                        { value: '洪泽区', label: '洪泽区' },
+                      ]}
+                    />
+                  </div>
+                </Col>
+
+                {/* 视图切换与手工登记按钮组 */}
+                <Col span={7} style={{ textAlign: 'right' }}>
+                  <Space>
+                    <Segmented
+                      value={viewMode}
+                      onChange={(val) => setViewMode(val as any)}
+                      options={[
+                        { value: 'card', icon: <AppstoreOutlined /> },
+                        { value: 'table', icon: <UnorderedListOutlined /> },
+                      ]}
+                    />
+
+                    {/* 双通道登记下拉菜单（新增） */}
+                    <Dropdown
+                      menu={{
+                        items: [
+                          {
+                            key: 'opinion',
+                            icon: <FileTextOutlined style={{ color: '#1890ff' }} />,
+                            label: '登记舆情指令重点网民',
+                            onClick: () => setOpinionModalVisible(true),
+                          },
+                          {
+                            key: 'stability',
+                            icon: <TeamOutlined style={{ color: '#722ed1' }} />,
+                            label: '登记涉稳源头重点网民',
+                            onClick: () => setStabilityModalVisible(true),
+                          },
+                        ],
+                      }}
+                      placement="bottomRight"
+                    >
+                      <Button type="primary" icon={<UserAddOutlined />}>
+                        登记人员
+                      </Button>
+                    </Dropdown>
+                  </Space>
+                </Col>
+              </Row>
+            </Card>
+
+            {/* 内容列表渲染 */}
+            {viewMode === 'card' ? (
+              /* ================== 卡片视图 ================== */
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '12px' }}>
+                {currentList.map((person) => {
+                  let borderTop = '3px solid #d9d9d9';
+                  if (person.riskLevel === 'high') borderTop = '3px solid #ff4d4f';
+                  else if (person.riskLevel === 'medium') borderTop = '3px solid #faad14';
+                  else if (person.riskLevel === 'low') borderTop = '3px solid #1890ff';
+
+                  return (
+                    <Card
+                      key={person.id}
+                      size="small"
+                      hoverable
+                      onClick={() => {
+                        setSelectedPerson(person);
+                        setDetailVisible(true);
+                      }}
+                      style={{ borderTop, position: 'relative' }}
+                    >
+                      {/* 融合状态标识（红/蓝/紫角标） */}
+                      <div style={{ position: 'absolute', top: '8px', right: '8px' }}>
+                        {person.source === 'both' ? (
+                          <Tag color="red" style={{ margin: 0, fontSize: '10px', padding: '0 4px' }}>融合</Tag>
+                        ) : person.source === 'opinion' ? (
+                          <Tag color="blue" style={{ margin: 0, fontSize: '10px', padding: '0 4px' }}>舆情</Tag>
+                        ) : (
+                          <Tag color="purple" style={{ margin: 0, fontSize: '10px', padding: '0 4px' }}>涉稳</Tag>
+                        )}
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <Avatar style={{ backgroundColor: '#87d068' }}>{person.name[0]}</Avatar>
+                        <div>
+                          <div style={{ fontWeight: 600, fontSize: '14px' }}>{person.name}</div>
+                          <div style={{ fontSize: '12px', color: '#999' }}>{person.gender} | {person.age}岁</div>
+                        </div>
+                      </div>
+
+                      <Divider style={{ margin: '8px 0' }} />
+
+                      <div style={{ fontSize: '11.5px', color: '#666', lineHeight: '1.8' }}>
+                        <div>属地: <strong>{person.department}</strong></div>
+                        {/* 融合属性展示 */}
+                        {person.source === 'both' ? (
+                          <>
+                            <div>类型: <Tag color="blue" style={{ fontSize: '10px', padding: '0 2px' }}>自媒体</Tag></div>
+                            <div>群体: <Tag color="purple" style={{ fontSize: '10px', padding: '0 2px' }}>{person.groupTag || '未归类'}</Tag></div>
+                          </>
+                        ) : person.source === 'opinion' ? (
+                          <div>类型: <strong>{person.peopleType === 'media' ? '自媒体大V' : '普通网民'}</strong></div>
+                        ) : (
+                          <div>群体: <strong>{person.groupTag}</strong></div>
+                        )}
+                        <div style={{ margin: '4px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ color: '#888' }}>登记群标:</span>
+                          {renderTagsWithCollapse(person.tags)}
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span>社媒平台:</span>
+                          {renderPlatformIcons(person.socialAccounts)}
+                        </div>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            ) : (
+              /* ================== 表格视图 ================== */
+              <Card size="small">
                 <Table
-                  dataSource={filteredData}
-                  columns={tableColumns}
+                  dataSource={currentList}
                   rowKey="id"
-                  pagination={{ pageSize: 5 }}
                   size="middle"
                   bordered
+                  onRow={(record) => ({
+                    onClick: () => {
+                      setSelectedPerson(record);
+                      setDetailVisible(true);
+                    }
+                  })}
+                  columns={[
+                    {
+                      title: '重点人姓名',
+                      dataIndex: 'name',
+                      key: 'name',
+                      width: 100,
+                      render: (text, record) => (
+                        <Space>
+                          <strong>{text}</strong>
+                          {record.source === 'both' && <Tag color="red">融合</Tag>}
+                        </Space>
+                      )
+                    },
+                    {
+                      title: '基本特征',
+                      key: 'info',
+                      width: 110,
+                      render: (_, r) => <span>{r.gender} | {r.age}岁</span>
+                    },
+                    {
+                      title: '脱敏身份证号',
+                      dataIndex: 'idCard',
+                      key: 'idCard',
+                      render: (val: string) => <code>{val.substring(0, 6)}********{val.substring(14)}</code>
+                    },
+                    {
+                      title: '脱敏手机号',
+                      dataIndex: 'phone',
+                      key: 'phone',
+                      render: (val: string) => <span>{val.substring(0, 3)}****{val.substring(7)}</span>
+                    },
+                    {
+                      title: '人员来源',
+                      dataIndex: 'source',
+                      key: 'source',
+                      render: (val) => {
+                        if (val === 'both') return <Tag color="red">双源头融合</Tag>;
+                        if (val === 'opinion') return <Tag color="blue">舆情指令</Tag>;
+                        return <Tag color="purple">涉稳登记</Tag>;
+                      }
+                    },
+                    {
+                      title: '风险等级',
+                      dataIndex: 'riskLevel',
+                      key: 'riskLevel',
+                      width: 100,
+                      render: (val) => {
+                        if (val === 'high') return <Tag color="red">高风险</Tag>;
+                        if (val === 'medium') return <Tag color="orange">中风险</Tag>;
+                        return <Tag color="blue">低风险</Tag>;
+                      }
+                    },
+                    {
+                      title: '群体类别/多级标签',
+                      dataIndex: 'tags',
+                      key: 'tags',
+                      width: 160,
+                      render: (tags: string[]) => renderTagsWithCollapse(tags)
+                    },
+                    {
+                      title: '责任属地',
+                      dataIndex: 'department',
+                      key: 'department',
+                      width: 100,
+                    }
+                  ]}
                 />
               </Card>
-            ) : (
-              /* 卡片视图 */
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
-                {filteredData.map((person) => (
-                  <Card
-                    hoverable
-                    key={person.id}
-                    style={{ borderRadius: '8px', borderLeft: person.riskLevel === 'high' ? '4px solid #ff4d4f' : person.riskLevel === 'medium' ? '4px solid #faad14' : '4px solid #1890ff' }}
-                    onClick={() => {
-                      setSelectedPerson(person);
-                      setDetailVisible(true);
-                    }}
-                  >
-                    {/* 卡片头部 */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Avatar style={{ backgroundColor: person.riskLevel === 'high' ? '#ff4d4f' : '#1890ff' }}>
-                          {person.name[0]}
-                        </Avatar>
-                        <strong style={{ fontSize: '15px' }}>{person.name}</strong>
-                      </div>
-                      <Tag color={person.riskLevel === 'high' ? 'red' : person.riskLevel === 'medium' ? 'orange' : 'blue'}>
-                        {person.riskLevel === 'high' ? '高风险' : person.riskLevel === 'medium' ? '中风险' : '低风险'}
-                      </Tag>
-                    </div>
-
-                    {/* 卡片中部 (展示前2个社交媒体) */}
-                    <div style={{ marginBottom: '12px', minHeight: '52px' }}>
-                      <div style={{ fontSize: '11px', color: '#999', marginBottom: '4px' }}>关联账号矩阵:</div>
-                      {person.socialAccounts.slice(0, 2).map((acc, idx) => (
-                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', marginBottom: '4px' }}>
-                          {acc.platform === 'weibo' && <WeiboOutlined style={{ color: '#f5222d' }} />}
-                          {acc.platform === 'wechat' && <WechatOutlined style={{ color: '#389e0d' }} />}
-                          {acc.platform === 'douyin' && <YoutubeOutlined style={{ color: '#722ed1' }} />}
-                          <span style={{ fontWeight: 500 }}>{acc.username}</span>
-                          <span style={{ color: '#aaa', fontSize: '11px' }}>({acc.id})</span>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* 卡片业务标签 */}
-                    <div style={{ marginBottom: '12px', height: '24px', overflow: 'hidden' }}>
-                      {person.tags.slice(0, 2).map((t, idx) => (
-                        <Tag color="blue" key={idx} style={{ fontSize: '11px' }}>{t}</Tag>
-                      ))}
-                    </div>
-
-                    <Divider style={{ margin: '8px 0' }} />
-
-                    {/* 卡片底部 */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#888' }}>
-                      <span>关联事件数: <strong>{person.incidentCount} 起</strong></span>
-                      <span>活跃: {person.lastActive.substring(5, 10)}</span>
-                    </div>
-                  </Card>
-                ))}
-                {filteredData.length === 0 && (
-                  <div style={{ gridColumn: '1 / -1' }}>
-                    <Card style={{ textAlign: 'center', padding: '40px 0', color: '#999' }}>暂无符合检索条件的网民人员数据</Card>
-                  </div>
-                )}
-              </div>
             )}
           </div>
         </div>
 
-        {/* 人员详情大号居中弹窗 (People Details Modal - 原生态事件脉络优化版) */}
+        {/* 人员全量画像大弹窗（包含双源头融合身份展现） */}
         <Modal
           title={
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Avatar size="small" style={{ backgroundColor: selectedPerson?.riskLevel === 'high' ? '#ff4d4f' : '#1890ff' }}>
-                {selectedPerson?.name[0]}
-              </Avatar>
-              <span>网民聚合身份与社交主页轨迹档案</span>
-            </div>
+            <span>
+              <FileSearchOutlined /> 蓝鹰人员全量画像监视台账
+            </span>
           }
           open={detailVisible}
           onCancel={() => setDetailVisible(false)}
@@ -695,107 +1019,119 @@ const PeopleDatabase: React.FC = () => {
               关闭档案
             </Button>
           ]}
-          width={820}
+          width={850}
           centered
         >
           {selectedPerson && (
-            <div>
-              {/* 区块一：社媒账号详情流 (横向流式滚动卡片) */}
-              <div style={{ marginBottom: '16px' }}>
-                <div style={{ fontSize: '12px', fontWeight: 600, color: '#666', marginBottom: '8px' }}>已绑定社交媒体主页矩阵 (一对多)</div>
-                <div style={{ display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: '8px' }}>
-                  {selectedPerson.socialAccounts.map((acc, idx) => (
-                    <div
-                      key={idx}
-                      style={{
-                        minWidth: '220px',
-                        background: '#f9fafb',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '6px',
-                        padding: '10px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px'
-                      }}
-                    >
-                      <Avatar size="default" style={{ backgroundColor: acc.platform === 'weibo' ? '#fff1f0' : acc.platform === 'wechat' ? '#f6ffed' : '#f9f0ff' }}>
-                        {acc.platform === 'weibo' && <WeiboOutlined style={{ color: '#f5222d' }} />}
-                        {acc.platform === 'wechat' && <WechatOutlined style={{ color: '#389e0d' }} />}
-                        {acc.platform === 'douyin' && <YoutubeOutlined style={{ color: '#722ed1' }} />}
-                      </Avatar>
-                      <div style={{ flex: 1, overflow: 'hidden' }}>
-                        <div style={{ fontWeight: 600, fontSize: '13px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{acc.username}</div>
-                        <div style={{ fontSize: '11px', color: '#999' }}>ID: {acc.id}</div>
-                        <a href="#link-penetrate" onClick={(e) => { e.preventDefault(); message.info(`正在内网调取并跳转博主主页: ${acc.url}`); }} style={{ fontSize: '11px', color: '#1890ff', display: 'flex', alignItems: 'center', gap: '2px', marginTop: '4px' }}>
-                          <LinkOutlined /> 主页链接
-                        </a>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* 区块二：个人信息网格 (Descriptions) */}
-              <div style={{ marginBottom: '16px' }}>
-                <div style={{ fontSize: '12px', fontWeight: 600, color: '#666', marginBottom: '8px' }}>受控人员基础身份台账</div>
-                <Descriptions bordered size="small" column={3} contentStyle={{ fontSize: '12px' }} labelStyle={{ fontSize: '12px', fontWeight: 600, background: '#f9fafb' }}>
-                  <Descriptions.Item label="姓名">{selectedPerson.name}</Descriptions.Item>
-                  <Descriptions.Item label="性别">{selectedPerson.gender}</Descriptions.Item>
-                  <Descriptions.Item label="年龄">{selectedPerson.age} 岁</Descriptions.Item>
-                  <Descriptions.Item label="人员类型"><Tag color="purple">{selectedPerson.type}</Tag></Descriptions.Item>
-                  <Descriptions.Item label="责任属地">{selectedPerson.department}分局</Descriptions.Item>
-                  <Descriptions.Item label="出生日期">{selectedPerson.birthday}</Descriptions.Item>
-                  <Descriptions.Item label="民族">{selectedPerson.nation}</Descriptions.Item>
-                  <Descriptions.Item label="手机号码">{selectedPerson.phone}</Descriptions.Item>
-                  <Descriptions.Item label="户籍地" span={1}>{selectedPerson.registeredAddress}</Descriptions.Item>
-                  <Descriptions.Item label="身份证号" span={1}>{selectedPerson.idCard.substring(0, 6)}********{selectedPerson.idCard.substring(14)}</Descriptions.Item>
-                  <Descriptions.Item label="现居住地" span={2}>{selectedPerson.residentAddress}</Descriptions.Item>
-                  <Descriptions.Item label="入库时间">{selectedPerson.lastActive.substring(0, 10)}</Descriptions.Item>
-                  <Descriptions.Item label="备注说明" span={3}>{selectedPerson.note}</Descriptions.Item>
-                </Descriptions>
-              </div>
-
-              {/* 区块三：人员性质 (胶囊标签) */}
-              <div style={{ marginBottom: '16px' }}>
-                <div style={{ fontSize: '12px', fontWeight: 600, color: '#666', marginBottom: '8px' }}>人员标签分类</div>
+            <div style={{ maxHeight: '60vh', overflowY: 'auto', paddingRight: '6px' }}>
+              {/* 头部摘要栏 */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', background: '#f5f7fa', padding: '16px', borderRadius: '6px', marginBottom: '16px' }}>
+                <Avatar size={54} style={{ backgroundColor: '#87d068', fontSize: '24px' }}>{selectedPerson.name[0]}</Avatar>
                 <div>
-                  {selectedPerson.tags.map((tag, idx) => (
-                    <Tag color="cyan" key={idx} style={{ borderRadius: '12px', padding: '2px 10px' }}>{tag}</Tag>
+                  <h3 style={{ margin: '0 0 4px 0', fontSize: '18px' }}>
+                    {selectedPerson.name} 
+                    <span style={{ fontSize: '13px', color: '#999', fontWeight: 'normal', marginLeft: '12px' }}>
+                      {selectedPerson.gender} | {selectedPerson.age}岁 | {selectedPerson.nation}
+                    </span>
+                  </h3>
+                  <Space style={{ marginTop: '4px' }}>
+                    {selectedPerson.riskLevel === 'high' ? (
+                      <Tag color="red">🔴 极高风险关注</Tag>
+                    ) : selectedPerson.riskLevel === 'medium' ? (
+                      <Tag color="orange">🟡 中度风险监控</Tag>
+                    ) : (
+                      <Tag color="blue">🔵 一般关注网民</Tag>
+                    )}
+                    <Tag color="cyan">属地: {selectedPerson.department}分局</Tag>
+                    <Tag color="blue">关联取证事件: {selectedPerson.incidentCount}起</Tag>
+                  </Space>
+                </div>
+              </div>
+
+              {/* 关键：个人基本字段 Descriptions（包含双源头融合露出） */}
+              <Descriptions title="内网登记基础特征" bordered size="small" column={2} style={{ marginBottom: '16px' }}>
+                <Descriptions.Item label="脱敏身份证"><code>{selectedPerson.idCard.substring(0, 6)}********{selectedPerson.idCard.substring(14)}</code></Descriptions.Item>
+                <Descriptions.Item label="脱敏手机号"><span>{selectedPerson.phone.substring(0, 3)}****{selectedPerson.phone.substring(7)}</span></Descriptions.Item>
+                
+                {/* 来源标识双重融合表达 */}
+                <Descriptions.Item label="人员建档来源" span={2}>
+                  {selectedPerson.source === 'both' ? (
+                    <Space>
+                      <Tag color="red" style={{ fontWeight: 'bold' }}>双源头融合身份</Tag>
+                      <Tag color="blue">舆情指令来源</Tag>
+                      <Tag color="purple">涉稳登记来源</Tag>
+                    </Space>
+                  ) : selectedPerson.source === 'opinion' ? (
+                    <Tag color="blue">舆情指令录入</Tag>
+                  ) : (
+                    <Tag color="purple">涉稳台账登记</Tag>
+                  )}
+                </Descriptions.Item>
+
+                {/* 舆情与涉稳特质的融合呈现 */}
+                {selectedPerson.source === 'both' && (
+                  <>
+                    <Descriptions.Item label="网民类型 (舆情特征)"><Tag color="blue">自媒体大V</Tag></Descriptions.Item>
+                    <Descriptions.Item label="涉稳群体 (涉稳特征)"><Tag color="purple">{selectedPerson.groupTag}</Tag></Descriptions.Item>
+                  </>
+                )}
+                {selectedPerson.source === 'opinion' && (
+                  <Descriptions.Item label="网民类型 (舆情特征)" span={2}>
+                    <strong>{selectedPerson.peopleType === 'media' ? '自媒体大V' : '普通关注网民'}</strong>
+                  </Descriptions.Item>
+                )}
+                {selectedPerson.source === 'stability' && (
+                  <Descriptions.Item label="涉稳群体 (涉稳特征)" span={2}>
+                    <strong>{selectedPerson.groupTag}</strong>
+                  </Descriptions.Item>
+                )}
+
+                <Descriptions.Item label="现详细居住地" span={2}>{selectedPerson.residentAddress}</Descriptions.Item>
+                <Descriptions.Item label="备注管控说明" span={2}>{selectedPerson.note}</Descriptions.Item>
+              </Descriptions>
+
+              {/* 社交账号矩阵（一对多绑定） */}
+              <div style={{ marginBottom: '16px' }}>
+                <div style={{ fontWeight: 600, color: '#333', marginBottom: '8px', fontSize: '13px' }}>绑定社交账号矩阵</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '8px' }}>
+                  {selectedPerson.socialAccounts.map((account, index) => (
+                    <Card key={index} size="small" style={{ background: '#fafafa', border: '1px solid #e8e8e8' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Space>
+                          {account.platform === 'weibo' && <WeiboOutlined style={{ color: '#df2029' }} />}
+                          {account.platform === 'wechat' && <WechatOutlined style={{ color: '#09bb07' }} />}
+                          {account.platform === 'douyin' && <SwapOutlined style={{ color: '#000' }} />}
+                          <strong style={{ fontSize: '12.5px' }}>{account.username}</strong>
+                        </Space>
+                        <Tag color={account.status === 'monitored' ? 'red' : 'green'} style={{ fontSize: '9px', margin: 0 }}>
+                          {account.status === 'monitored' ? '实时布控' : '正常'}
+                        </Tag>
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#999', marginTop: '6px' }}>
+                        <div>账号ID: <code>{account.id}</code></div>
+                        <div>粉丝数量: {account.followers}</div>
+                      </div>
+                    </Card>
                   ))}
                 </div>
               </div>
 
-              {/* 区块四：关联事件总数 */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', background: '#f0f5ff', padding: '8px 16px', borderRadius: '4px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#1890ff' }}>
-                  关联事件台账数：{selectedPerson.incidentCount} 起
-                </span>
-                <span style={{ fontSize: '11px', color: '#999' }}>* 数据完全来自于内网监测捕获的客观发帖记录</span>
-              </div>
-
-              {/* 区块五：客观涉事帖文脉络底栏 (时间流卡片 + 超链接 + 穿透模拟) */}
+              {/* 取消AI或人工处理的概要/总结，完全转为以“帖文原文链接/标题”为核心的动态脉络 */}
               <div>
-                <div style={{ fontSize: '12px', fontWeight: 600, color: '#666', marginBottom: '12px' }}>客观涉事帖文原生态轨迹</div>
-                <Timeline mode="left">
+                <div style={{ fontWeight: 600, color: '#333', marginBottom: '10px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <LinkOutlined style={{ color: '#1890ff' }} />
+                  <span>客观取证帖文动态脉络流</span>
+                  <span style={{ fontWeight: 'normal', color: '#999', fontSize: '11px' }}>(内网直达，不提供AI概要摘要)</span>
+                </div>
+
+                <Timeline style={{ paddingLeft: '8px', marginTop: '8px' }}>
                   {selectedPerson.recordList.map((post) => (
-                    <Timeline.Item
-                      key={post.id}
-                      label={<span style={{ fontSize: '11px', color: '#999' }}>{post.publishTime}</span>}
-                      color={selectedPerson.riskLevel === 'high' ? 'red' : 'orange'}
-                    >
-                      <Card
-                        size="small"
-                        style={{ border: '1px solid #e5e7eb', background: '#fafafa', borderRadius: '4px' }}
-                      >
-                        {/* 穿透链接标题 */}
+                    <Timeline.Item key={post.id} color={post.platform === 'weibo' ? 'red' : 'green'}>
+                      <Card size="small" style={{ border: '1px solid #e8e8e8' }}>
+                        {/* 帖文原文标题/链接，可穿透 */}
                         <div style={{ marginBottom: '6px' }}>
                           <a
-                            href="#penetrate"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              setPenetratePost(post);
-                              setPenetrateVisible(true);
-                            }}
+                            onClick={() => handleOpenPenetrate(post)}
                             style={{
                               fontSize: '13px',
                               fontWeight: 600,
@@ -807,23 +1143,15 @@ const PeopleDatabase: React.FC = () => {
                             {getPostDisplayTitle(post)}
                           </a>
                         </div>
-
-                        {/* 帖文正文截取 */}
                         <div style={{ fontSize: '12px', color: '#4b5563', lineHeight: '1.5', marginBottom: '8px' }}>
                           {post.content.length > 80 ? post.content.substring(0, 80) + '...' : post.content}
                         </div>
-
-                        {/* 客观底栏特征 */}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', color: '#999' }}>
                           <Space>
                             <span>博主: <strong>{post.author}</strong> ({post.authorId})</span>
-                            <span>平台: <Tag color="blue" style={{ fontSize: '10px', padding: '0 4px', margin: 0 }}>{post.platform.toUpperCase()}</Tag></span>
+                            <span>平台: <Tag color="blue" style={{ fontSize: '10px', padding: '0 4px' }}>{post.platform.toUpperCase()}</Tag></span>
                           </Space>
-                          <Space size="middle">
-                            <span>转发: {post.reposts}</span>
-                            <span>评论: {post.comments}</span>
-                            <span>点赞: {post.likes}</span>
-                          </Space>
+                          <span>发布时间: {post.publishTime}</span>
                         </div>
                       </Card>
                     </Timeline.Item>
@@ -853,26 +1181,14 @@ const PeopleDatabase: React.FC = () => {
         >
           {penetratePost && (
             <div>
-              <div
-                style={{
-                  border: '1px solid #ffccc7',
-                  background: '#fff2f0',
-                  padding: '12px',
-                  borderRadius: '4px',
-                  marginBottom: '16px',
-                  fontSize: '12px'
-                }}
-              >
+              <div style={{ border: '1px solid #ffccc7', background: '#fff2f0', padding: '12px', borderRadius: '4px', marginBottom: '16px', fontSize: '12px' }}>
                 <div style={{ fontWeight: 600, color: '#f5222d', marginBottom: '6px' }}>【内网取证日志】</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
                   <div><strong>采集链路：</strong>内网数据网关-1号分流器</div>
-                  <div><strong>采集时间：</strong>{penetratePost.captureTime || penetratePost.publishTime}</div>
-                  <div><strong>源发布IP：</strong>{penetratePost.ipAddress || '10.32.*.*'}</div>
+                  <div><strong>采集时间：</strong>{penetratePost.publishTime}</div>
                   <div><strong>防伪哈希：</strong>MD5_SHA256_{penetratePost.id}</div>
                 </div>
               </div>
-
-              {/* 原帖排版 */}
               <div style={{ padding: '16px', background: '#fff', border: '1px solid #ddd', borderRadius: '4px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
                   <Avatar style={{ backgroundColor: '#1890ff' }}>{penetratePost.author[0]}</Avatar>
@@ -881,258 +1197,231 @@ const PeopleDatabase: React.FC = () => {
                     <div style={{ fontSize: '11px', color: '#999' }}>ID: {penetratePost.authorId} | 发布于 {penetratePost.platform.toUpperCase()}</div>
                   </div>
                 </div>
-
-                {penetratePost.title && (
-                  <h4 style={{ fontSize: '15px', fontWeight: 'bold', margin: '0 0 10px 0' }}>{penetratePost.title}</h4>
-                )}
-
                 <div style={{ fontSize: '13px', lineHeight: '1.6', color: '#333', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
                   {penetratePost.content}
-                </div>
-
-                <Divider style={{ margin: '12px 0' }} />
-
-                <div style={{ display: 'flex', gap: '20px', fontSize: '12px', color: '#666' }}>
-                  <span>发布时间：{penetratePost.publishTime}</span>
-                  <span>互动：转发({penetratePost.reposts}) | 评论({penetratePost.comments}) | 点赞({penetratePost.likes})</span>
                 </div>
               </div>
             </div>
           )}
         </Modal>
 
-        {/* 手动登记人员弹窗 (Create/Edit Modal) */}
+        {/* 1. 舆情指令来源登记弹窗 */}
         <Modal
           title={
             <span>
-              <UserAddOutlined /> 手动登记网民档案与社媒矩阵
+              <FileTextOutlined style={{ color: '#1890ff' }} /> 舆情重点网民建档登记
             </span>
           }
-          open={registerVisible}
-          onOk={handleRegisterSubmit}
-          onCancel={() => setRegisterVisible(false)}
-          okText="登记建档"
+          open={opinionModalVisible}
+          onOk={handleOpinionSubmit}
+          onCancel={() => setOpinionModalVisible(false)}
+          okText="确认登记建档"
           cancelText="取消"
-          width={650}
+          width={580}
           centered
         >
-          <Form
-            form={form}
-            layout="vertical"
-            initialValues={{ gender: '男', age: 35, riskLevel: 'medium', department: '淮安区', type: '重点关注人员' }}
-          >
-            {/* 双列水平表单部分 */}
+          <Form form={opinionForm} layout="vertical">
+            <Alert
+              message="说明：此表单专用于舆情指令捕获人员登记，默认绑定自媒体大V特征。"
+              type="info"
+              showIcon
+              style={{ marginBottom: '16px' }}
+            />
             <Row gutter={16}>
               <Col span={12}>
-                <Form.Item
-                  name="name"
-                  label="真实姓名"
-                  rules={[{ required: true, message: '请录入真实姓名' }]}
-                >
+                <Form.Item name="name" label="网民真实姓名" rules={[{ required: true, message: '姓名' }]}>
                   <Input placeholder="输入真实姓名" />
                 </Form.Item>
               </Col>
               <Col span={12}>
-                <Form.Item
-                  name="idCard"
-                  label="身份证号"
-                  rules={[{ required: true, message: '请录入真实身份证号' }]}
-                >
-                  <Input placeholder="输入18位身份证，将自动在台账脱敏" />
+                <Form.Item name="phone" label="手机号码" rules={[{ required: true, message: '手机号' }]}>
+                  <Input placeholder="手机号 (用于碰撞排重)" />
                 </Form.Item>
               </Col>
             </Row>
 
             <Row gutter={16}>
               <Col span={12}>
-                <Form.Item
-                  name="phone"
-                  label="手机号码"
-                  rules={[{ required: true, message: '请录入手机号码' }]}
-                >
-                  <Input placeholder="输入11位手机号" />
+                <Form.Item name="idCard" label="身份证号" rules={[{ required: true, message: '身份证' }]}>
+                  <Input placeholder="身份证号 (唯一性校验)" />
                 </Form.Item>
               </Col>
               <Col span={12}>
-                <Form.Item
-                  name="riskLevel"
-                  label="风险研判等级"
-                  rules={[{ required: true }]}
-                >
-                  <Select
+                <Form.Item name="peopleType" label="网民舆情属性类型" rules={[{ required: true }]}>
+                  <Segmented
+                    block
                     options={[
-                      { value: 'high', label: '高风险 (Red)' },
-                      { value: 'medium', label: '中风险 (Orange)' },
-                      { value: 'low', label: '低风险 (Blue)' },
+                      { label: '自媒体大V', value: 'media' },
+                      { label: '普通关注网民', value: 'normal' },
                     ]}
                   />
                 </Form.Item>
               </Col>
             </Row>
 
-            <Row gutter={16}>
-              <Col span={12}>
-                <Form.Item
-                  name="department"
-                  label="责任属地分局"
-                  rules={[{ required: true }]}
-                >
-                  <Select
-                    options={[
-                      { value: '淮安区', label: '淮安分局' },
-                      { value: '清江浦区', label: '清江浦分局' },
-                      { value: '洪泽区', label: '洪泽分局' },
-                    ]}
-                  />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  name="type"
-                  label="人员涉稳性质"
-                  rules={[{ required: true }]}
-                >
-                  <Select
-                    options={[
-                      { value: '重点涉稳人员', label: '重点涉稳人员' },
-                      { value: '网络大V', label: '网络大V' },
-                      { value: '自媒体客', label: '自媒体客' },
-                      { value: '关注人员', label: '关注人员' },
-                    ]}
-                  />
-                </Form.Item>
-              </Col>
-            </Row>
-
-            <Row gutter={16}>
-              <Col span={12}>
-                <Form.Item
-                  name="tags"
-                  label="多级标签 (英文逗号分隔)"
-                  rules={[{ required: true, message: '请选择或输入标签' }]}
-                >
-                  <Input placeholder="例如: 维权群体,房产维权,金地业主" />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  name="gender"
-                  label="性别"
-                >
-                  <Select
-                    options={[
-                      { value: '男', label: '男' },
-                      { value: '女', label: '女' },
-                    ]}
-                  />
-                </Form.Item>
-              </Col>
-            </Row>
-
-            <Row gutter={16}>
-              <Col span={12}>
-                <Form.Item
-                  name="age"
-                  label="年龄"
-                >
-                  <Input placeholder="输入真实年龄" />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  name="birthday"
-                  label="出生年月日"
-                >
-                  <Input placeholder="格式如: 1980-05-12" />
-                </Form.Item>
-              </Col>
-            </Row>
-
-            <Form.Item
-              name="residentAddress"
-              label="居住地址"
-            >
-              <Input placeholder="录入现住详细居住地址" />
-            </Form.Item>
-
-            <Form.Item
-              name="note"
-              label="备注档案信息"
-            >
-              <Input.TextArea placeholder="录入受控背景及涉稳动向说明..." rows={2} />
-            </Form.Item>
-
-            <Divider style={{ margin: '12px 0' }} />
-
-            {/* 动态社交账号子表单 */}
-            <div style={{ background: '#fafafa', padding: '12px', borderRadius: '4px', border: '1px dashed #ddd' }}>
-              <div style={{ fontSize: '13px', fontWeight: 600, color: '#333', marginBottom: '10px' }}>
-                绑定关联社交账号矩阵 (一对多)
-              </div>
-              <Form.List name="socialAccounts">
-                {(fields, { add, remove }) => (
-                  <>
-                    {fields.map(({ key, name, ...restField }) => (
-                      <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
-                        <Form.Item
-                          {...restField}
-                          name={[name, 'platform']}
-                          rules={[{ required: true, message: '平台' }]}
-                          style={{ margin: 0 }}
-                        >
-                          <Select
-                            placeholder="选择平台"
-                            style={{ width: 110 }}
-                            options={[
-                              { value: 'weibo', label: '新浪微博' },
-                              { value: 'wechat', label: '微信' },
-                              { value: 'douyin', label: '抖音' },
-                            ]}
-                          />
-                        </Form.Item>
-                        <Form.Item
-                          {...restField}
-                          name={[name, 'id']}
-                          rules={[{ required: true, message: '账号ID' }]}
-                          style={{ margin: 0 }}
-                        >
-                          <Input placeholder="账号唯一ID" style={{ width: 110 }} />
-                        </Form.Item>
-                        <Form.Item
-                          {...restField}
-                          name={[name, 'username']}
-                          rules={[{ required: true, message: '昵称' }]}
-                          style={{ margin: 0 }}
-                        >
-                          <Input placeholder="昵称" style={{ width: 110 }} />
-                        </Form.Item>
-                        <Form.Item
-                          {...restField}
-                          name={[name, 'url']}
-                          style={{ margin: 0 }}
-                        >
-                          <Input placeholder="主页 URL 链接" style={{ width: 150 }} />
-                        </Form.Item>
-                        <Form.Item
-                          {...restField}
-                          name={[name, 'followers']}
-                          style={{ margin: 0 }}
-                        >
-                          <Input placeholder="粉丝数" style={{ width: 80 }} />
-                        </Form.Item>
-                        <MinusCircleOutlined onClick={() => remove(name)} style={{ color: '#ff4d4f', fontSize: '16px' }} />
-                      </Space>
-                    ))}
-                    <Form.Item style={{ margin: 0 }}>
-                      <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />}>
-                        一键绑定新增社交账号
-                      </Button>
-                    </Form.Item>
-                  </>
-                )}
-              </Form.List>
+            <Divider style={{ margin: '8px 0' }} />
+            <div style={{ background: '#fafafa', padding: '10px', borderRadius: '4px' }}>
+              <div style={{ fontSize: '12px', fontWeight: 600, color: '#333', marginBottom: '8px' }}>关联社交账号数据捕获</div>
+              <Row gutter={12}>
+                <Col span={6}>
+                  <Form.Item name="platform" label="平台" initialValue="douyin" rules={[{ required: true }]}>
+                    <Select
+                      options={[
+                        { value: 'douyin', label: '抖音' },
+                        { value: 'weibo', label: '新浪微博' },
+                        { value: 'wechat', label: '微信' },
+                      ]}
+                    />
+                  </Form.Item>
+                </Col>
+                <Col span={9}>
+                  <Form.Item name="nickname" label="社交账号昵称" rules={[{ required: true, message: '昵称' }]}>
+                    <Input placeholder="如: 淮安现场拍客" />
+                  </Form.Item>
+                </Col>
+                <Col span={9}>
+                  <Form.Item name="accountId" label="社交账号唯一ID" rules={[{ required: true, message: '账号ID' }]}>
+                    <Input placeholder="如: dy_pk889" />
+                  </Form.Item>
+                </Col>
+              </Row>
             </div>
           </Form>
+        </Modal>
+
+        {/* 2. 涉稳登记来源登记弹窗 */}
+        <Modal
+          title={
+            <span>
+              <TeamOutlined style={{ color: '#722ed1' }} /> 涉稳重点网民建档登记
+            </span>
+          }
+          open={stabilityModalVisible}
+          onOk={handleStabilitySubmit}
+          onCancel={() => setStabilityModalVisible(false)}
+          okText="确认登记建档"
+          cancelText="取消"
+          width={580}
+          centered
+        >
+          <Form form={stabilityForm} layout="vertical">
+            <Alert
+              message="说明：此表单专用于涉稳私域或网下重点群体串联人员登记，默认绑定所属群体。"
+              type="info"
+              showIcon
+              style={{ marginBottom: '16px' }}
+            />
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item name="name" label="重点人真实姓名" rules={[{ required: true, message: '真实姓名' }]}>
+                  <Input placeholder="输入姓名" />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item name="phone" label="手机号码" rules={[{ required: true, message: '手机号' }]}>
+                  <Input placeholder="手机号 (用于碰撞排重)" />
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item name="idCard" label="身份证号" rules={[{ required: true, message: '身份证' }]}>
+                  <Input placeholder="身份证号 (唯一性校验)" />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item name="groupTag" label="所属涉稳重点群体" rules={[{ required: true, message: '所属群体' }]} initialValue="房产维权">
+                  <Select
+                    options={[
+                      { value: '房产维权', label: '房产维权群体' },
+                      { value: '环保维权', label: '环保维权群体' },
+                      { value: '医患群体', label: '医患群体' },
+                      { value: '退役军人', label: '退役安置群体' },
+                      { value: '涉法涉诉', label: '涉法涉诉上访' },
+                    ]}
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Divider style={{ margin: '8px 0' }} />
+            <div style={{ background: '#fafafa', padding: '10px', borderRadius: '4px' }}>
+              <div style={{ fontSize: '12px', fontWeight: 600, color: '#333', marginBottom: '8px' }}>关联涉稳社媒账号捕获</div>
+              <Row gutter={12}>
+                <Col span={6}>
+                  <Form.Item name="platform" label="平台" initialValue="wechat" rules={[{ required: true }]}>
+                    <Select
+                      options={[
+                        { value: 'wechat', label: '微信' },
+                        { value: 'weibo', label: '新浪微博' },
+                        { value: 'douyin', label: '抖音' },
+                      ]}
+                    />
+                  </Form.Item>
+                </Col>
+                <Col span={9}>
+                  <Form.Item name="nickname" label="微信/群内昵称" rules={[{ required: true, message: '昵称' }]}>
+                    <Input placeholder="如: 恒大业主代表-强哥" />
+                  </Form.Item>
+                </Col>
+                <Col span={9}>
+                  <Form.Item name="accountId" label="微信号/QQ号/平台ID" rules={[{ required: true, message: '平台账号ID' }]}>
+                    <Input placeholder="如: wxid_qiang99" />
+                  </Form.Item>
+                </Col>
+              </Row>
+            </div>
+          </Form>
+        </Modal>
+
+        {/* 核心防重防碰撞提示 Modal */}
+        <Modal
+          title={
+            <span style={{ color: '#faad14' }}>
+              <ExclamationCircleOutlined /> 重点网民档案冲突碰撞
+            </span>
+          }
+          open={collisionVisible}
+          onOk={handleExecuteMerge}
+          onCancel={() => setCollisionVisible(false)}
+          okText="一键合并画像"
+          cancelText="取消放弃"
+          width={500}
+          centered
+        >
+          {collidedPerson && pendingRegisterData && (
+            <div style={{ fontSize: '13px', lineHeight: '1.6' }}>
+              <Alert
+                message="系统碰撞排重报警：数据有重合冲突！"
+                description={`当前录入的身份证号/手机号与在库的 [${collidedPerson.name}] 重合匹配！`}
+                type="warning"
+                showIcon
+                style={{ marginBottom: '16px' }}
+              />
+              
+              <div style={{ background: '#f5f7fa', padding: '12px', borderRadius: '4px', borderLeft: '4px solid #faad14', marginBottom: '12px' }}>
+                <strong>现有档案特质：</strong>
+                <div>姓名：{collidedPerson.name}</div>
+                <div>身份证：<code>{collidedPerson.idCard.substring(0, 6)}********{collidedPerson.idCard.substring(14)}</code></div>
+                <div>
+                  人员来源：
+                  <Tag color={collidedPerson.source === 'opinion' ? 'blue' : 'purple'}>
+                    {collidedPerson.source === 'opinion' ? '舆情指令' : '涉稳登记'}
+                  </Tag>
+                </div>
+              </div>
+
+              <div style={{ color: '#ff4d4f', fontWeight: '600', marginBottom: '8px' }}>
+                💡 合并后系统将自动：
+              </div>
+              <ul style={{ paddingLeft: '20px', margin: 0, color: '#555' }}>
+                <li>升级该档案来源属性为 <strong>双源头融合身份 (both)</strong></li>
+                <li>同时保留 <strong>舆情特质 ({collisionSourceType === 'opinion' ? '自媒体大V' : '在库类型'})</strong> 与 <strong>涉稳特质 ({collisionSourceType === 'stability' ? pendingRegisterData.groupTag : (collidedPerson.groupTag || '未指定')})</strong></li>
+                <li>追加新录入的社媒账号 <code>{pendingRegisterData.nickname} ({pendingRegisterData.platform})</code> 到其社媒矩阵中</li>
+              </ul>
+            </div>
+          )}
         </Modal>
       </div>
     </div>
