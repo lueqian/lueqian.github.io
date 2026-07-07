@@ -6,9 +6,11 @@ import SourceControl from './pages/SourceControl';
 import MonitorWarning from './pages/MonitorWarning';
 import EmergencyResponse from './pages/EmergencyResponse';
 import ReviewSummary from './pages/ReviewSummary';
-import PersonnelLibrary from './pages/PersonnelLibrary';
 import Toolbox from './pages/Toolbox';
 import PoliceOpinionJoint from './pages/PoliceOpinionJoint';
+import PeopleDatabase from './pages/PeopleDatabase';
+import StabilityMaintenance from './pages/StabilityMaintenance';
+import PublicationsManagement from './pages/PublicationsManagement';
 import './style.css';
 
 export type PageKey =
@@ -17,8 +19,10 @@ export type PageKey =
   | 'monitor-warning'
   | 'emergency-response'
   | 'review-summary'
-  | 'personnel-library'
-  | 'toolbox';
+  | 'toolbox'
+  | 'people-database'
+  | 'stability-maintenance'
+  | 'publications-management';
 
 export interface AxureProps {
   onEvent?: (eventName: string, data?: string) => void;
@@ -58,10 +62,14 @@ const BlueEagleIntegratedSystem = forwardRef<AxureHandle, AxureProps>(function B
         return <EmergencyResponse />;
       case 'review-summary':
         return <ReviewSummary />;
-      case 'personnel-library':
-        return <PersonnelLibrary />;
       case 'toolbox':
         return <Toolbox />;
+      case 'people-database':
+        return <PeopleDatabase />;
+      case 'stability-maintenance':
+        return <StabilityMaintenance />;
+      case 'publications-management':
+        return <PublicationsManagement />;
       default:
         return <PoliceOpinionJoint />;
     }

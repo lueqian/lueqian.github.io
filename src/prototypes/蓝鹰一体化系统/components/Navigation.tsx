@@ -9,6 +9,9 @@ import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   SecurityScanOutlined,
+  UsergroupAddOutlined,
+  MessageOutlined,
+  BookOutlined,
 } from '@ant-design/icons';
 
 export interface NavigationProps {
@@ -30,8 +33,10 @@ const menuItems: MenuItem[] = [
   { key: 'monitor-warning', label: '监测预警', icon: <RadarChartOutlined /> },
   { key: 'emergency-response', label: '应急处置', icon: <FileTextOutlined /> },
   { key: 'review-summary', label: '复盘总结', icon: <OrderedListOutlined /> },
-  { key: 'personnel-library', label: '人员库', icon: <TeamOutlined /> },
   { key: 'toolbox', label: '工具箱', icon: <ToolOutlined /> },
+  { key: 'people-database', label: '人员库', icon: <UsergroupAddOutlined /> },
+  { key: 'stability-maintenance', label: '稳情库', icon: <MessageOutlined /> },
+  { key: 'publications-management', label: '刊物管理', icon: <BookOutlined /> },
 ];
 
 const Navigation: React.FC<NavigationProps> = ({
