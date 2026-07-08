@@ -1103,9 +1103,6 @@ const PeopleDatabase: React.FC = () => {
                           {account.platform === 'douyin' && <SwapOutlined style={{ color: '#000' }} />}
                           <strong style={{ fontSize: '12.5px' }}>{account.username}</strong>
                         </Space>
-                        <Tag color={account.status === 'monitored' ? 'red' : 'green'} style={{ fontSize: '9px', margin: 0 }}>
-                          {account.status === 'monitored' ? '实时布控' : '正常'}
-                        </Tag>
                       </div>
                       <div style={{ fontSize: '11px', color: '#999', marginTop: '6px' }}>
                         <div>账号ID: <code>{account.id}</code></div>

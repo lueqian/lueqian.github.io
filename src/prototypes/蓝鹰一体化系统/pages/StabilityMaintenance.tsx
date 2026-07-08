@@ -1292,9 +1292,6 @@ const StabilityMaintenance: React.FC = () => {
                           )}
                           <strong>{account.username}</strong>
                         </span>
-                        <Tag color="orange">
-                          {account.status === 'monitored' ? '监控中' : '常态关注'}
-                        </Tag>
                       </div>
                       <div style={{ fontSize: '11px', color: '#8c8c8c', marginTop: '4px' }}>
                         账号/ID: <code>{account.id}</code>
