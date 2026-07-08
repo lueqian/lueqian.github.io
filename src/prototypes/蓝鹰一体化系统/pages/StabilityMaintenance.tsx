@@ -6,8 +6,7 @@ import {
   Table,
   Tag,
   Button,
-  Modal,
-  Form,
+  Tabs,
   Space,
   Avatar,
   Divider,
@@ -15,601 +14,336 @@ import {
   Timeline,
   Row,
   Col,
-  Alert,
   Drawer,
   Descriptions,
-  Tree,
+  Badge,
+  Tooltip,
+  Breadcrumb,
+  Progress,
+  Modal,
 } from 'antd';
 import {
   SearchOutlined,
-  PlusOutlined,
   EyeOutlined,
-  DeleteOutlined,
   EnvironmentOutlined,
-  InfoCircleOutlined,
-  PartitionOutlined,
   WechatOutlined,
   QqOutlined,
   ReloadOutlined,
   UsergroupAddOutlined,
   UserOutlined,
-  SettingOutlined,
+  ArrowLeftOutlined,
+  WarningOutlined,
+  IdcardOutlined,
+  PhoneOutlined,
+  ClockCircleOutlined,
+  FileTextOutlined,
+  PartitionOutlined,
+  CheckCircleOutlined,
+  LineChartOutlined,
+  BookOutlined,
+  SendOutlined,
+  InfoCircleOutlined,
 } from '@ant-design/icons';
-import { generateMockPeople, PersonItem, ManagedTag, DEFAULT_MANAGED_TAGS, getTagOptionsByType } from './PeopleDatabase';
-const mapGroupPlatformToSocial = (platform: 'wechat' | 'qq' | 'other'): 'wechat' | 'qq' | 'weibo' => {
-  if (platform === 'wechat') return 'wechat';
-  if (platform === 'qq') return 'qq';
-  return 'weibo';
-};
+import { PersonItem } from './PeopleDatabase';
 
+// ==================== 数据结构与 Mock 数据 ====================
 
-// 成员接口
-export interface GroupMember {
+// 稳情标签接口
+interface StabilityTagItem {
+  key: string;
+  name: string;
+  dynamicCount: number;
+  peopleCount: number;
+  groupCount: number;
+  updateTime: string;
+}
+
+// 动态流接口
+interface DynamicPostItem {
   id: string;
-  nickname: string;
-  account: string;
+  title: string;
+  publishTime: string;
+  author: string;
+  content: string;
+}
+
+// 重点涉稳人员接口
+interface StabilityPersonItem {
+  id: string;
   name: string;
   idCard: string;
   phone: string;
+  registeredAddress: string;
+  residentAddress: string;
+  mentionedCount: number;
   tags: string[];
+  riskLevel: 'high' | 'medium' | 'low';
+  groups?: string[];
 }
 
-// 涉稳群组接口
-export interface StabilityGroup {
+// 关联群组接口
+interface CollatedGroupItem {
   id: string;
   name: string;
-  featureId: string;
   platform: 'wechat' | 'qq' | 'other';
-  tags: string[];
   memberCount: number;
-  location: string;
-  updateTime: string;
-  members: GroupMember[];
+  mentionedCount: number;
+  latestDynamic: string;
 }
 
-// 预设长文本范例
-const SAMPLE_TEXT_RIDER = `群名称：广州同城外卖骑手互助群
-群特征/ID：WX-RIDER-GZ88
-平台：微信
-群标签：外卖群体维权, 劳资纠纷, 天河区
-事关地：天河区
-成员列表：
-- 龙哥 (账号: rider_long88) - 真实姓名: 李龙, 身份证: 440106198808081234, 电话: 13800138001, 标签: 群主, 核心组织者, 高风险
-- 跑腿小张 (账号: zhang_delivery) - 真实姓名: 张平, 身份证: 440106199512125678, 电话: 13922223333, 标签: 高频发声者, 积极响应`;
-
-const SAMPLE_TEXT_TAXI = `群名称：白云区运输出租车司机交流群
-群特征/ID：QQ-TAXI-BY99
-平台：QQ
-群标签：出租车司机维权, 行业诉求, 白云区
-事关地：白云区
-成员列表：
-- 老陈头 (账号: taxi_chen99) - 真实姓名: 陈建国, 身份证: 440111197003032345, 电话: 13511112222, 标签: 群管理员, 意见领袖
-- 顺风达 (账号: speedy_taxi) - 真实姓名: 王顺, 身份证: 440111198804043456, 电话: 13633334444, 标签: 普通网民, 低频响应`;
-
-const SAMPLE_TEXT_OWNER = `群名称：XX御景名尊二期业主维权群
-群特征/ID：WX-OWNER-HZ02
-平台：微信
-群标签：小区业主维权, 房产维权, 海珠区
-事关地：海珠区
-成员列表：
-- 维权业委会-张姐 (账号: zj_owner) - 真实姓名: 张秀梅, 身份证: 440105197805054567, 电话: 13755556666, 标签: 群主, 核心维权代表
-- 安居乐业 (账号: user_home2026) - 真实姓名: 刘安, 身份证: 440105198210105678, 电话: 13966667777, 标签: 积极响应者`;
-
-// 六位核心关联人员的画像数据，合并入人员库
-const customMockPeople: PersonItem[] = [
+// 默认稳情标签全局列表
+const mockTagsList: StabilityTagItem[] = [
   {
-    id: 'PERSON_RIDER_LONG',
-    name: '李龙',
-    gender: '男',
-    age: 38,
-    nation: '汉族',
-    birthday: '1988-08-08',
-    idCard: '440106198808081234',
-    phone: '13800138001',
-    residentAddress: '广州市天河区棠下街骑手之家公寓502',
-    registeredAddress: '河南省南阳市邓州市李家庄',
-    type: '外卖骑手',
+    key: 'tag_001',
+    name: '中农曼度公寓业主维权',
+    dynamicCount: 24,
+    peopleCount: 18,
+    groupCount: 4,
+    updateTime: '2026-07-08 16:30',
+  },
+  {
+    key: 'tag_002',
+    name: '棠下外资骑手劳资纠纷',
+    dynamicCount: 15,
+    peopleCount: 12,
+    groupCount: 3,
+    updateTime: '2026-07-08 15:40',
+  },
+  {
+    key: 'tag_003',
+    name: '越秀越洋货运物流代理纠纷',
+    dynamicCount: 9,
+    peopleCount: 6,
+    groupCount: 2,
+    updateTime: '2026-07-07 10:20',
+  },
+  {
+    key: 'tag_004',
+    name: '白云出租车行业价格调整诉求',
+    dynamicCount: 32,
+    peopleCount: 25,
+    groupCount: 6,
+    updateTime: '2026-07-08 14:15',
+  },
+];
+
+// 针对 “中农曼度公寓业主维权” 标签下的动态 Mock 数据
+const mockDynamics: DynamicPostItem[] = [
+  {
+    id: 'dyn_001',
+    title: '中农曼度公寓业主策划22日早上到曼度讨要租金',
+    publishTime: '2026-05-21 19:22',
+    author: '支队-张三',
+    content: `中农曼度公寓业主策划22日早上到曼度讨要租金
+5月21日19时22分，淮阴区袁志梅，在微信群“公寓曼度下午群”（群成员：136人）内发言称，没收到房租费的人一起去要。清江浦区徐素红回复到，约好了，我也去。赵君茂回应称，明天早上去。
+
+人员身份：
+1、袁志梅，身份证：320821********7108，户籍地：淮阴区盐河东街232号，手机号：177****2556；
+2、徐素红，身份证：320821********350X，户籍地：清江浦区和平路9号越河小区8号楼甲单元304室，手机号：139****8730；
+3、赵君茂，身份证：320821********2316，户籍地：淮阴区淮高镇长兴村候赵庄30号，手机号：130****8768。`,
+  },
+  {
+    id: 'dyn_002',
+    title: '中农曼度公寓业主徐素红在群内召集业主代表开会',
+    publishTime: '2026-05-21 15:10',
+    author: '支队-李四',
+    content: `中农曼度公寓业主徐素红在群内召集业主代表开会
+5月21日15时10分，网警巡查发现，中农曼度业主代表徐素红在微信群“公寓曼度下午群”中发布集结倡议，通知核心维权代表于今晚8点进行闭门线上会议，商讨后续集体讨薪细节，赵君茂已表态积极响应。
+
+人员身份：
+1、徐素红，身份证：320821********350X，户籍地：清江浦区和平路9号越河小区8号楼甲单元304室，手机号：139****8730；
+2、赵君茂，身份证：320821********2316，户籍地：淮阴区淮高镇长兴村候赵庄30号，手机号：130****8768。`,
+  },
+  {
+    id: 'dyn_003',
+    title: '中农曼度业主赵君茂在社媒发文称已被开发商拖欠数月租金',
+    publishTime: '2026-05-20 11:35',
+    author: '支队-王五',
+    content: `中农曼度业主赵君茂在社媒发文称已被开发商拖欠数月租金
+5月20日11时35分，中农曼度公寓业主赵君茂在社交平台公开发帖抗议开发商恶意延期并截留租金。内容声称“中农曼度公寓多月未支付给业主收益，数百业主面临资金断供危机，将采取过激方式讨要权益”，引发大量业主评论，属于高度敏感涉稳信息。
+
+人员身份：
+1、赵君茂，身份证：320821********2316，户籍地：淮阴区淮高镇长兴村候赵庄30号，手机号：130****8768。`,
+  },
+  {
+    id: 'dyn_004',
+    title: '中农曼度群内流传关于维权横幅标语的讨论',
+    publishTime: '2026-05-19 09:12',
+    author: '支队-赵六',
+    content: `中农曼度群内流传关于维权横幅标语的讨论
+5月19日09时12分，微信群监测到业主代表袁志梅发起了一场横幅标语的线上投票，内容多涉及维权、赔偿等煽动性字句，群内讨论频繁，呼吁于周末组织现场展示。
+
+人员身份：
+1、袁志梅，身份证：320821********7108，户籍地：淮阴区盐河东街232号，手机号：177****2556。`,
+  }
+];
+
+// 针对 “中农曼度公寓业主维权” 标签下的涉稳人员 Mock 数据
+const mockPeople: StabilityPersonItem[] = [
+  {
+    id: 'PERSON_MAN_001',
+    name: '袁志梅',
+    idCard: '320821198205057108',
+    phone: '17700222556',
+    registeredAddress: '江苏省淮安市清江浦区淮海北路120号',
+    residentAddress: '广州市天河区中农曼度公寓8栋1502房',
+    mentionedCount: 15,
+    tags: ['群主', '核心组织者', '高风险'],
     riskLevel: 'high',
-    tags: ['外卖群体维权', '劳资纠纷', '群主', '核心组织者', '高风险'],
-    socialAccounts: [
-      { platform: 'wechat', username: '龙哥', id: 'rider_long88', followers: '500', url: '#', status: 'monitored' }
-    ],
-    department: '天河分局',
-    status: 'monitored',
-    lastActive: '2026-07-08 09:12',
-    incidentCount: 5,
-    recordList: [
-      { id: 'p_long_1', content: '关于骑手扣费罚款的问题，大家明天早上9点在天河路百脑汇门口集合，一起去找站长要说法！', publishTime: '2026-07-08 08:30', platform: 'wechat', author: '龙哥', authorId: 'rider_long88', reposts: 12, comments: 45, likes: 88 }
-    ],
-    note: '天河骑手互助群群主，多次组织骑手集体讨薪及维权活动，风险程度高。',
-    source: 'stability',
-    peopleType: 'normal',
-    groupTag: '外卖群体维权'
+    groups: ['公寓曼度下午群', '中农曼度业主维权筹备群', '业主代表决策群', '曼度周边联络群'],
   },
   {
-    id: 'PERSON_RIDER_ZHANG',
-    name: '张平',
-    gender: '男',
-    age: 31,
-    nation: '汉族',
-    birthday: '1995-12-12',
-    idCard: '440106199512125678',
-    phone: '13922223333',
-    residentAddress: '广州市天河区车陂村北十四巷3号',
-    registeredAddress: '湖南省衡阳市衡南县三塘镇',
-    type: '外卖骑手',
+    id: 'PERSON_MAN_002',
+    name: '徐素红',
+    idCard: '320821197808086502',
+    phone: '13911223344',
+    registeredAddress: '江苏省淮安市涟水县红日路56号',
+    residentAddress: '广州市天河区中农曼度公寓3栋602房',
+    mentionedCount: 9,
+    tags: ['活跃发声者', '业主代表', '中风险'],
     riskLevel: 'medium',
-    tags: ['外卖群体维权', '高频发声者', '积极响应'],
-    socialAccounts: [
-      { platform: 'wechat', username: '跑腿小张', id: 'zhang_delivery', followers: '150', url: '#', status: 'monitored' }
-    ],
-    department: '天河分局',
-    status: 'monitored',
-    lastActive: '2026-07-08 09:10',
-    incidentCount: 2,
-    recordList: [
-      { id: 'p_zhang_1', content: '算我一个！凭什么克扣我们的配送费，必须给个合理的解释！', publishTime: '2026-07-08 08:35', platform: 'wechat', author: '跑腿小张', authorId: 'zhang_delivery', reposts: 0, comments: 2, likes: 10 }
-    ],
-    note: '外卖互助群积极响应分子，经常转发龙哥发布的活动倡议。',
-    source: 'stability',
-    peopleType: 'normal',
-    groupTag: '外卖群体维权'
+    groups: ['公寓曼度下午群', '中农曼度业主维权筹备群'],
   },
   {
-    id: 'PERSON_TAXI_CHEN',
-    name: '陈建国',
-    gender: '男',
-    age: 56,
-    nation: '汉族',
-    birthday: '1970-03-03',
-    idCard: '440111197003032345',
-    phone: '13511112222',
-    residentAddress: '广州市白云区三元里大道128号',
-    registeredAddress: '广东省广州市白云区',
-    type: '出租车司机',
-    riskLevel: 'medium',
-    tags: ['出租车司机维权', '行业诉求', '群管理员', '意见领袖'],
-    socialAccounts: [
-      { platform: 'qq', username: '老陈头', id: 'taxi_chen99', followers: '200', url: '#', status: 'monitored' }
-    ],
-    department: '白云分局',
-    status: 'monitored',
-    lastActive: '2026-07-08 08:25',
-    incidentCount: 4,
-    recordList: [
-      { id: 'p_chen_1', content: '这次运价调整必须听听我们一线司机的声音，大家在QQ群里踊跃发言，整理个书面诉求交到运管局。', publishTime: '2026-07-08 08:10', platform: 'qq', author: '老陈头', authorId: 'taxi_chen99', reposts: 5, comments: 30, likes: 25 }
-    ],
-    note: '白云出租车交流群管理员，具有较强号召力，代表群体利益发声。',
-    source: 'stability',
-    peopleType: 'normal',
-    groupTag: '出租车司机维权'
-  },
-  {
-    id: 'PERSON_TAXI_WANG',
-    name: '王顺',
-    gender: '男',
-    age: 38,
-    nation: '汉族',
-    birthday: '1988-04-04',
-    idCard: '440111198804043456',
-    phone: '13633334444',
-    residentAddress: '广州市白云区黄石东路28号',
-    registeredAddress: '四川省达州市通川区',
-    type: '出租车司机',
+    id: 'PERSON_MAN_003',
+    name: '赵君茂',
+    idCard: '320821198504044309',
+    phone: '15822334455',
+    registeredAddress: '江苏省扬州市广陵区东关街18号',
+    residentAddress: '广州市海珠区丽影广场2座803房',
+    mentionedCount: 5,
+    tags: ['积极响应者', '普通业主', '低风险'],
     riskLevel: 'low',
-    tags: ['出租车司机维权', '普通网民', '低频响应'],
-    socialAccounts: [
-      { platform: 'qq', username: '顺风达', id: 'speedy_taxi', followers: '45', url: '#', status: 'active' }
-    ],
-    department: '白云分局',
-    status: 'normal',
-    lastActive: '2026-07-07 20:10',
-    incidentCount: 1,
-    recordList: [
-      { id: 'p_wang_1', content: '老陈说得对，支持调整。希望能解决燃油附加费和平台抽成问题。', publishTime: '2026-07-07 19:40', platform: 'qq', author: '顺风达', authorId: 'speedy_taxi', reposts: 0, comments: 0, likes: 2 }
-    ],
-    note: '出租车群体普通成员，仅参与网上讨论。',
-    source: 'stability',
-    peopleType: 'normal',
-    groupTag: '出租车司机维权'
+    groups: ['公寓曼度下午群'],
   },
-  {
-    id: 'PERSON_OWNER_ZHANG',
-    name: '张秀梅',
-    gender: '女',
-    age: 48,
-    nation: '汉族',
-    birthday: '1978-05-05',
-    idCard: '440105197805054567',
-    phone: '13755556666',
-    residentAddress: '广州市海珠区御景名尊二期8栋1603房',
-    registeredAddress: '广东省韶关市乐昌市',
-    type: '企业职员',
-    riskLevel: 'high',
-    tags: ['小区业主维权', '房产维权', '群主', '核心维权代表'],
-    socialAccounts: [
-      { platform: 'wechat', username: '维权业委会-张姐', id: 'zj_owner', followers: '800', url: '#', status: 'monitored' }
-    ],
-    department: '海珠分局',
-    status: 'monitored',
-    lastActive: '2026-07-08 08:02',
-    incidentCount: 7,
-    recordList: [
-      { id: 'p_owner_zhang_1', content: '邻居们，开发商又在拖延二期配套绿化的交房标准了，明天下午我们一起去营销中心，要求他们出示规划批文！', publishTime: '2026-07-07 17:30', platform: 'wechat', author: '维权业委会-张姐', authorId: 'zj_owner', reposts: 15, comments: 98, likes: 110 }
-    ],
-    note: '业主维权群群主，组织多次业主到现场抗议及集体谈判，是核心维权代表。',
-    source: 'stability',
-    peopleType: 'normal',
-    groupTag: '小区业主维权'
-  },
-  {
-    id: 'PERSON_OWNER_LIU',
-    name: '刘安',
-    gender: '男',
-    age: 44,
-    nation: '汉族',
-    birthday: '1982-10-10',
-    idCard: '440105198210105678',
-    phone: '13966667777',
-    residentAddress: '广州市海珠区御景名尊二期3栋402房',
-    registeredAddress: '广东省广州市越秀区',
-    type: '个体户',
-    riskLevel: 'medium',
-    tags: ['小区业主维权', '积极响应者'],
-    socialAccounts: [
-      { platform: 'wechat', username: '安居乐业', id: 'user_home2026', followers: '120', url: '#', status: 'monitored' }
-    ],
-    department: '海珠分局',
-    status: 'monitored',
-    lastActive: '2026-07-07 17:50',
-    incidentCount: 3,
-    recordList: [
-      { id: 'p_liu_1', content: '收到，算我们家一个，明天一定去！不能让开发商这么糊弄我们！', publishTime: '2026-07-07 17:40', platform: 'wechat', author: '安居乐业', authorId: 'user_home2026', reposts: 0, comments: 3, likes: 15 }
-    ],
-    note: '业主维权积极分子，常跟进现场拉横幅和抗议活动。',
-    source: 'stability',
-    peopleType: 'normal',
-    groupTag: '小区业主维权'
-  }
 ];
 
-// 预设群组数据
-const initialGroupList: StabilityGroup[] = [
+// 针对 “中农曼度公寓业主维权” 标签下的关联群聊 Mock 数据
+const mockGroups: CollatedGroupItem[] = [
   {
-    id: 'GROUP_001',
-    name: '广州同城外卖骑手互助群',
-    featureId: 'WX-RIDER-GZ88',
+    id: 'GROUP_MAN_001',
+    name: '公寓曼度下午群',
     platform: 'wechat',
-    tags: ['外卖群体维权', '劳资纠纷', '天河区'],
-    memberCount: 158,
-    location: '天河区',
-    updateTime: '2026-07-08 09:12',
-    members: [
-      {
-        id: 'PERSON_RIDER_LONG',
-        nickname: '龙哥',
-        account: 'rider_long88',
-        name: '李龙',
-        idCard: '440106198808081234',
-        phone: '13800138001',
-        tags: ['群主', '核心组织者', '高风险']
-      },
-      {
-        id: 'PERSON_RIDER_ZHANG',
-        nickname: '跑腿小张',
-        account: 'zhang_delivery',
-        name: '张平',
-        idCard: '440106199512125678',
-        phone: '13922223333',
-        tags: ['高频发声者', '积极响应']
-      }
-    ]
+    memberCount: 136,
+    mentionedCount: 22,
+    latestDynamic: '中农曼度公寓业主策划22日早上到曼度讨要租金',
   },
   {
-    id: 'GROUP_002',
-    name: '白云区运输出租车司机交流群',
-    featureId: 'QQ-TAXI-BY99',
+    id: 'GROUP_MAN_002',
+    name: '中农曼度业主维权筹备群',
     platform: 'qq',
-    tags: ['出租车司机维权', '行业诉求', '白云区'],
     memberCount: 240,
-    location: '白云区',
-    updateTime: '2026-07-08 08:30',
-    members: [
-      {
-        id: 'PERSON_TAXI_CHEN',
-        nickname: '老陈头',
-        account: 'taxi_chen99',
-        name: '陈建国',
-        idCard: '440111197003032345',
-        phone: '13511112222',
-        tags: ['群管理员', '意见领袖']
-      },
-      {
-        id: 'PERSON_TAXI_WANG',
-        nickname: '顺风达',
-        account: 'speedy_taxi',
-        name: '王顺',
-        idCard: '440111198804043456',
-        phone: '13633334444',
-        tags: ['普通网民', '低频响应']
-      }
-    ]
+    mentionedCount: 14,
+    latestDynamic: '中农曼度公寓业主徐素红在群内召集业主代表开会',
   },
   {
-    id: 'GROUP_003',
-    name: 'XX御景名尊二期业主维权群',
-    featureId: 'WX-OWNER-HZ02',
+    id: 'GROUP_MAN_003',
+    name: '曼度业主同城支援总群',
     platform: 'wechat',
-    tags: ['小区业主维权', '房产维权', '海珠区'],
     memberCount: 312,
-    location: '海珠区',
-    updateTime: '2026-07-07 17:45',
-    members: [
-      {
-        id: 'PERSON_OWNER_ZHANG',
-        nickname: '维权业委会-张姐',
-        account: 'zj_owner',
-        name: '张秀梅',
-        idCard: '440105197805054567',
-        phone: '13755556666',
-        tags: ['群主', '核心维权代表']
-      },
-      {
-        id: 'PERSON_OWNER_LIU',
-        nickname: '安居乐业',
-        account: 'user_home2026',
-        name: '刘安',
-        idCard: '440105198210105678',
-        phone: '13966667777',
-        tags: ['积极响应者']
-      }
-    ]
-  }
+    mentionedCount: 6,
+    latestDynamic: '中农曼度业主赵君茂在社媒发文称已被开发商拖欠数月租金',
+  },
 ];
+
+// ==================== React 组件 ====================
 
 const StabilityMaintenance: React.FC = () => {
-  const [groupList, setGroupList] = useState<StabilityGroup[]>(initialGroupList);
-  const [peopleDatabase, setPeopleDatabase] = useState<PersonItem[]>(() => [
-    ...customMockPeople,
-    ...generateMockPeople(),
-  ]);
-
-  // 筛选过滤状态
+  // 页面导航控制: 'list' (主列表) | 'detail' (详情控制台)
+  const [currentView, setCurrentView] = useState<'list' | 'detail'>('list');
+  const [selectedTag, setSelectedTag] = useState<StabilityTagItem>(mockTagsList[0]);
+  
+  // 筛选与检索过滤
   const [searchText, setSearchText] = useState('');
-  const [filterPlatform, setFilterPlatform] = useState<string>('all');
-  const [filterTag, setFilterTag] = useState<string>('all');
-  const [filterLocation, setFilterLocation] = useState<string>('all');
+  const [filterTags, setFilterTags] = useState(mockTagsList);
 
-  // 登记 Modal 控制
-  const [registerVisible, setRegisterVisible] = useState(false);
-  const [registerMode, setRegisterMode] = useState<'paste' | 'form'>('paste');
-  const [pastedText, setPastedText] = useState('');
+  // 抽屉控制 - 动态流正文抽屉
+  const [dynamicDrawerOpen, setDynamicDrawerOpen] = useState(false);
+  const [selectedDynamic, setSelectedDynamic] = useState<DynamicPostItem | null>(null);
 
-  // 临时解析出的群信息和成员信息 (用于在 Mode 'form' 时进行行编辑)
-  const [parsedGroup, setParsedGroup] = useState<Omit<StabilityGroup, 'id' | 'updateTime'>>({
-    name: '',
-    featureId: '',
-    platform: 'wechat',
-    tags: [],
-    memberCount: 0,
-    location: '',
-    members: [],
-  });
+  // 抽屉控制 - 网民融合特征画像 Drawer (双层叠开)
+  const [personDrawerOpen, setPersonDrawerOpen] = useState(false);
+  const [activePerson, setActivePerson] = useState<PersonItem | null>(null);
 
-  // 双通道登记表单的 Group Form
-  const [groupForm] = Form.useForm();
+  // 抽屉控制 - 群组详情抽屉 Drawer
+  const [groupDrawerOpen, setGroupDrawerOpen] = useState(false);
+  const [activeGroup, setActiveGroup] = useState<CollatedGroupItem | null>(null);
 
-  // 标签管理状态与同步
-  const [tagManagerVisible, setTagManagerVisible] = useState(false);
-  const [tagForm] = Form.useForm();
-  const [tagFilterType, setTagFilterType] = useState<'all' | 'opinion' | 'stability'>('all');
-  const [selectedTagKey, setSelectedTagKey] = useState<string | null>(null);
+  // 物理存证存根弹窗
+  const [evidenceVisible, setEvidenceVisible] = useState(false);
+  const [evidenceText, setEvidenceText] = useState('');
 
-  const [managedTags, setManagedTags] = useState<ManagedTag[]>(() => {
-    const saved = localStorage.getItem('LAN_YING_MANAGED_TAGS');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {}
-    }
-    return DEFAULT_MANAGED_TAGS;
-  });
-
-  React.useEffect(() => {
-    if (tagManagerVisible) {
-      const saved = localStorage.getItem('LAN_YING_MANAGED_TAGS');
-      if (saved) {
-        try {
-          setManagedTags(JSON.parse(saved));
-        } catch (e) {}
-      }
-    }
-  }, [tagManagerVisible]);
-
-  const saveTags = (newTags: ManagedTag[]) => {
-    setManagedTags(newTags);
-    localStorage.setItem('LAN_YING_MANAGED_TAGS', JSON.stringify(newTags));
-  };
-
-  const updateTagNode = (tagsList: ManagedTag[], key: string, newTitle: string, newType: 'opinion' | 'stability'): ManagedTag[] => {
-    return tagsList.map(node => {
-      if (node.key === key) {
-        return { ...node, title: newTitle, type: newType };
-      }
-      if (node.children) {
-        return { ...node, children: updateTagNode(node.children, key, newTitle, newType) };
-      }
-      return node;
-    });
-  };
-
-  const deleteTagNode = (tagsList: ManagedTag[], key: string): ManagedTag[] => {
-    return tagsList
-      .filter(node => node.key !== key)
-      .map(node => {
-        if (node.children) {
-          return { ...node, children: deleteTagNode(node.children, key) };
-        }
-        return node;
-      });
-  };
-
-  const addChildTagNode = (tagsList: ManagedTag[], parentKey: string, newNode: ManagedTag): ManagedTag[] => {
-    return tagsList.map(node => {
-      if (node.key === parentKey) {
-        return {
-          ...node,
-          children: [...(node.children || []), newNode]
-        };
-      }
-      if (node.children) {
-        return { ...node, children: addChildTagNode(node.children, parentKey, newNode) };
-      }
-      return node;
-    });
-  };
-
-  const handleSelectTagNode = (selectedKeys: any[]) => {
-    if (selectedKeys.length > 0) {
-      const key = selectedKeys[0];
-      setSelectedTagKey(key);
-      const findNode = (list: ManagedTag[]): ManagedTag | null => {
-        for (const node of list) {
-          if (node.key === key) return node;
-          if (node.children) {
-            const found = findNode(node.children);
-            if (found) return found;
-          }
-        }
-        return null;
-      };
-      const node = findNode(managedTags);
-      if (node) {
-        tagForm.setFieldsValue({
-          title: node.title,
-          type: node.type,
-        });
-      }
+  // 搜索处理
+  const handleSearch = (val: string) => {
+    setSearchText(val);
+    if (!val.trim()) {
+      setFilterTags(mockTagsList);
     } else {
-      setSelectedTagKey(null);
-      tagForm.resetFields();
+      const filtered = mockTagsList.filter(
+        (t) => t.name.toLowerCase().includes(val.toLowerCase())
+      );
+      setFilterTags(filtered);
     }
   };
 
-  const handleSaveTagForm = () => {
-    tagForm.validateFields().then(values => {
-      if (!selectedTagKey) return;
-      const updated = updateTagNode(managedTags, selectedTagKey, values.title, values.type);
-      saveTags(updated);
-    });
+  // 进入详情控制台
+  const handleEnterDetail = (tagRecord: StabilityTagItem) => {
+    setSelectedTag(tagRecord);
+    setCurrentView('detail');
   };
 
-  const handleAddRootTag = () => {
-    const newKey = `tag_${Date.now()}`;
-    const newTag: ManagedTag = {
-      key: newKey,
-      title: '新建根标签',
-      type: tagFilterType === 'all' ? 'opinion' : tagFilterType
+  // 穿透并组装重点网民特征融合画像
+  const handleOpenPersonDrawer = (sPerson: StabilityPersonItem) => {
+    // 将涉稳人员数据转换并丰富为 PersonItem 画像格式
+    const fullPerson: PersonItem = {
+      id: sPerson.id,
+      name: sPerson.name,
+      gender: '女',
+      age: 38,
+      nation: '汉族',
+      birthday: '1982-05-05',
+      idCard: sPerson.idCard,
+      phone: sPerson.phone,
+      residentAddress: sPerson.residentAddress,
+      registeredAddress: sPerson.registeredAddress,
+      type: '核心涉稳人员',
+      riskLevel: sPerson.riskLevel,
+      tags: [...sPerson.tags, selectedTag.name],
+      socialAccounts: [
+        { platform: 'wechat', username: sPerson.name, id: `wx_${sPerson.phone}`, followers: '280', url: '#', status: 'monitored' }
+      ],
+      department: '天河分局',
+      status: 'monitored',
+      lastActive: '2026-07-08 16:30',
+      incidentCount: selectedTag.dynamicCount,
+      recordList: mockDynamics.map((d) => ({
+        id: d.id,
+        content: d.content,
+        publishTime: d.publishTime,
+        platform: 'wechat',
+        author: sPerson.name,
+        authorId: `wx_${sPerson.phone}`,
+        reposts: 0,
+        comments: 2,
+        likes: 5
+      })),
+      note: `已抽取为稳情库事件【${selectedTag.name}】的重点人员，在微信群及社交媒体上有高频维权发言，倾向突出。`,
+      source: 'stability',
+      peopleType: 'normal',
+      groupTag: selectedTag.name,
     };
-    const updated = [...managedTags, newTag];
-    saveTags(updated);
-    setSelectedTagKey(newKey);
-    tagForm.setFieldsValue({
-      title: newTag.title,
-      type: newTag.type
-    });
-    message.success('已新建根标签，您可在右侧表单中修改其属性');
+
+    setActivePerson(fullPerson);
+    setPersonDrawerOpen(true);
   };
 
-  const handleAddChildTag = () => {
-    if (!selectedTagKey) {
-      message.warning('请先在左侧选择一个父级标签节点');
-      return;
-    }
-    const newKey = `tag_${Date.now()}`;
-    const newTag: ManagedTag = {
-      key: newKey,
-      title: '新建子标签',
-      type: tagForm.getFieldValue('type') || 'opinion'
-    };
-    const updated = addChildTagNode(managedTags, selectedTagKey, newTag);
-    saveTags(updated);
-    setSelectedTagKey(newKey);
-    tagForm.setFieldsValue({
-      title: newTag.title,
-      type: newTag.type
-    });
-    message.success('已在所选节点下新建子标签');
+  // 打开群组抽屉
+  const handleOpenGroupDrawer = (gRecord: CollatedGroupItem) => {
+    setActiveGroup(gRecord);
+    setGroupDrawerOpen(true);
   };
 
-  const handleDeleteSelectedTag = () => {
-    if (!selectedTagKey) return;
-    Modal.confirm({
-      title: '确认要删除该标签吗？',
-      content: '删除此标签将连同其所有下级子标签一并移除，且不可恢复！',
-      okText: '确认删除',
-      okType: 'danger',
-      cancelText: '取消',
-      onOk: () => {
-        const updated = deleteTagNode(managedTags, selectedTagKey);
-        saveTags(updated);
-        setSelectedTagKey(null);
-        tagForm.resetFields();
-        message.success('标签已成功删除');
-      }
-    });
-  };
-
-  const getFilteredTagTree = (tagsList: ManagedTag[]): ManagedTag[] => {
-    if (tagFilterType === 'all') return tagsList;
-    const filter = (list: ManagedTag[]): ManagedTag[] => {
-      return list
-        .map(node => {
-          const matchingChildren = node.children ? filter(node.children) : [];
-          if (node.type === tagFilterType || matchingChildren.length > 0) {
-            return {
-              ...node,
-              children: matchingChildren.length > 0 ? matchingChildren : undefined
-            };
-          }
-          return null;
-        })
-        .filter(Boolean) as ManagedTag[];
-    };
-    return filter(tagsList);
-  };
-
-  // 动态生成的选项列表
-  const stabilityTagOptions = getTagOptionsByType(managedTags, 'stability');
-
-  // 查看群成员明细 Drawer
-  const [memberDrawerVisible, setMemberDrawerVisible] = useState(false);
-  const [selectedGroup, setSelectedGroup] = useState<StabilityGroup | null>(null);
-
-  // 查看重点人全量特征融合画像 Drawer (叠开在成员抽屉上面)
-  const [personDrawerVisible, setPersonDrawerVisible] = useState(false);
-  const [drawerPerson, setDrawerPerson] = useState<PersonItem | null>(null);
-
-  // 标签渲染规则
-  const renderMemberTag = (tag: string) => {
-    let color = 'default';
-    if (tag.includes('群主') || tag.includes('组织者') || tag.includes('风险') || tag.includes('核心')) {
-      color = 'red';
-    } else if (tag.includes('领袖') || tag.includes('管理员')) {
-      color = 'orange';
-    } else if (tag.includes('高频') || tag.includes('积极')) {
-      color = 'purple';
-    } else if (tag.includes('跟风') || tag.includes('响应')) {
-      color = 'blue';
-    }
-    return (
-      <Tag color={color} key={tag} style={{ borderRadius: '4px' }}>
-        {tag}
-      </Tag>
-    );
-  };
-
-  // 平台图标与文字渲染
+  // 平台标签渲染
   const renderPlatform = (platform: 'wechat' | 'qq' | 'other') => {
     if (platform === 'wechat') {
       return (
@@ -628,1220 +362,730 @@ const StabilityMaintenance: React.FC = () => {
     }
   };
 
-  // 一键填入长文本案例
-  const handleLoadSample = (type: 'rider' | 'taxi' | 'owner') => {
-    if (type === 'rider') {
-      setPastedText(SAMPLE_TEXT_RIDER);
-    } else if (type === 'taxi') {
-      setPastedText(SAMPLE_TEXT_TAXI);
-    } else if (type === 'owner') {
-      setPastedText(SAMPLE_TEXT_OWNER);
-    }
-    message.success('已自动填充预置维权场景的长文本反馈模版！');
-  };
-
-  // 长文本解析算法
-  const handleExtractText = () => {
-    if (!pastedText.trim()) {
-      message.error('请先粘贴群组长文本信息！');
-      return;
-    }
-
-    const lines = pastedText.split('\n');
-    let name = '';
-    let featureId = '';
-    let platform: 'wechat' | 'qq' | 'other' = 'wechat';
-    let tags: string[] = [];
-    let location = '';
-    const members: GroupMember[] = [];
-
-    lines.forEach((line) => {
-      const trimmed = line.trim();
-      if (!trimmed) return;
-
-      if (trimmed.startsWith('群名称：') || trimmed.startsWith('群名称:')) {
-        name = trimmed.replace(/^群名称[：:]/, '').trim();
-      } else if (trimmed.startsWith('群特征/ID：') || trimmed.startsWith('群特征/ID:')) {
-        featureId = trimmed.replace(/^群特征\/ID[：:]/, '').trim();
-      } else if (trimmed.startsWith('平台：') || trimmed.startsWith('平台:')) {
-        const plat = trimmed.replace(/^平台[：:]/, '').trim();
-        if (plat.includes('QQ') || plat.includes('qq')) {
-          platform = 'qq';
-        } else if (plat.includes('微信') || plat.includes('wechat')) {
-          platform = 'wechat';
-        } else {
-          platform = 'other';
-        }
-      } else if (trimmed.startsWith('群标签：') || trimmed.startsWith('群标签:')) {
-        tags = trimmed
-          .replace(/^群标签[：:]/, '')
-          .split(/[,，]/)
-          .map((t) => t.trim())
-          .filter(Boolean);
-      } else if (trimmed.startsWith('事关地：') || trimmed.startsWith('事关地:')) {
-        location = trimmed.replace(/^事关地[：:]/, '').trim();
-      } else if (trimmed.startsWith('-') || trimmed.match(/^\d+[\.\、]/)) {
-        // 解析成员行，形如：
-        // - 龙哥 (账号: rider_long88) - 真实姓名: 李龙, 身份证: 440106198808081234, 电话: 13800138001, 标签: 群主, 核心组织者, 高风险
-        const cleanLine = trimmed.replace(/^[-*+]|^\d+[\.\、]/, '').trim();
-
-        // 提取昵称 (例如: 龙哥)
-        const nickMatch = cleanLine.match(/^([^\(（]+)/);
-        const nickname = nickMatch ? nickMatch[1].trim() : '';
-
-        // 提取账号 (例如: rider_long88)
-        const accMatch = cleanLine.match(/账号\s*[：:]\s*([a-zA-Z0-9_-]+)/);
-        const account = accMatch ? accMatch[1].trim() : '';
-
-        // 提取真实姓名
-        const nameMatch = cleanLine.match(/真实姓名\s*[：:]\s*([^,\s，]+)/);
-        const mName = nameMatch ? nameMatch[1].trim() : '';
-
-        // 提取身份证
-        const idMatch = cleanLine.match(/身份证\s*[：:]\s*([0-9Xx]{18})/);
-        const idCard = idMatch ? idMatch[1].trim() : '';
-
-        // 提取电话
-        const phoneMatch = cleanLine.match(/电话\s*[：:]\s*([0-9]{11})/);
-        const phone = phoneMatch ? phoneMatch[1].trim() : '';
-
-        // 提取标签
-        const tagsMatch = cleanLine.match(/标签\s*[：:]\s*(.+)$/);
-        let mTags: string[] = [];
-        if (tagsMatch) {
-          mTags = tagsMatch[1]
-            .split(/[,，]/)
-            .map((t) => t.trim())
-            .filter(Boolean);
-        }
-
-        if (nickname || account) {
-          members.push({
-            id: `MEMBER_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-            nickname,
-            account,
-            name: mName,
-            idCard,
-            phone,
-            tags: mTags,
-          });
-        }
-      }
-    });
-
-    const parsedData = {
-      name: name || '未命名涉稳群组',
-      featureId: featureId || `ID-${Math.floor(1000 + Math.random() * 9000)}`,
-      platform,
-      tags: tags.length > 0 ? tags : ['涉稳群聊'],
-      memberCount: members.length || 50,
-      location: location || '广州市',
-      members,
-    };
-
-    setParsedGroup(parsedData);
-    groupForm.setFieldsValue({
-      name: parsedData.name,
-      featureId: parsedData.featureId,
-      platform: parsedData.platform,
-      tags: parsedData.tags.join(', '),
-      location: parsedData.location,
-      memberCount: parsedData.memberCount,
-    });
-
-    setRegisterMode('form');
-    message.success('一键结构化解析成功！已自动整理为群组元数据及成员明细。');
-  };
-
-  // 编辑表单中更新群成员信息
-  const handleUpdateMemberField = (index: number, field: keyof GroupMember, value: string) => {
-    const updatedMembers = [...parsedGroup.members];
-    if (field === 'tags') {
-      updatedMembers[index] = {
-        ...updatedMembers[index],
-        tags: value
-          .split(/[,，]/)
-          .map((t) => t.trim())
-          .filter(Boolean),
-      };
-    } else {
-      updatedMembers[index] = {
-        ...updatedMembers[index],
-        [field]: value,
-      } as GroupMember;
-    }
-    setParsedGroup({ ...parsedGroup, members: updatedMembers });
-  };
-
-  // 删除编辑中的成员
-  const handleDeleteParsedMember = (index: number) => {
-    const updatedMembers = parsedGroup.members.filter((_, i) => i !== index);
-    setParsedGroup({ ...parsedGroup, members: updatedMembers });
-  };
-
-  // 添加空成员行进行录入
-  const handleAddParsedMember = () => {
-    const newMember: GroupMember = {
-      id: `MEMBER_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-      nickname: '',
-      account: '',
-      name: '',
-      idCard: '',
-      phone: '',
-      tags: ['普通成员'],
-    };
-    setParsedGroup({
-      ...parsedGroup,
-      members: [...parsedGroup.members, newMember],
-    });
-  };
-
-  // 双通道登记确认提交
-  const handleRegisterSubmit = () => {
-    groupForm
-      .validateFields()
-      .then((values) => {
-        const parsedTags = Array.isArray(values.tags)
-          ? values.tags
-          : (values.tags
-              ? values.tags
-                  .split(/[,，]/)
-                  .map((t: string) => t.trim())
-                  .filter(Boolean)
-              : []);
-
-        const newGroup: StabilityGroup = {
-          id: `GROUP_${Date.now()}`,
-          name: values.name,
-          featureId: values.featureId,
-          platform: values.platform,
-          tags: parsedTags,
-          memberCount: parsedGroup.members.length || Number(values.memberCount) || 0,
-          location: values.location,
-          updateTime: new Date().toISOString().replace('T', ' ').substring(0, 16),
-          members: parsedGroup.members,
-        };
-
-        // 1. 保存群组到 state 中
-        setGroupList([newGroup, ...groupList]);
-
-        // 2. 自动汇聚、合并排重写入本地人员库 (peopleDatabase)
-        let mergedCount = 0;
-        let newPeopleCount = 0;
-        const updatedPeople = [...peopleDatabase];
-
-        parsedGroup.members.forEach((member) => {
-          // 查找是否在库中存在该身份证或电话
-          const matchIndex = updatedPeople.findIndex(
-            (p) =>
-              (member.idCard && p.idCard === member.idCard) ||
-              (member.phone && p.phone === member.phone) ||
-              (member.account && p.socialAccounts.some((sa) => sa.id === member.account))
-          );
-
-          if (matchIndex > -1) {
-            // 匹配到了，进行防重碰撞融合
-            const existingPerson = updatedPeople[matchIndex];
-            const updatedTags = Array.from(
-              new Set([
-                ...existingPerson.tags,
-                '涉稳登记',
-                ...newGroup.tags,
-                ...member.tags,
-              ])
-            );
-
-            // 追加社媒账号 (如果没有)
-            const hasAccount = existingPerson.socialAccounts.some(
-              (sa) => sa.id === member.account
-            );
-            const updatedAccounts = hasAccount
-              ? existingPerson.socialAccounts
-              : [
-                  ...existingPerson.socialAccounts,
-                  {
-                    platform: mapGroupPlatformToSocial(newGroup.platform),
-                    username: member.nickname || existingPerson.name,
-                    id: member.account,
-                    followers: '100',
-                    url: '#',
-                    status: 'monitored' as const,
-                  },
-                ];
-
-            updatedPeople[matchIndex] = {
-              ...existingPerson,
-              source: 'both', // 升级为双源头融合
-              groupTag: newGroup.tags[0] || existingPerson.groupTag,
-              tags: updatedTags,
-              socialAccounts: updatedAccounts,
-              lastActive: newGroup.updateTime,
-            };
-            mergedCount++;
-          } else {
-            // 没匹配到，在人员库中为他新建全量档案
-            const newPerson: PersonItem = {
-              id: `PERSON_${member.account || Math.floor(100000 + Math.random() * 900000)}`,
-              name: member.name || member.nickname || '未名人员',
-              gender: '男', // 默认
-              age: 30, // 默认
-              nation: '汉族',
-              birthday: '1996-01-01',
-              idCard: member.idCard || `32080219960101${Math.floor(1000 + Math.random() * 9000)}`,
-              phone: member.phone || `1380000${Math.floor(1000 + Math.random() * 9000)}`,
-              residentAddress: `广州市${newGroup.location}辖区`,
-              registeredAddress: '广东省',
-              type: '关注人员',
-              riskLevel: member.tags.some((t) => t.includes('高风险') || t.includes('群主'))
-                ? 'high'
-                : 'medium',
-              tags: Array.from(new Set(['涉稳登记', ...newGroup.tags, ...member.tags])),
-              socialAccounts: [
-                {
-                  platform: mapGroupPlatformToSocial(newGroup.platform),
-                  username: member.nickname,
-                  id: member.account,
-                  followers: '100',
-                  url: '#',
-                  status: 'monitored',
-                },
-              ],
-              department: `${newGroup.location}分局`,
-              status: 'monitored',
-              lastActive: newGroup.updateTime,
-              incidentCount: 1,
-              recordList: [
-                {
-                  id: `post_${Date.now()}_${Math.random()}`,
-                  content: `涉稳群组【${newGroup.name}】抓取，身份标识为: [${member.tags.join('/')}]`,
-                  publishTime: newGroup.updateTime,
-                  platform: mapGroupPlatformToSocial(newGroup.platform),
-                  author: member.nickname,
-                  authorId: member.account,
-                  reposts: 0,
-                  comments: 0,
-                  likes: 0,
-                },
-              ],
-              note: '通过涉稳群组长文本粘贴智能解析自动建档录入。',
-              source: 'stability',
-              peopleType: 'normal',
-              groupTag: newGroup.tags[0],
-            };
-            updatedPeople.unshift(newPerson);
-            newPeopleCount++;
-          }
-        });
-
-        setPeopleDatabase(updatedPeople);
-        message.success(
-          `成功登记群组【${values.name}】，共解析 ${parsedGroup.members.length} 人。其中：融合更新已有重点人画像 ${mergedCount} 名，为 ${newPeopleCount} 名新人员自动新建关联档案。`
-        );
-
-        setRegisterVisible(false);
-        setPastedText('');
-        setRegisterMode('paste');
-        groupForm.resetFields();
-      })
-      .catch((info) => {
-        message.error('请填写完整群组元数据信息！');
-      });
-  };
-
-  // 侧滑拉出升级版的“网民全量特征融合画像”抽屉
-  const handleOpenPersonDrawer = (nickname: string, account: string) => {
-    // 优先通过账号或身份证在本地人员库中精准定位
-    const person = peopleDatabase.find(
-      (p) =>
-        (account && p.socialAccounts.some((sa) => sa.id === account)) ||
-        p.name === nickname ||
-        p.socialAccounts.some((sa) => sa.username === nickname)
-    );
-
-    if (person) {
-      setDrawerPerson(person);
-      setPersonDrawerVisible(true);
-    } else {
-      // 若真的找不到，本地临时捏造一份满足展示
-      const tempPerson: PersonItem = {
-        id: `PERSON_TEMP_${account}`,
-        name: nickname,
-        gender: '男',
-        age: 32,
-        nation: '汉族',
-        birthday: '1994-06-06',
-        idCard: '320802199406061122',
-        phone: '13788889999',
-        residentAddress: '广州市辖区内网穿透地址',
-        registeredAddress: '广东省',
-        type: '群成员',
-        riskLevel: 'medium',
-        tags: ['涉稳登记', '普通成员'],
-        socialAccounts: [
-          { platform: 'wechat', username: nickname, id: account || 'unknown', followers: '10', url: '#', status: 'monitored' }
-        ],
-        department: '内网研判中心',
-        status: 'monitored',
-        lastActive: '刚刚',
-        incidentCount: 1,
-        recordList: [
-          { id: 'p_temp_1', content: '暂无历史取证帖文。', publishTime: '刚刚', platform: 'wechat', author: nickname, authorId: account, reposts: 0, comments: 0, likes: 0 }
-        ],
-        note: '暂未在人员库发现全量融合画像，显示为涉稳群组抓取之快照特征。',
-        source: 'stability',
-        peopleType: 'normal',
-      };
-      setDrawerPerson(tempPerson);
-      setPersonDrawerVisible(true);
-    }
-  };
-
-  // 群组过滤算法
-  const getFilteredGroups = () => {
-    return groupList.filter((item) => {
-      // 1. 全局搜索 (群名、特征ID、标签)
-      if (searchText) {
-        const query = searchText.toLowerCase();
-        const matchName = item.name.toLowerCase().includes(query);
-        const matchId = item.featureId.toLowerCase().includes(query);
-        const matchTag = item.tags.some((t) => t.toLowerCase().includes(query));
-        if (!matchName && !matchId && !matchTag) return false;
-      }
-      // 2. 平台类型
-      if (filterPlatform !== 'all' && item.platform !== filterPlatform) return false;
-      // 3. 群标签
-      if (filterTag !== 'all' && !item.tags.includes(filterTag)) return false;
-      // 4. 事关地
-      if (filterLocation !== 'all' && item.location !== filterLocation) return false;
-
-      return true;
-    });
-  };
-
-  // 删除群组
-  const handleDeleteGroup = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation(); // 阻止触发查看行抽屉
-    setGroupList(groupList.filter((item) => item.id !== id));
-    message.warning('该涉稳群组已安全下线移除！');
-  };
-
-  const filteredList = getFilteredGroups();
-
   return (
-    <div className="dark-watermark-container">
-      <div className="custom-page-container">
-        {/* 顶部检索与长文本解析登记入口 */}
-        <Card size="small" style={{ marginBottom: '16px', borderRadius: '8px' }}>
-          <Row gutter={12} align="middle">
-            {/* 模糊搜索 */}
-            <Col span={6}>
-              <Input
-                placeholder="搜索群名称、特征ID、群标签..."
-                prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                allowClear
-              />
-            </Col>
+    <div className="watermarked-container" style={{ position: 'relative', minHeight: '100%' }}>
+      {/* 全页面防泄密动态暗水印图层 */}
+      <div className="security-watermark-overlay" style={{ pointerEvents: 'none' }}>
+        {Array.from({ length: 48 }).map((_, i) => (
+          <span key={i} className="watermark-item">LAN YING INTRANET</span>
+        ))}
+      </div>
 
-            {/* 群平台类型 */}
-            <Col span={4}>
-              <div style={{ display: 'flex', alignItems: 'center' }}>
-                <span style={{ fontSize: '12px', color: '#555', marginRight: '6px', whiteSpace: 'nowrap' }}>
-                  平台:
-                </span>
-                <Select
-                  style={{ width: '100%' }}
-                  value={filterPlatform}
-                  onChange={setFilterPlatform}
-                  options={[
-                    { value: 'all', label: '全部平台' },
-                    { value: 'wechat', label: '微信' },
-                    { value: 'qq', label: 'QQ' },
-                  ]}
-                />
-              </div>
-            </Col>
+      <div style={{ padding: '24px' }}>
+        
+        {/* ==================== 视图一：全局稳情标签主列表页 ==================== */}
+        {currentView === 'list' && (
+          <div>
+            {/* 联合搜索 */}
+            <Card className="filter-card" bordered={false} style={{ marginBottom: '16px' }}>
+              <Row align="middle">
+                <Col span={8}>
+                  <Input
+                    placeholder="输入稳情标签名称过滤检索..."
+                    prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
+                    value={searchText}
+                    onChange={(e) => handleSearch(e.target.value)}
+                    allowClear
+                    style={{ borderRadius: '6px' }}
+                  />
+                </Col>
+              </Row>
+            </Card>
 
-            {/* 群标签 */}
-            <Col span={4}>
-              <div style={{ display: 'flex', alignItems: 'center' }}>
-                <span style={{ fontSize: '12px', color: '#555', marginRight: '6px', whiteSpace: 'nowrap' }}>
-                  群体标签:
-                </span>
-                <Select
-                  style={{ width: '100%' }}
-                  value={filterTag}
-                  onChange={setFilterTag}
-                  options={[
-                    { value: 'all', label: '全部标签' },
-                    { value: '外卖群体维权', label: '外卖群体维权' },
-                    { value: '出租车司机维权', label: '出租车司机维权' },
-                    { value: '小区业主维权', label: '小区业主维权' },
-                    { value: '劳资纠纷', label: '劳资纠纷' },
-                    { value: '行业诉求', label: '行业诉求' },
-                    { value: '房产维权', label: '房产维权' },
-                  ]}
-                />
-              </div>
-            </Col>
-
-            {/* 事关地 */}
-            <Col span={4}>
-              <div style={{ display: 'flex', alignItems: 'center' }}>
-                <span style={{ fontSize: '12px', color: '#555', marginRight: '6px', whiteSpace: 'nowrap' }}>
-                  事关地:
-                </span>
-                <Select
-                  style={{ width: '100%' }}
-                  value={filterLocation}
-                  onChange={setFilterLocation}
-                  options={[
-                    { value: 'all', label: '全部地' },
-                    { value: '天河区', label: '天河区' },
-                    { value: '白云区', label: '白云区' },
-                    { value: '海珠区', label: '海珠区' },
-                  ]}
-                />
-              </div>
-            </Col>
-
-            {/* 手工登记与标签管理 */}
-            <Col span={6} style={{ textAlign: 'right' }}>
-              <Space>
-                <Button
-                  icon={<SettingOutlined />}
-                  onClick={() => setTagManagerVisible(true)}
-                >
-                  标签管理
-                </Button>
-                <Button
-                  type="primary"
-                  icon={<UsergroupAddOutlined />}
-                  onClick={() => {
-                    setRegisterMode('paste');
-                    setRegisterVisible(true);
-                  }}
-                >
-                  登记涉稳群组
-                </Button>
-              </Space>
-            </Col>
-          </Row>
-        </Card>
-
-        {/* 涉稳群组主列表 (外层) */}
-        <Card size="small" style={{ borderRadius: '8px' }}>
-          <Table
-            dataSource={filteredList}
-            rowKey="id"
-            bordered
-            size="middle"
-            onRow={(record) => ({
-              onClick: () => {
-                setSelectedGroup(record);
-                setMemberDrawerVisible(true);
-              },
-            })}
-            rowClassName={() => 'interactive-table-row'}
-            columns={[
-              {
-                title: '群名称',
-                dataIndex: 'name',
-                key: 'name',
-                render: (text) => (
-                  <span style={{ fontWeight: 600, color: '#1d39c4' }}>🗂️ {text}</span>
-                ),
-              },
-              {
-                title: '群特征/ID',
-                dataIndex: 'featureId',
-                key: 'featureId',
-                width: 160,
-                render: (text) => <code>{text}</code>,
-              },
-              {
-                title: '平台类型',
-                dataIndex: 'platform',
-                key: 'platform',
-                width: 100,
-                render: (platform) => renderPlatform(platform),
-              },
-              {
-                title: '群分类标签',
-                dataIndex: 'tags',
-                key: 'tags',
-                render: (tags: string[]) => (
-                  <Space size={4} wrap>
-                    {tags.map((tag) => (
-                      <Tag color="purple" key={tag}>
-                        {tag}
-                      </Tag>
-                    ))}
-                  </Space>
-                ),
-              },
-              {
-                title: '群人数',
-                dataIndex: 'memberCount',
-                key: 'memberCount',
-                width: 100,
-                align: 'center',
-                render: (count) => (
-                  <strong style={{ color: '#fa8c16' }}>{count} 人</strong>
-                ),
-              },
-              {
-                title: '事关地',
-                dataIndex: 'location',
-                key: 'location',
-                width: 120,
-                render: (text) => (
-                  <span>
-                    <EnvironmentOutlined style={{ marginRight: '4px', color: '#8c8c8c' }} />
-                    {text}
-                  </span>
-                ),
-              },
-              {
-                title: '更新时间',
-                dataIndex: 'updateTime',
-                key: 'updateTime',
-                width: 160,
-              },
-              {
-                title: '操作',
-                key: 'actions',
-                width: 150,
-                align: 'center',
-                render: (_, record) => (
-                  <Space onClick={(e) => e.stopPropagation()}>
-                    <Button
-                      size="small"
-                      icon={<EyeOutlined />}
-                      onClick={() => {
-                        setSelectedGroup(record);
-                        setMemberDrawerVisible(true);
-                      }}
-                    >
-                      明细
-                    </Button>
-                    <Button
-                      size="small"
-                      danger
-                      icon={<DeleteOutlined />}
-                      onClick={(e) => handleDeleteGroup(record.id, e)}
-                    >
-                      移除
-                    </Button>
-                  </Space>
-                ),
-              },
-            ]}
-          />
-        </Card>
-
-        {/* 1. 群成员明细抽屉 (内层) */}
-        <Drawer
-          title={
-            <span>
-              👥 群成员监控明细 - {selectedGroup?.name} ({selectedGroup?.memberCount}人)
-            </span>
-          }
-          placement="right"
-          width={800}
-          onClose={() => setMemberDrawerVisible(false)}
-          open={memberDrawerVisible}
-          destroyOnClose
-        >
-          {selectedGroup && (
-            <div>
-              <Alert
-                message={
-                  <Space split={<Divider type="vertical" />}>
-                    <span>群特征: <code>{selectedGroup.featureId}</code></span>
-                    <span>事关地: <strong>{selectedGroup.location}</strong></span>
-                    <span>最后活动/采集: {selectedGroup.updateTime}</span>
-                  </Space>
-                }
-                description={
-                  <div style={{ marginTop: '6px' }}>
-                    群属标签:{' '}
-                    {selectedGroup.tags.map((t) => (
-                      <Tag color="purple" key={t}>
-                        {t}
-                      </Tag>
-                    ))}
-                  </div>
-                }
-                type="info"
-                showIcon
-                style={{ marginBottom: '16px' }}
-              />
-
-              <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontWeight: 600, color: '#333', fontSize: '14px' }}>重点监测群成员列表 (已关联人员库)</span>
-                <span style={{ fontSize: '12px', color: '#8c8c8c' }}>点击姓名穿透全量融合画像</span>
-              </div>
-
+            {/* 主台账列表表格 */}
+            <Card bordered={false} className="table-card">
               <Table
-                dataSource={selectedGroup.members}
-                rowKey="id"
-                size="small"
-                bordered
-                pagination={false}
+                dataSource={filterTags}
+                rowKey="key"
+                pagination={{ pageSize: 5, showTotal: (total) => `共 ${total} 条` }}
                 columns={[
                   {
-                    title: '群内昵称',
-                    dataIndex: 'nickname',
-                    key: 'nickname',
-                    render: (text) => <strong>{text}</strong>,
-                  },
-                  {
-                    title: '平台账号/ID',
-                    dataIndex: 'account',
-                    key: 'account',
-                    render: (text) => <code>{text}</code>,
-                  },
-                  {
-                    title: '真实姓名',
+                    title: '稳情标签名称',
                     dataIndex: 'name',
                     key: 'name',
-                    render: (text, record) => (
-                      <a
-                        onClick={() => handleOpenPersonDrawer(record.nickname, record.account)}
-                        style={{ fontWeight: 600, textDecoration: 'underline', color: '#1890ff' }}
-                      >
-                        {text || '未核实'}
-                      </a>
-                    ),
+                    render: (text) => <span className="group-name-highlight" style={{ fontSize: '15px' }}>{text}</span>,
                   },
                   {
-                    title: '身份证号',
-                    dataIndex: 'idCard',
-                    key: 'idCard',
-                    render: (idCard) => {
-                      if (!idCard) return <span style={{ color: '#ccc' }}>未登记</span>;
-                      return <code>{idCard.substring(0, 6)}********{idCard.substring(14)}</code>;
-                    },
+                    title: '关联动态数',
+                    dataIndex: 'dynamicCount',
+                    key: 'dynamicCount',
+                    align: 'center',
+                    render: (count) => <Badge count={count} overflowCount={999} style={{ backgroundColor: '#1890ff' }} />,
                   },
                   {
-                    title: '手机号',
-                    dataIndex: 'phone',
-                    key: 'phone',
-                    render: (phone) => {
-                      if (!phone) return <span style={{ color: '#ccc' }}>未登记</span>;
-                      return <span>{phone.substring(0, 3)}****{phone.substring(7)}</span>;
-                    },
+                    title: '关联总人数',
+                    dataIndex: 'peopleCount',
+                    key: 'peopleCount',
+                    align: 'center',
+                    render: (count) => <span style={{ fontWeight: 'bold' }}>{count} 人</span>,
                   },
                   {
-                    title: '人员标签',
-                    dataIndex: 'tags',
-                    key: 'tags',
-                    render: (tags: string[]) => (
-                      <Space size={4} wrap>
-                        {tags.map((t) => renderMemberTag(t))}
-                      </Space>
-                    ),
+                    title: '关联总群数',
+                    dataIndex: 'groupCount',
+                    key: 'groupCount',
+                    align: 'center',
+                    render: (count) => <span style={{ fontWeight: 'bold', color: '#722ed1' }}>{count} 个</span>,
                   },
                   {
-                    title: '画像穿透',
-                    key: 'detail',
+                    title: '最新更新时间',
+                    dataIndex: 'updateTime',
+                    key: 'updateTime',
+                  },
+                  {
+                    title: '操作',
+                    key: 'action',
                     align: 'center',
                     render: (_, record) => (
                       <Button
+                        type="primary"
+                        ghost
                         size="small"
                         icon={<EyeOutlined />}
-                        onClick={() => handleOpenPersonDrawer(record.nickname, record.account)}
+                        onClick={() => handleEnterDetail(record)}
+                        style={{ borderRadius: '4px' }}
                       >
-                        全量画像
+                        查看详情
                       </Button>
                     ),
                   },
                 ]}
               />
+            </Card>
+          </div>
+        )}
 
-              <div style={{ marginTop: '20px', background: '#fafafa', padding: '12px', borderRadius: '6px', borderLeft: '4px solid #fa8c16' }}>
-                <h4 style={{ margin: '0 0 6px 0', fontSize: '13px' }}>💡 研判联动说明</h4>
-                <p style={{ margin: 0, fontSize: '12px', color: '#595959', lineHeight: '1.5' }}>
-                  本模块是基于社交群聊抓取到的身份快照。点击人员昵称或“全量画像”后，系统在内网进行脱敏碰撞，在人员库中穿透匹配其名下的多平台账号、户籍信息、前科劣迹以及在其他舆情指令中的记录，实现“一屏全量掌控”。
-                </p>
+        {/* ==================== 视图二：标签详情控制台（核心三 Tab 架构） ==================== */}
+        {currentView === 'detail' && (
+          <div>
+            {/* 标签标题卡 */}
+            <Card
+              bordered={false}
+              style={{
+                background: 'linear-gradient(90deg, #1d39c4 0%, #002329 100%)',
+                color: '#fff',
+                borderRadius: '8px',
+                marginBottom: '20px',
+                boxShadow: '0 4px 12px rgba(29,57,196,0.15)',
+              }}
+              bodyStyle={{ padding: '20px 24px' }}
+            >
+              <Row align="middle">
+                <Col span={18}>
+                  <div style={{ fontSize: '20px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <Button 
+                      type="link" 
+                      icon={<ArrowLeftOutlined style={{ fontSize: '20px', color: '#fff' }} />} 
+                      onClick={() => setCurrentView('list')}
+                      style={{ padding: 0, height: 'auto', display: 'inline-flex', alignItems: 'center' }} 
+                    />
+                    {selectedTag.name}
+                  </div>
+                  <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', marginTop: '8px' }}>
+                    该事件标签关联的去重实体包含：动态数量 <span style={{ color: '#ffd591', fontWeight: 'bold' }}>{selectedTag.dynamicCount}</span> 条、
+                    涉稳重点人员 <span style={{ color: '#ffd591', fontWeight: 'bold' }}>{selectedTag.peopleCount}</span> 人、
+                    涉稳社媒群聊群组 <span style={{ color: '#ffd591', fontWeight: 'bold' }}>{selectedTag.groupCount}</span> 个。
+                  </div>
+                </Col>
+                <Col span={6} style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>最新要素捕获时间</div>
+                  <div style={{ fontSize: '16px', fontWeight: 'bold', marginTop: '4px' }}>{selectedTag.updateTime}</div>
+                </Col>
+              </Row>
+            </Card>
+
+            {/* 核心三 Tab 视图架构 */}
+            <Card bordered={false} bodyStyle={{ padding: '0px' }} className="tab-container-card">
+              <Tabs
+                defaultActiveKey="posts"
+                type="card"
+                className="custom-premium-tabs"
+                items={[
+                  // ==================== Tab A: 动态 ====================
+                  {
+                    key: 'posts',
+                    label: (
+                      <span>
+                        <FileTextOutlined /> 动态 ({mockDynamics.length})
+                      </span>
+                    ),
+                    children: (
+                      <div style={{ padding: '20px' }}>
+                        <Table
+                          dataSource={mockDynamics}
+                          rowKey="id"
+                          pagination={false}
+                          className="high-density-table"
+                          onRow={(record) => ({
+                            onClick: () => {
+                              setSelectedDynamic(record);
+                              setDynamicDrawerOpen(true);
+                            },
+                            style: { cursor: 'pointer' },
+                          })}
+                          columns={[
+                            {
+                              title: '动态',
+                              dataIndex: 'title',
+                              key: 'title',
+                              render: (text) => <span style={{ fontWeight: '500', color: '#1890ff' }}>{text}</span>,
+                            },
+                            {
+                              title: '提交人',
+                              dataIndex: 'author',
+                              key: 'author',
+                              width: 200,
+                              render: (text) => <Tag color="geekblue">{text}</Tag>,
+                            },
+                            {
+                              title: '提交时间',
+                              dataIndex: 'publishTime',
+                              key: 'publishTime',
+                              width: 250,
+                            },
+                          ]}
+                        />
+                      </div>
+                    ),
+                  },
+
+                  // ==================== Tab B: 人员 ====================
+                  {
+                    key: 'people',
+                    label: (
+                      <span>
+                        <UserOutlined /> 人员 ({mockPeople.length})
+                      </span>
+                    ),
+                    children: (
+                      <div style={{ padding: '20px' }}>
+                        <Table
+                          dataSource={mockPeople}
+                          rowKey="id"
+                          pagination={false}
+                          columns={[
+                            {
+                              title: '排名/序号',
+                              key: 'index',
+                              width: 100,
+                              align: 'center',
+                              render: (_, __, idx) => {
+                                const colors = ['#f5222d', '#fa541c', '#fa8c16'];
+                                return (
+                                  <Badge
+                                    count={idx + 1}
+                                    style={{
+                                      backgroundColor: colors[idx] || '#bfbfbf',
+                                      fontWeight: 'bold',
+                                    }}
+                                  />
+                                );
+                              },
+                            },
+                            {
+                              title: '涉稳重点人姓名',
+                              dataIndex: 'name',
+                              key: 'name',
+                              render: (_, record) => (
+                                <Button
+                                  type="link"
+                                  icon={<PartitionOutlined />}
+                                  onClick={() => handleOpenPersonDrawer(record)}
+                                  style={{ padding: 0, fontWeight: 'bold' }}
+                                >
+                                  {record.name}
+                                </Button>
+                              ),
+                            },
+                            {
+                              title: '身份证号',
+                              dataIndex: 'idCard',
+                              key: 'idCard',
+                              render: (text) => `${text.substr(0, 6)}********${text.substr(14, 4)}`,
+                            },
+                            {
+                              title: '手机号码',
+                              dataIndex: 'phone',
+                              key: 'phone',
+                              render: (text) => `${text.substr(0, 3)}****${text.substr(7, 4)}`,
+                            },
+                            {
+                              title: '相关群组',
+                              key: 'groups',
+                              render: (_, record) => {
+                                const groups = record.groups || [];
+                                if (groups.length === 0) return <span style={{ color: '#bfbfbf' }}>-</span>;
+                                return (
+                                  <span>
+                                    <UsergroupAddOutlined style={{ marginRight: 6, color: '#1890ff' }} />
+                                    {groups[0]}
+                                    {groups.length > 1 && (
+                                      <Tag color="blue" style={{ marginLeft: 6 }}>+{groups.length - 1}</Tag>
+                                    )}
+                                  </span>
+                                );
+                              }
+                            },
+                            {
+                              title: '提及频次 (活跃度能量)',
+                              dataIndex: 'mentionedCount',
+                              key: 'mentionedCount',
+                              sorter: (a, b) => b.mentionedCount - a.mentionedCount,
+                              render: (count) => (
+                                <div style={{ width: '130px' }} className="flex-center-y">
+                                  <Progress
+                                    percent={(count / 15) * 100}
+                                    showInfo={false}
+                                    strokeColor="#f5222d"
+                                    trailColor="rgba(0,0,0,0.05)"
+                                    style={{ marginRight: 8, width: 80 }}
+                                  />
+                                  <span style={{ fontWeight: 'bold', color: '#f5222d' }}>{count} 次</span>
+                                </div>
+                              ),
+                            },
+                            {
+                              title: '操作',
+                              key: 'action',
+                              align: 'center',
+                              render: (_, record) => (
+                                <Button
+                                  size="small"
+                                  type="link"
+                                  danger
+                                  onClick={() => {
+                                    message.loading(`正在将涉稳人员【${record.name}】移出该标签监控...`);
+                                    setTimeout(() => {
+                                      message.success(`已成功将【${record.name}】从标签“${selectedTag.name}”下移出。`);
+                                    }, 800);
+                                  }}
+                                >
+                                  删除
+                                </Button>
+                              ),
+                            },
+                          ]}
+                        />
+                      </div>
+                    ),
+                  },
+
+                  // ==================== Tab C: 群组 ====================
+                  {
+                    key: 'groups',
+                    label: (
+                      <span>
+                        <UsergroupAddOutlined /> 群组 ({mockGroups.length})
+                      </span>
+                    ),
+                    children: (
+                      <div style={{ padding: '20px' }}>
+                        <Table
+                          dataSource={mockGroups}
+                          rowKey="id"
+                          pagination={false}
+                          columns={[
+                            {
+                              title: '关联监测群聊名称',
+                              dataIndex: 'name',
+                              key: 'name',
+                              render: (text) => <span style={{ fontWeight: '600' }}>{text}</span>,
+                            },
+                            {
+                              title: '群主平台',
+                              dataIndex: 'platform',
+                              key: 'platform',
+                              render: (plat) => renderPlatform(plat),
+                            },
+                            {
+                              title: '群内人数',
+                              dataIndex: 'memberCount',
+                              key: 'memberCount',
+                              align: 'center',
+                              render: (count) => <span style={{ fontWeight: 'bold' }}>{count} 人</span>,
+                            },
+                            {
+                              title: '出现动态频次',
+                              dataIndex: 'mentionedCount',
+                              key: 'mentionedCount',
+                              render: (count) => (
+                                <div style={{ width: '130px' }} className="flex-center-y">
+                                  <Progress
+                                    percent={(count / 22) * 100}
+                                    showInfo={false}
+                                    strokeColor="#722ed1"
+                                    trailColor="rgba(0,0,0,0.05)"
+                                    style={{ marginRight: 8, width: 80 }}
+                                  />
+                                  <span style={{ fontWeight: 'bold', color: '#722ed1' }}>{count} 次</span>
+                                </div>
+                              ),
+                            },
+                            {
+                              title: '最新动态标题',
+                              dataIndex: 'latestDynamic',
+                              key: 'latestDynamic',
+                              render: (text) => (
+                                <span style={{ color: '#1890ff', fontSize: '13px', fontWeight: '500' }}>
+                                  {text}
+                                </span>
+                              ),
+                            },
+                            {
+                              title: '操作',
+                              key: 'action',
+                              align: 'center',
+                              render: (_, record) => (
+                                <Button
+                                  size="small"
+                                  type="link"
+                                  onClick={() => handleOpenGroupDrawer(record)}
+                                >
+                                  查看详情
+                                </Button>
+                              ),
+                            },
+                          ]}
+                        />
+                      </div>
+                    ),
+                  },
+                ]}
+              />
+            </Card>
+          </div>
+        )}
+
+      </div>
+
+      {/* ==================== 抽屉一：非结构化动态详情 Drawer ==================== */}
+      <Drawer
+        title="动态详情"
+        width={620}
+        onClose={() => {
+          setDynamicDrawerOpen(false);
+          setSelectedDynamic(null);
+        }}
+        open={dynamicDrawerOpen}
+        destroyOnClose
+      >
+        {selectedDynamic && (
+          <div>
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontWeight: 'bold', marginBottom: 8, fontSize: '14px', color: '#262626' }}>
+                标题：
               </div>
+              <h3 style={{ fontWeight: 'bold', color: '#1890ff', margin: '0 0 16px 0', fontSize: '16px' }}>
+                {selectedDynamic.title}
+              </h3>
             </div>
-          )}
-        </Drawer>
 
-        {/* 2. 二次穿透重点人融合画像 Drawer */}
-        <Drawer
-          title="蓝鹰网民全量特征融合画像 (内网穿透研判)"
-          placement="right"
-          width={650}
-          onClose={() => setPersonDrawerVisible(false)}
-          open={personDrawerVisible}
-          destroyOnClose
-        >
-          {drawerPerson && (
-            <div>
-              {/* 基本摘要 */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontWeight: 'bold', marginBottom: 8, fontSize: '14px', color: '#262626' }}>
+                <FileTextOutlined style={{ marginRight: 6 }} /> 内容：
+              </div>
               <div
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '16px',
-                  background: '#f5f7fa',
+                  background: '#f9f9f9',
+                  border: '1px solid #d9d9d9',
                   padding: '16px',
                   borderRadius: '6px',
-                  marginBottom: '16px',
-                  border: '1px solid #e8e8e8',
+                  fontSize: '13px',
+                  lineHeight: '1.6',
+                  color: '#262626',
+                  fontFamily: 'monospace',
+                  whiteSpace: 'pre-wrap',
+                  boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.02)'
                 }}
               >
-                <Avatar size={50} style={{ backgroundColor: '#1d39c4' }}>
-                  {drawerPerson.name ? drawerPerson.name[0] : <UserOutlined />}
-                </Avatar>
-                <div>
-                  <h3 style={{ margin: '0 0 4px 0', fontSize: '16px' }}>
-                    {drawerPerson.name}
-                    <span style={{ fontSize: '12px', color: '#999', fontWeight: 'normal', marginLeft: '10px' }}>
-                      {drawerPerson.gender} | {drawerPerson.age}岁
-                    </span>
-                  </h3>
-                  <Space>
-                    {drawerPerson.riskLevel === 'high' ? (
-                      <Tag color="red">🔴 极高风险</Tag>
-                    ) : drawerPerson.riskLevel === 'medium' ? (
-                      <Tag color="orange">🟡 中度风险</Tag>
-                    ) : (
-                      <Tag color="blue">🔵 一般关注</Tag>
-                    )}
-                    <Tag color="purple">重点属地: {drawerPerson.department}</Tag>
-                  </Space>
-                </div>
+                {selectedDynamic.content}
               </div>
+            </div>
 
-              {/* 来源与身份双重融合特征 */}
-              <Descriptions bordered size="small" column={1} style={{ marginBottom: '16px' }}>
-                <Descriptions.Item label="脱敏身份证">
-                  <code>
-                    {drawerPerson.idCard.substring(0, 6)}********{drawerPerson.idCard.substring(14)}
-                  </code>
-                </Descriptions.Item>
-                <Descriptions.Item label="脱敏手机号">
-                  <span>
-                    {drawerPerson.phone.substring(0, 3)}****{drawerPerson.phone.substring(7)}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontWeight: 'bold', marginBottom: 10, fontSize: '14px', color: '#262626' }}>
+                <UsergroupAddOutlined style={{ marginRight: 6 }} /> 群组信息：
+              </div>
+              <Card size="small" style={{ borderRadius: '6px', background: '#fafafa', border: '1px solid #e8e8e8' }}>
+                <Descriptions size="small" column={2}>
+                  <Descriptions.Item label="群聊名称">公寓曼度下午群</Descriptions.Item>
+                  <Descriptions.Item label="社交平台">
+                    <Tag color="green" icon={<WechatOutlined />}>微信</Tag>
+                  </Descriptions.Item>
+                  <Descriptions.Item label="群内人数">136 人</Descriptions.Item>
+                  <Descriptions.Item label="平台ID">wx_group_man_001</Descriptions.Item>
+                </Descriptions>
+              </Card>
+            </div>
+
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontWeight: 'bold', marginBottom: 10, fontSize: '14px', color: '#262626' }}>
+                <UserOutlined style={{ marginRight: 6 }} /> 人员信息：
+              </div>
+              <Table
+                dataSource={[
+                  { key: 'p1', name: '袁志梅', idCard: '320821********7108', phone: '177****2556', address: '淮阴区盐河东街232号' },
+                  { key: 'p2', name: '徐素红', idCard: '320821********350X', phone: '139****8730', address: '清江浦区和平路9号越河小区8号楼甲单元304室' },
+                  { key: 'p3', name: '赵君茂', idCard: '320821********2316', phone: '130****8768', address: '淮阴区淮高镇长兴村候赵庄30号' },
+                ].filter(p => selectedDynamic.content.includes(p.name))}
+                rowKey="key"
+                pagination={false}
+                size="small"
+                columns={[
+                  {
+                    title: '姓名',
+                    dataIndex: 'name',
+                    key: 'name',
+                    width: 80,
+                    render: (text) => <span style={{ fontWeight: 'bold' }}>{text}</span>
+                  },
+                  {
+                    title: '身份信息',
+                    key: 'info',
+                    render: (_, record) => (
+                      <div style={{ fontSize: '12px', color: '#595959' }}>
+                        <div>证件: {record.idCard}</div>
+                        <div>手机: {record.phone}</div>
+                      </div>
+                    )
+                  },
+                  {
+                    title: '手动选择属性',
+                    key: 'role',
+                    width: 140,
+                    align: 'center',
+                    render: (_, record, index) => (
+                      <Select
+                        defaultValue={index === 0 && selectedDynamic.id === 'dyn_001' ? 'owner' : 'member'}
+                        style={{ width: 110 }}
+                        size="small"
+                        options={[
+                          { value: 'owner', label: '群主' },
+                          { value: 'admin', label: '管理员' },
+                          { value: 'member', label: '普通成员' }
+                        ]}
+                        onChange={(val) => message.success(`已更新 ${record.name} 的群角色为: ${val === 'owner' ? '群主' : val === 'admin' ? '管理员' : '普通成员'}`)}
+                      />
+                    )
+                  }
+                ]}
+              />
+            </div>
+          </div>
+        )}
+      </Drawer>
+
+      {/* ==================== 抽屉二：重点涉稳重点人全量特征融合画像 Drawer (叠开) ==================== */}
+      <Drawer
+        title="人员详细信息"
+        width={720}
+        onClose={() => {
+          setPersonDrawerOpen(false);
+          setActivePerson(null);
+        }}
+        open={personDrawerOpen}
+        destroyOnClose
+        style={{ boxShadow: '-6px 0 16px rgba(0,0,0,0.15)' }}
+      >
+        {activePerson && (
+          <div>
+            {/* 画像头部卡片（左右结构） */}
+            <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', background: '#fafafa', padding: '16px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #e8e8e8' }}>
+              <Avatar size={64} icon={<UserOutlined />} style={{ backgroundColor: activePerson.riskLevel === 'high' ? '#ff4d4f' : '#1890ff', flexShrink: 0 }} />
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '18px', fontWeight: 'bold' }}>{activePerson.name}</span>
+                  <span style={{ fontSize: '13px', color: '#8c8c8c' }}>
+                    累计提及次数：<strong style={{ color: '#ff4d4f', fontSize: '16px' }}>{activePerson.id === 'PERSON_MAN_001' ? 15 : activePerson.id === 'PERSON_MAN_002' ? 9 : 5}</strong> 次
                   </span>
-                </Descriptions.Item>
-                <Descriptions.Item label="数据来源属性">
-                  {drawerPerson.source === 'both' ? (
-                    <Space>
-                      <Tag color="red">双源头碰撞融合</Tag>
-                      <Tag color="blue">舆情指令来源</Tag>
-                      <Tag color="purple">涉稳台账登记</Tag>
-                    </Space>
-                  ) : drawerPerson.source === 'opinion' ? (
-                    <Tag color="blue">舆情指令来源</Tag>
-                  ) : (
-                    <Tag color="purple">涉稳台账登记</Tag>
-                  )}
-                </Descriptions.Item>
-
-                {/* 融合属性 */}
-                <Descriptions.Item label="网民类型 (舆情特征)">
-                  {drawerPerson.peopleType === 'media' ? (
-                    <Tag color="blue">自媒体</Tag>
-                  ) : drawerPerson.peopleType === 'kol' ? (
-                    <Tag color="purple">大V</Tag>
-                  ) : (
-                    <span style={{ color: '#8c8c8c' }}>普通网民</span>
-                  )}
-                </Descriptions.Item>
-
-                <Descriptions.Item label="舆情类型标签">
-                  {drawerPerson.opinionTags && drawerPerson.opinionTags.length > 0 ? (
-                    <Space size={4} wrap>
-                      {drawerPerson.opinionTags.map((t) => (
-                        <Tag color="cyan" key={t}>{t}</Tag>
-                      ))}
-                    </Space>
-                  ) : (
-                    <span style={{ color: '#ccc' }}>无</span>
-                  )}
-                </Descriptions.Item>
-
-                <Descriptions.Item label="涉稳群体 (涉稳特征)">
-                  {drawerPerson.groupTag ? (
-                    <Tag color="red">{drawerPerson.groupTag}</Tag>
-                  ) : (
-                    <span style={{ color: '#ccc' }}>无</span>
-                  )}
-                </Descriptions.Item>
-
-                <Descriptions.Item label="现居住地址">{drawerPerson.residentAddress}</Descriptions.Item>
-                <Descriptions.Item label="户籍所在地">{drawerPerson.registeredAddress}</Descriptions.Item>
-              </Descriptions>
-
-              {/* 监控社媒矩阵 */}
-              <div style={{ marginBottom: '16px' }}>
-                <div style={{ fontWeight: 600, color: '#333', marginBottom: '8px', fontSize: '13px' }}>
-                  监控社媒账号矩阵 (多平台聚合)
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                  {drawerPerson.socialAccounts.map((account, index) => (
-                    <Card key={index} size="small" style={{ background: '#fafafa', borderRadius: '4px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span>
-                          {account.platform === 'wechat' ? (
-                            <WechatOutlined style={{ color: '#52c41a', marginRight: '4px' }} />
-                          ) : (
-                            <QqOutlined style={{ color: '#1890ff', marginRight: '4px' }} />
-                          )}
-                          <strong>{account.username}</strong>
-                        </span>
-                      </div>
-                      <div style={{ fontSize: '11px', color: '#8c8c8c', marginTop: '4px' }}>
-                        账号/ID: <code>{account.id}</code>
-                      </div>
-                    </Card>
+                <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  <Tag color="purple">属性: 核心涉稳人员</Tag>
+                  {activePerson.tags.map(t => (
+                    <Tag color={t.includes('高风险') || t.includes('群主') || t.includes('核心') ? 'red' : 'geekblue'} key={t}>{t}</Tag>
                   ))}
                 </div>
               </div>
+            </div>
 
-              {/* 客观帖文脉络 */}
-              <div>
-                <div style={{ fontWeight: 600, color: '#333', marginBottom: '8px', fontSize: '13px' }}>
-                  客观关联取证帖文流 (不使用AI加工)
+            {/* 社媒账号流 */}
+            <Card title="绑定的社交媒体账号" size="small" style={{ marginBottom: '20px', borderRadius: '6px' }}>
+              <Row gutter={[16, 16]}>
+                <Col span={12}>
+                  <div className="social-acc-item flex-between" style={{ padding: '8px 12px', border: '1px solid #e8e8e8', borderRadius: '6px' }}>
+                    <div className="flex-center-y" style={{ gap: 8 }}>
+                      <WechatOutlined style={{ color: '#52c41a', fontSize: '18px' }} />
+                      <div>
+                        <div style={{ fontWeight: '500' }}>{activePerson.name}</div>
+                        <div style={{ fontSize: '11px', color: '#8c8c8c' }}>ID: wx_{activePerson.phone}</div>
+                      </div>
+                    </div>
+                    <Badge status="processing" text="监控中" />
+                  </div>
+                </Col>
+              </Row>
+            </Card>
+
+            {/* 描述项 */}
+            <Descriptions title="基本信息" size="small" bordered column={2} style={{ marginBottom: '20px' }}>
+              <Descriptions.Item label="性别">{activePerson.gender}</Descriptions.Item>
+              <Descriptions.Item label="年龄">{activePerson.age} 岁</Descriptions.Item>
+              <Descriptions.Item label="民族">{activePerson.nation}</Descriptions.Item>
+              <Descriptions.Item label="身份证号">{activePerson.idCard}</Descriptions.Item>
+              <Descriptions.Item label="联系电话">{activePerson.phone}</Descriptions.Item>
+              <Descriptions.Item label="出生日期">{activePerson.birthday}</Descriptions.Item>
+              <Descriptions.Item label="居住地址" span={2}>{activePerson.residentAddress}</Descriptions.Item>
+              <Descriptions.Item label="户籍地址" span={2}>{activePerson.registeredAddress}</Descriptions.Item>
+              <Descriptions.Item label="情况备注说明" span={2}>{activePerson.note}</Descriptions.Item>
+            </Descriptions>
+
+            {/* 客观帖文脉络 */}
+            <h4 className="section-title-sm" style={{ marginBottom: '10px' }}>相关动态</h4>
+            <Timeline>
+              {activePerson.recordList.map((rec) => (
+                <Timeline.Item key={rec.id} color="blue">
+                  <div className="timeline-post-card" style={{ border: '1px solid #e8e8e8', padding: '10px', borderRadius: '6px', background: '#fff' }}>
+                    <div className="flex-between" style={{ fontSize: '12px', color: '#8c8c8c', marginBottom: 6 }}>
+                      <span>
+                        <WechatOutlined style={{ color: '#52c41a' }} />
+                        <span style={{ marginLeft: 4 }}>{rec.author} ({rec.authorId})</span>
+                      </span>
+                      <span>发布于 {rec.publishTime}</span>
+                    </div>
+                    <div style={{ fontSize: '13px', lineHeight: '1.5', color: '#262626' }}>
+                      {rec.content}
+                    </div>
+                  </div>
+                </Timeline.Item>
+              ))}
+            </Timeline>
+
+          </div>
+        )}
+      </Drawer>
+
+      {/* ==================== 抽屉三：群组详情 Drawer ==================== */}
+      <Drawer
+        title="群组详细信息"
+        width={620}
+        onClose={() => {
+          setGroupDrawerOpen(false);
+          setActiveGroup(null);
+        }}
+        open={groupDrawerOpen}
+        destroyOnClose
+      >
+        {activeGroup && (
+          <div>
+            {/* 群组基本信息卡片 */}
+            <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', background: '#fafafa', padding: '16px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #e8e8e8' }}>
+              <div className="card-icon-wrapper blue-glow" style={{ fontSize: '32px', padding: '8px 12px', background: 'rgba(24,144,255,0.08)', borderRadius: '6px', color: '#1890ff', flexShrink: 0 }}>
+                <UsergroupAddOutlined />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '18px', fontWeight: 'bold' }}>{activeGroup.name}</span>
+                  <span style={{ fontSize: '13px', color: '#8c8c8c' }}>
+                    提及动态数：<strong style={{ color: '#722ed1', fontSize: '16px' }}>{activeGroup.mentionedCount}</strong> 次
+                  </span>
                 </div>
-                {drawerPerson.recordList && drawerPerson.recordList.length > 0 ? (
-                  <Timeline style={{ paddingLeft: '6px', marginTop: '12px' }}>
-                    {drawerPerson.recordList.map((post) => (
-                      <Timeline.Item key={post.id} color="red">
-                        <div style={{ fontSize: '12.5px', color: '#262626', fontWeight: 600 }}>
-                          {post.content}
-                        </div>
-                        <div style={{ fontSize: '11px', color: '#8c8c8c', marginTop: '4px' }}>
-                          发布平台: {post.platform.toUpperCase()} | 取证时间: {post.publishTime}
-                        </div>
-                      </Timeline.Item>
-                    ))}
-                  </Timeline>
-                ) : (
-                  <span style={{ color: '#ccc', fontSize: '12px' }}>该网民尚无客观取证帖文。</span>
-                )}
-              </div>
-            </div>
-          )}
-        </Drawer>
-
-        {/* 3. 登记涉稳群组双通道 Modal 弹窗 */}
-        <Modal
-          title={
-            <Space>
-              <PartitionOutlined style={{ color: '#1d39c4' }} />
-              <span>登记涉稳群组（支持长文本粘贴智能解析）</span>
-            </Space>
-          }
-          open={registerVisible}
-          onOk={registerMode === 'form' ? handleRegisterSubmit : handleExtractText}
-          onCancel={() => setRegisterVisible(false)}
-          okText={registerMode === 'form' ? '确认登记入库' : '一键提取并结构化'}
-          cancelText="取消"
-          width={registerMode === 'form' ? 950 : 700}
-          centered
-          destroyOnClose
-        >
-          {registerMode === 'paste' ? (
-            <div>
-              <Alert
-                message="智能长文本加工工作流说明"
-                description="支持将含有群名称、群标签、成员账号、姓名、手机号等固定格式的长文本（如微信、QQ报告单）进行解析。解析后，系统将一键结构化转化为群属性及多行成员表格，并提供人工二次核对和精修编辑。"
-                type="info"
-                showIcon
-                style={{ marginBottom: '16px' }}
-              />
-
-              <div style={{ marginBottom: '12px' }}>
-                <span style={{ marginRight: '12px', fontWeight: 600 }}>一键载入场景范例:</span>
-                <Space>
-                  <Button size="small" type="dashed" onClick={() => handleLoadSample('rider')}>
-                    1. 外卖骑手维权群
-                  </Button>
-                  <Button size="small" type="dashed" onClick={() => handleLoadSample('taxi')}>
-                    2. 出租车司机维权群
-                  </Button>
-                  <Button size="small" type="dashed" onClick={() => handleLoadSample('owner')}>
-                    3. 小区业主维权群
-                  </Button>
-                </Space>
-              </div>
-
-              <Input.TextArea
-                value={pastedText}
-                onChange={(e) => setPastedText(e.target.value)}
-                placeholder="请在下方粘贴包含群组名和成员信息的长文本数据..."
-                rows={10}
-                style={{ fontFamily: 'monospace', fontSize: '13px', borderRadius: '6px' }}
-              />
-            </div>
-          ) : (
-            <div>
-              <Alert
-                message="一键智能提取完成！请在提交前进行人工核对及微调编辑。"
-                type="success"
-                showIcon
-                action={
-                  <Button
-                    size="small"
-                    type="default"
-                    icon={<ReloadOutlined />}
-                    onClick={() => setRegisterMode('paste')}
-                  >
-                    重新粘贴解析
-                  </Button>
-                }
-                style={{ marginBottom: '16px' }}
-              />
-
-              <Form form={groupForm} layout="vertical">
-                <Row gutter={16}>
-                  <Col span={8}>
-                    <Form.Item name="name" label="群名称" rules={[{ required: true, message: '群名称必填' }]}>
-                      <Input placeholder="输入或核实群名称" />
-                    </Form.Item>
-                  </Col>
-                  <Col span={4}>
-                    <Form.Item name="platform" label="平台类型" rules={[{ required: true }]}>
-                      <Select
-                        options={[
-                          { value: 'wechat', label: '微信' },
-                          { value: 'qq', label: 'QQ' },
-                          { value: 'other', label: '其他' },
-                        ]}
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col span={6}>
-                    <Form.Item name="featureId" label="群特征/ID" rules={[{ required: true }]}>
-                      <Input placeholder="输入群组标识ID" />
-                    </Form.Item>
-                  </Col>
-                  <Col span={6}>
-                    <Form.Item name="location" label="事关地 (区级)" rules={[{ required: true }]}>
-                      <Select
-                        options={[
-                          { value: '天河区', label: '天河区' },
-                          { value: '白云区', label: '白云区' },
-                          { value: '海珠区', label: '海珠区' },
-                          { value: '淮安区', label: '淮安区' },
-                          { value: '清江浦区', label: '清江浦区' },
-                        ]}
-                      />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Row gutter={16}>
-                  <Col span={18}>
-                    <Form.Item name="tags" label="群组分类标签 (支持下拉多选或手动敲击回车新增)" rules={[{ required: true }]}>
-                      <Select
-                        mode="tags"
-                        placeholder="选择或输入标签"
-                        options={stabilityTagOptions}
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col span={6}>
-                    <Form.Item name="memberCount" label="标称群总人数">
-                      <Input placeholder="群内抓取总人数" type="number" />
-                    </Form.Item>
-                  </Col>
-                </Row>
-              </Form>
-
-              <Divider style={{ margin: '16px 0' }} />
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                <span style={{ fontWeight: 600, fontSize: '13.5px' }}>提取的群成员清单 ({parsedGroup.members.length}人)</span>
-                <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={handleAddParsedMember}>
-                  追加成员行
-                </Button>
-              </div>
-
-              {/* 原地转化为可编辑表格，极简无缝的行修改 */}
-              <div style={{ maxHeight: '250px', overflowY: 'auto', border: '1px solid #f0f0f0', borderRadius: '4px' }}>
-                <table className="editable-member-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-                  <thead>
-                    <tr style={{ background: '#fafafa', borderBottom: '1px solid #f0f0f0' }}>
-                      <th style={{ padding: '8px', textAlign: 'left' }}>群内昵称</th>
-                      <th style={{ padding: '8px', textAlign: 'left' }}>账号/ID</th>
-                      <th style={{ padding: '8px', textAlign: 'left' }}>真实姓名</th>
-                      <th style={{ padding: '8px', textAlign: 'left' }}>身份证</th>
-                      <th style={{ padding: '8px', textAlign: 'left' }}>手机号</th>
-                      <th style={{ padding: '8px', textAlign: 'left' }}>人员标签(逗号隔开)</th>
-                      <th style={{ padding: '8px', textAlign: 'center', width: '60px' }}>操作</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {parsedGroup.members.map((member, index) => (
-                      <tr key={member.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
-                        <td style={{ padding: '4px 8px' }}>
-                          <Input
-                            size="small"
-                            value={member.nickname}
-                            onChange={(e) => handleUpdateMemberField(index, 'nickname', e.target.value)}
-                          />
-                        </td>
-                        <td style={{ padding: '4px 8px' }}>
-                          <Input
-                            size="small"
-                            value={member.account}
-                            onChange={(e) => handleUpdateMemberField(index, 'account', e.target.value)}
-                          />
-                        </td>
-                        <td style={{ padding: '4px 8px' }}>
-                          <Input
-                            size="small"
-                            value={member.name}
-                            onChange={(e) => handleUpdateMemberField(index, 'name', e.target.value)}
-                          />
-                        </td>
-                        <td style={{ padding: '4px 8px' }}>
-                          <Input
-                            size="small"
-                            value={member.idCard}
-                            onChange={(e) => handleUpdateMemberField(index, 'idCard', e.target.value)}
-                          />
-                        </td>
-                        <td style={{ padding: '4px 8px' }}>
-                          <Input
-                            size="small"
-                            value={member.phone}
-                            onChange={(e) => handleUpdateMemberField(index, 'phone', e.target.value)}
-                          />
-                        </td>
-                        <td style={{ padding: '4px 8px' }}>
-                          <Input
-                            size="small"
-                            value={member.tags.join(', ')}
-                            onChange={(e) => handleUpdateMemberField(index, 'tags', e.target.value)}
-                          />
-                        </td>
-                        <td style={{ padding: '4px 8px', textAlign: 'center' }}>
-                          <Button
-                            size="small"
-                            type="text"
-                            danger
-                            icon={<DeleteOutlined />}
-                            onClick={() => handleDeleteParsedMember(index)}
-                          />
-                        </td>
-                      </tr>
-                    ))}
-                    {parsedGroup.members.length === 0 && (
-                      <tr>
-                        <td colSpan={7} style={{ textAlign: 'center', padding: '16px', color: '#ccc' }}>
-                          解析结果为空，请手动“追加成员行”或“重新粘贴解析”
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </Modal>
-
-        {/* 4. 全局标签管理 Modal */}
-        <Modal
-          title={
-            <span>
-              <SettingOutlined style={{ color: '#1890ff' }} /> 警舆融合全局标签库维护中心
-            </span>
-          }
-          open={tagManagerVisible}
-          onCancel={() => setTagManagerVisible(false)}
-          footer={[
-            <Button key="close" type="primary" onClick={() => setTagManagerVisible(false)}>
-              关闭窗口
-            </Button>
-          ]}
-          width={700}
-          centered
-        >
-          <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '20px', minHeight: '380px' }}>
-            {/* 左侧树形图 */}
-            <div style={{ borderRight: '1px solid #f0f0f0', paddingRight: '16px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                <strong style={{ fontSize: '13px' }}>标签结构树</strong>
-                <Select
-                  size="small"
-                  value={tagFilterType}
-                  onChange={setTagFilterType}
-                  style={{ width: '110px' }}
-                  options={[
-                    { value: 'all', label: '显示全部' },
-                    { value: 'opinion', label: '仅舆情标签' },
-                    { value: 'stability', label: '仅涉稳标签' },
-                  ]}
-                />
-              </div>
-              <Space style={{ marginBottom: '10px' }}>
-                <Button size="small" type="primary" icon={<PlusOutlined />} onClick={handleAddRootTag}>新建根</Button>
-                <Button size="small" icon={<PlusOutlined />} disabled={!selectedTagKey} onClick={handleAddChildTag}>新建子</Button>
-                <Button size="small" danger icon={<DeleteOutlined />} disabled={!selectedTagKey} onClick={handleDeleteSelectedTag}>删除</Button>
-              </Space>
-              
-              <div style={{ maxHeight: '280px', overflowY: 'auto', border: '1px solid #f0f0f0', borderRadius: '4px', padding: '8px' }}>
-                <Tree
-                  showLine={{ showLeafIcon: false }}
-                  treeData={getFilteredTagTree(managedTags) as any}
-                  onSelect={handleSelectTagNode}
-                  selectedKeys={selectedTagKey ? [selectedTagKey] : []}
-                />
-              </div>
-            </div>
-
-            {/* 右侧属性表单 */}
-            <div>
-              <div style={{ fontWeight: 600, fontSize: '13px', marginBottom: '16px' }}>
-                {selectedTagKey ? '静态/层级标签属性编辑' : '请在左侧选择节点进行编辑'}
-              </div>
-              {selectedTagKey ? (
-                <Form form={tagForm} layout="vertical" onValuesChange={handleSaveTagForm}>
-                  <Form.Item
-                    name="title"
-                    label="标签名称"
-                    rules={[{ required: true, message: '请填写标签名称' }]}
-                  >
-                    <Input placeholder="输入标签名称" />
-                  </Form.Item>
-                  <Form.Item
-                    name="type"
-                    label="应用板块"
-                    rules={[{ required: true }]}
-                  >
-                    <Select
-                      options={[
-                        { value: 'opinion', label: '舆情标签' },
-                        { value: 'stability', label: '涉稳标签' },
-                      ]}
-                    />
-                  </Form.Item>
-                  <Alert
-                    message="配置联动说明"
-                    description="在此修改的标签库会即时同步至整个系统的登记和合并模块，支持直接多级穿透配置。"
-                    type="info"
-                    showIcon
-                  />
-                </Form>
-              ) : (
-                <div style={{ height: '240px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', color: '#bfbfbf', background: '#fafafa', borderRadius: '4px' }}>
-                  <SettingOutlined style={{ fontSize: '32px', marginBottom: '10px' }} />
-                  <div>在左侧选择节点进行编辑</div>
+                <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  <Tag color="blue">平台: {activeGroup.platform === 'wechat' ? '微信' : 'QQ'}</Tag>
+                  <Tag color="purple">群成员: {activeGroup.memberCount} 人</Tag>
+                  <Tag color="cyan">状态: 重点监测</Tag>
                 </div>
-              )}
+              </div>
+            </div>
+
+            {/* 相关动态时间线 */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontWeight: 'bold', marginBottom: 12, fontSize: '14px', color: '#262626' }}>
+                <ClockCircleOutlined style={{ marginRight: 6 }} /> 相关动态时间线：
+              </div>
+              <Timeline>
+                {mockDynamics.map(dyn => (
+                  <Timeline.Item key={dyn.id} color="blue">
+                    <div style={{ fontSize: '12px', color: '#8c8c8c', marginBottom: 4 }}>
+                      {dyn.publishTime} <span style={{ marginLeft: 6 }}>提交人: {dyn.author}</span>
+                    </div>
+                    <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#1890ff', cursor: 'pointer' }} onClick={() => {
+                      setSelectedDynamic(dyn);
+                      setDynamicDrawerOpen(true);
+                    }}>
+                      {dyn.title}
+                    </div>
+                  </Timeline.Item>
+                ))}
+              </Timeline>
+            </div>
+
+            <Divider style={{ margin: '16px 0' }} />
+
+            {/* 群内涉稳人员列表 */}
+            <div>
+              <div style={{ fontWeight: 'bold', marginBottom: 12, fontSize: '14px', color: '#262626' }}>
+                <UserOutlined style={{ marginRight: 6 }} /> 群内重点人员：
+              </div>
+              <Table
+                dataSource={mockPeople.filter(p => p.groups?.includes(activeGroup.name))}
+                rowKey="id"
+                pagination={false}
+                size="small"
+                columns={[
+                  {
+                    title: '姓名',
+                    dataIndex: 'name',
+                    key: 'name',
+                    render: (_, record) => (
+                      <Button
+                        type="link"
+                        onClick={() => {
+                          handleOpenPersonDrawer(record);
+                        }}
+                        style={{ padding: 0, fontWeight: 'bold' }}
+                      >
+                        {record.name}
+                      </Button>
+                    )
+                  },
+                  {
+                    title: '属性',
+                    key: 'type',
+                    render: () => <Tag color="purple">核心涉稳人员</Tag>
+                  },
+                  {
+                    title: '风险等级',
+                    dataIndex: 'riskLevel',
+                    key: 'riskLevel',
+                    render: (level: 'high' | 'medium' | 'low') => {
+                      const colors = { high: 'red', medium: 'orange', low: 'green' };
+                      const texts = { high: '高风险', medium: '中风险', low: '低风险' };
+                      return <Tag color={colors[level]}>{texts[level]}</Tag>;
+                    }
+                  }
+                ]}
+              />
             </div>
           </div>
-        </Modal>
-      </div>
+        )}
+      </Drawer>
+
+      {/* ==================== 内网物理取证 Modal ==================== */}
+      <Modal
+        title={<span><CheckCircleOutlined style={{ color: '#52c41a', marginRight: 8 }} /> 蓝鹰一体化系统 - 内网取证存证证书</span>}
+        open={evidenceVisible}
+        onCancel={() => setEvidenceVisible(false)}
+        footer={[
+          <Button key="close" onClick={() => setEvidenceVisible(false)}>关闭</Button>,
+          <Button key="download" type="primary" onClick={() => message.success('哈希存证证书已顺利物理保存并输出PDF，哈希签名成功生成！')}>
+            导出存证报告
+          </Button>
+        ]}
+        destroyOnClose
+      >
+        <div style={{ background: '#f5f5f5', padding: '16px', borderRadius: '6px', fontFamily: 'monospace', fontSize: '13px', lineHeight: '1.6', whiteSpace: 'pre-wrap', border: '1px solid #d9d9d9' }}>
+          {evidenceText}
+        </div>
+      </Modal>
     </div>
   );
 };

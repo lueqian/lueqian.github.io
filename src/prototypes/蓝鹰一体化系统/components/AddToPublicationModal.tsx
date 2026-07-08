@@ -218,7 +218,7 @@ const AddToPublicationModal: React.FC<AddToPublicationModalProps> = ({
               value: iss.key,
               label: `${iss.title} (${iss.status === 'editing' ? '编辑中' : '已导出'})`,
             }))}
-            noDataContent="暂无可编辑的刊物，请先去刊物大厅创建"
+            notFoundContent="暂无可编辑的刊物，请先去刊物大厅创建"
           />
         </Form.Item>
 

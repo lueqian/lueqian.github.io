@@ -51,6 +51,7 @@ export interface ArticleMaterial {
   summary?: string; // 事实简要内容
   opinion?: string; // 初步研判观点
   tag?: string; // 公文分类标签 (涉警负面、涉未成年等)
+  remark?: string; // 备注说明
 }
 
 // 刊物档案接口
