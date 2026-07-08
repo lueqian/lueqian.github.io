@@ -31,16 +31,12 @@ import {
   FolderOpenOutlined,
   ArrowLeftOutlined,
   LockOutlined,
-  UnlockOutlined,
   FolderAddOutlined,
-  CopyOutlined,
-  CheckCircleOutlined,
   CalendarOutlined,
   SaveOutlined,
-  CloseCircleOutlined,
   FileExcelOutlined,
   FilePdfOutlined,
-  CloudDownloadOutlined,
+  ReloadOutlined,
 } from '@ant-design/icons';
 
 const { Text, Paragraph } = Typography;
@@ -52,8 +48,9 @@ export interface ArticleMaterial {
   title: string; // 修改后的公文标题/小标题内容
   platform?: string; // 原帖出处
   author?: string; // 原帖作者
-  summary?: string; // 初始为帖文快照/大文本精修后的公文报送正文
+  summary?: string; // 事实简要内容
   opinion?: string; // 初步研判观点
+  tag?: string; // 公文分类标签 (涉警负面、涉未成年等)
 }
 
 // 刊物档案接口
@@ -106,35 +103,19 @@ const initialIssues: PublicationIssue[] = [
     editor: '网安支队-李工',
     scope: '公安局领导、网安支队内阅',
     status: 'editing',
-    date: '2026-07-07',
+    date: '2026-07-08',
     materials: [
       {
         id: 'M001',
         type: 'title',
-        title: '一、 涉金地花园烂尾楼业主维权动向',
+        title: '一、 每日涉警敏感舆情动态',
       },
       {
         id: 'M002',
         type: 'article',
-        title: '关于金地花园业主拉横幅聚集的请愿言论捕获',
-        platform: '新浪微博',
-        author: '楚州老张',
-        summary: '网民“楚州老张”在微博发表长文痛陈小区拖延交付两年，呼吁全体业主于本周三上午赴区住建局聚集拉横幅，评论区煽动反应激烈。',
-        opinion: '建议属地派出所提前介入，与住建部门联合开展现场稳控工作，防止次生涉稳聚集。'
-      },
-      {
-        id: 'M003',
-        type: 'title',
-        title: '二、 涉洪泽垃圾焚烧厂扩建尾气关注',
-      },
-      {
-        id: 'M004',
-        type: 'article',
-        title: '关于洪泽区垃圾焚烧厂清晨冒黄烟排放的舆情捕获',
-        platform: '抖音',
-        author: '绿水青山王',
-        summary: '抖音短视频曝光厂区清晨排黄烟恶臭视频，声称周边水井已被污染，已召集三个村代表在厂区静坐，要求拿评估报告。',
-        opinion: '要求环保部门尽快出具排污监测指标，辟除水井污染谣言，平息群众恐慌。'
+        tag: '涉未成年',
+        title: '网民发视频显示清江浦区里运河边疑似有突发事件，警察在现场摆放围挡',
+        summary: '7月2日19时许，抖音网民“刘有才”刘勇（男，40岁，安徽人）发视频显示：龙首湾驿站河边有多名警察，现场有围挡。',
       }
     ]
   },
@@ -147,18 +128,16 @@ const initialIssues: PublicationIssue[] = [
     date: '2026-07-06',
     materials: [
       {
-        id: 'M005',
+        id: 'M003',
         type: 'title',
-        title: '一、 自来水发黄事件大V带头扩散预警',
+        title: '一、 每日舆情动态汇总',
       },
       {
-        id: 'M006',
+        id: 'M004',
         type: 'article',
-        title: '关于抖音账号“淮安美食姐”爆料本地自来水发黄的情况专报',
-        platform: '抖音',
-        author: '淮安美食姐',
-        summary: '大V爆料自来水发黄，跟帖声讨集中于自来水厂和监管层，视频转发已超1200次。',
-        opinion: '已联动网安约谈当事人，自来水公司公开辟谣，目前舆情已平息。'
+        tag: '涉警负面',
+        title: '网民反映在车陂路段遭遇交警粗暴执法问题',
+        summary: '7月1日15时许，微博网民“一路向前”发贴反映称：其在天河区车陂路段违停被处罚时，现场执勤人员态度恶劣、粗暴拉扯，引发现场群众围观。',
       }
     ]
   },
@@ -197,7 +176,7 @@ const PublicationsManagement: React.FC = () => {
   const [editingMaterialId, setEditingMaterialId] = useState<string | null>(null);
   const [editingTitleText, setEditingTitleText] = useState('');
   const [editingSummaryText, setEditingSummaryText] = useState('');
-  const [editingOpinionText, setEditingOpinionText] = useState('');
+  const [editingTagText, setEditingTagText] = useState('');
 
   // 模拟外部加入刊物（通用采集弹窗）
   const [collectModalVisible, setCollectModalVisible] = useState(false);
@@ -301,7 +280,7 @@ const PublicationsManagement: React.FC = () => {
     setEditingMaterialId(item.id);
     setEditingTitleText(item.title);
     setEditingSummaryText(item.summary || '');
-    setEditingOpinionText(item.opinion || '');
+    setEditingTagText(item.tag || '涉警负面');
   };
 
   const handleSaveInlineEdit = (itemId: string) => {
@@ -312,7 +291,7 @@ const PublicationsManagement: React.FC = () => {
           ...m,
           title: editingTitleText,
           summary: editingSummaryText,
-          opinion: editingOpinionText,
+          tag: editingTagText,
         };
       }
       return m;
@@ -327,7 +306,7 @@ const PublicationsManagement: React.FC = () => {
     });
     setIssues(updatedIssues);
     setEditingMaterialId(null);
-    message.success('公文内容原地深度精修保存成功！');
+    message.success('公文三要素原地深度精修保存成功！');
   };
 
   // 5. 排序调序交互 (上移 / 下移 / 删除)
@@ -373,15 +352,12 @@ const PublicationsManagement: React.FC = () => {
   const handleCollectArticle = () => {
     if (!selectedIssue) return;
     collectForm.validateFields().then((values) => {
-      // 快照收集逻辑：自动抓取标题和正文摘要快照，作为初始目录底稿
       const newArticleItem: ArticleMaterial = {
         id: `ART_${Date.now()}`,
         type: 'article',
-        title: values.originTitle,
-        platform: values.platform || '微信群聊',
-        author: values.author || '爆料网民',
-        summary: `【原帖快照】：${values.originContent.substring(0, 100)}...`, // 只作为初始快照
-        opinion: '（暂无初步研判，待精修）',
+        tag: values.tag || '涉警负面',
+        title: values.title,
+        summary: values.summary,
       };
 
       const updatedMaterials = [...selectedIssue.materials, newArticleItem];
@@ -394,7 +370,7 @@ const PublicationsManagement: React.FC = () => {
         return iss;
       });
       setIssues(updatedIssues);
-      message.success('已模拟快照成功录入初始目录底稿！请到工作台下方点击“深度精修”手动编写公文内容。');
+      message.success('已将收集的素材加入初始底稿！可在排版工作台卡片中进行二次精修。');
       setCollectModalVisible(false);
       collectForm.resetFields();
     });
@@ -415,7 +391,7 @@ const PublicationsManagement: React.FC = () => {
     setIssues(updated);
     
     if (format === 'docx') {
-      message.success(`已成功导出并生成规范 Word 报送公文: [${selectedIssue.title}.docx] 并触发内网本地保存！`);
+      message.success(`已成功导出规范公文: [${selectedIssue.title}.docx] 并开始下载！`);
     } else {
       message.success(`已成功导出并输出标准 PDF 简报存档: [${selectedIssue.title}.pdf]！`);
     }
@@ -432,6 +408,7 @@ const PublicationsManagement: React.FC = () => {
             key: m.id,
             date: iss.date,
             issueTitle: iss.title,
+            tag: m.tag || '未分类',
             materialTitle: m.title,
             materialContent: m.summary || '',
           });
@@ -458,12 +435,11 @@ const PublicationsManagement: React.FC = () => {
         text += `\n${item.title}\n`;
         text += `======================================================\n`;
       } else {
-        text += `【公文报送标题】：${item.title}\n`;
-        text += `【原始舆情信源】：${item.platform} (${item.author})\n`;
-        text += `【公文报送正文】：${item.summary}\n`;
-        if (item.opinion) {
-          text += `【手工研判意见】：${item.opinion}\n`;
-        }
+        text += `【${item.tag || '未分类'}】\n`;
+        text += `▲${item.title}\n`;
+        text += `    ${item.summary}\n\n`;
+        text += `（后续调查及处置进展留空：__________________________________________________\n`;
+        text += `__________________________________________________________________________）\n`;
         text += `------------------------------------------------------\n\n`;
       }
     });
@@ -674,7 +650,7 @@ const PublicationsManagement: React.FC = () => {
                 <Card
                   title={
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span>半自动公文排版与二次精修区</span>
+                      <span>半自动公文加工台（红头公文事实三要素渲染）</span>
                       <Space>
                         <Button
                           size="small"
@@ -692,7 +668,7 @@ const PublicationsManagement: React.FC = () => {
                           icon={<SnippetsOutlined />}
                           onClick={() => setCollectModalVisible(true)}
                         >
-                          初加工：从外部抓取快照目录
+                          模拟收集入刊
                         </Button>
                       </Space>
                     </div>
@@ -701,17 +677,17 @@ const PublicationsManagement: React.FC = () => {
                 >
                   {selectedIssue.materials.length === 0 ? (
                     <div style={{ padding: '60px 0', textAlign: 'center', background: '#fafafa', borderRadius: '6px', border: '1px dashed #ddd', color: '#999' }}>
-                      本期内尚无舆情素材。请点击上方按钮先从外部“抓取快照”生成初始底稿。
+                      本期内尚无舆情素材。请点击右上角“模拟收集入刊”先加入初始底稿。
                     </div>
                   ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                       {selectedIssue.materials.map((item, idx) => {
                         const isTitle = item.type === 'title';
                         const isArchived = selectedIssue.status === 'archived';
                         const isBeingEdited = editingMaterialId === item.id;
 
                         if (isTitle) {
-                          // 公文小标题（Section Divider）
+                          // 公文大纲小标题 (横条)
                           return (
                             <div
                               key={item.id}
@@ -719,10 +695,10 @@ const PublicationsManagement: React.FC = () => {
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'space-between',
-                                background: '#e6f7ff',
-                                border: '1px dashed #1890ff',
+                                background: '#f0f5ff',
+                                border: '1px dashed #adc6ff',
                                 borderRadius: '4px',
-                                padding: '8px 16px'
+                                padding: '10px 16px'
                               }}
                             >
                               <div style={{ flex: 1 }}>
@@ -733,7 +709,7 @@ const PublicationsManagement: React.FC = () => {
                                     onChange={(e) => setEditingTitleText(e.target.value)}
                                     onPressEnter={() => handleSaveInlineEdit(item.id)}
                                     onBlur={() => handleSaveInlineEdit(item.id)}
-                                    style={{ width: '300px' }}
+                                    style={{ width: '350px' }}
                                     autoFocus
                                   />
                                 ) : (
@@ -741,10 +717,11 @@ const PublicationsManagement: React.FC = () => {
                                     onClick={() => handleStartInlineEdit(item)}
                                     style={{
                                       fontWeight: 'bold',
-                                      color: '#0050b3',
+                                      color: '#1d39c4',
+                                      fontSize: '14.5px',
                                       cursor: isArchived ? 'default' : 'pointer'
                                     }}
-                                    title={isArchived ? '' : '点击即可在线大修标题'}
+                                    title={isArchived ? '' : '点击即可在线编辑小标题'}
                                   >
                                     {item.title} <span style={{ fontSize: '11px', color: '#999', fontWeight: 'normal', marginLeft: '8px' }}>{!isArchived && '(点击在线修改)'}</span>
                                   </div>
@@ -779,14 +756,22 @@ const PublicationsManagement: React.FC = () => {
                           );
                         }
 
-                        // 舆情素材公文卡片 (原地精修模式)
+                        // 舆情素材公文卡片 (对齐红头公文样式三要素渲染)
                         return (
-                          <Card
+                          <div
                             key={item.id}
-                            size="small"
-                            bordered
-                            style={{ background: '#fff', borderLeft: '4px solid #1890ff' }}
-                            extra={
+                            style={{
+                              position: 'relative',
+                              padding: '24px',
+                              background: '#fff',
+                              border: '1px solid #d9d9d9',
+                              borderRadius: '4px',
+                              boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+                              borderLeft: '4px solid #ff4d4f' // 经典的公文红饰条
+                            }}
+                          >
+                            {/* 右上角调序及删除按钮 */}
+                            <div style={{ position: 'absolute', top: '12px', right: '12px' }}>
                               <Space>
                                 <Button
                                   size="small"
@@ -811,40 +796,47 @@ const PublicationsManagement: React.FC = () => {
                                   onClick={() => handleDeleteMaterial(idx)}
                                 />
                               </Space>
-                            }
-                            title={
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <Tag color="blue">{item.platform}</Tag>
-                                <span style={{ fontWeight: 600, fontSize: '13.5px' }}>{item.title}</span>
-                              </div>
-                            }
-                          >
+                            </div>
+
                             {isBeingEdited ? (
                               /* 原地精修状态的表单域 */
-                              <div style={{ background: '#fafafa', padding: '12px', borderRadius: '4px', border: '1px dashed #1890ff' }}>
-                                <div style={{ fontSize: '12px', fontWeight: 600, color: '#333', marginBottom: '8px' }}>
-                                  ✍️ 报送内容深度人工精修中 (允许完全重写报送文本)
+                              <div style={{ background: '#fafafa', padding: '16px', borderRadius: '4px', border: '1px dashed #ff4d4f' }}>
+                                <div style={{ fontSize: '13px', fontWeight: 600, color: '#ff4d4f', marginBottom: '12px' }}>
+                                  ✍️ 报送内容深度人工精修中 (仅限公文三要素)
                                 </div>
                                 <Form layout="vertical" size="small">
-                                  <Form.Item label="改写后公文标题">
-                                    <Input
-                                      value={editingTitleText}
-                                      onChange={(e) => setEditingTitleText(e.target.value)}
-                                    />
-                                  </Form.Item>
-                                  <Form.Item label="公文报送正文">
+                                  <Row gutter={16}>
+                                    <Col span={8}>
+                                      <Form.Item label="公文分类标签" required>
+                                        <Select
+                                          value={editingTagText}
+                                          onChange={setEditingTagText}
+                                          options={[
+                                            { value: '涉未成年', label: '【涉未成年】' },
+                                            { value: '涉警负面', label: '【涉警负面】' },
+                                            { value: '涉校舆情', label: '【涉校舆情】' },
+                                            { value: '突发灾情', label: '【突发灾情】' },
+                                            { value: '涉法涉诉', label: '【涉法涉诉】' },
+                                          ]}
+                                        />
+                                      </Form.Item>
+                                    </Col>
+                                    <Col span={16}>
+                                      <Form.Item label="改写后公文标题 (系统自动添加 ▲ 前缀)" required>
+                                        <Input
+                                          value={editingTitleText}
+                                          onChange={(e) => setEditingTitleText(e.target.value)}
+                                          placeholder="输入正式公文标题，无需手动加▲"
+                                        />
+                                      </Form.Item>
+                                    </Col>
+                                  </Row>
+                                  <Form.Item label="事实简要内容 (公文正文，系统导出时自动处理首行缩进)" required>
                                     <Input.TextArea
                                       rows={4}
                                       value={editingSummaryText}
                                       onChange={(e) => setEditingSummaryText(e.target.value)}
-                                      placeholder="请输入改写加工后的正式公文报送语句，可推翻快照重新拟定..."
-                                    />
-                                  </Form.Item>
-                                  <Form.Item label="手工研判意见">
-                                    <Input.TextArea
-                                      rows={2}
-                                      value={editingOpinionText}
-                                      onChange={(e) => setEditingOpinionText(e.target.value)}
+                                      placeholder="请输入改写加工后的客观事实描述，写清时间、平台、网民及客观内容，去除任何AI主观推测或调查进度..."
                                     />
                                   </Form.Item>
                                   <div style={{ textAlign: 'right' }}>
@@ -856,17 +848,39 @@ const PublicationsManagement: React.FC = () => {
                                 </Form>
                               </div>
                             ) : (
-                              /* 常规只读快照状态 */
-                              <div style={{ fontSize: '12.5px', color: '#666', lineHeight: '1.6' }}>
-                                <div><strong>【信源作者】：</strong>{item.author}</div>
-                                <div style={{ marginTop: '4px' }}>
-                                  <strong>【公文报送内容】：</strong>{item.summary}
+                              /* 政务公文格式渲染 */
+                              <div style={{ fontFamily: 'SimSun, "STSong", "Songti SC", serif', color: '#000' }}>
+                                {/* 1. 分类标签（顶格展示） */}
+                                <div style={{ fontWeight: 'bold', fontSize: '16px', marginBottom: '8px', color: '#000' }}>
+                                  【{item.tag || '涉警负面'}】
                                 </div>
-                                <div style={{ marginTop: '4px', background: '#f5f7fa', padding: '6px 12px', borderRadius: '4px', borderLeft: '3px solid #722ed1', color: '#531dab' }}>
-                                  <strong>【手工研判意见】：</strong>{item.opinion}
+                                {/* 2. 事件标题（加粗首行，实心三角开头） */}
+                                <div style={{ fontWeight: 'bold', fontSize: '16px', marginBottom: '10px', color: '#000', lineHeight: '1.4' }}>
+                                  ▲{item.title}
                                 </div>
+                                {/* 3. 事实简要内容（正文缩进） */}
+                                <div style={{ textIndent: '2em', fontSize: '15px', lineHeight: '1.8', color: '#1f1f1f', whiteSpace: 'pre-wrap' }}>
+                                  {item.summary}
+                                </div>
+
+                                {/* 4. 留白说明边界 */}
+                                <div
+                                  style={{
+                                    marginTop: '20px',
+                                    padding: '10px 14px',
+                                    background: '#fafafa',
+                                    border: '1px dashed #d9d9d9',
+                                    borderRadius: '4px',
+                                    color: '#8c8c8c',
+                                    fontSize: '12px',
+                                    fontFamily: 'sans-serif'
+                                  }}
+                                >
+                                  📌 <strong>人工编辑边界留空区</strong>：经核查/后续处置情况等（系统在此留空，导出为 Word 后由业务人员线下手动编辑补充）
+                                </div>
+
                                 {/* 精修控制按钮 */}
-                                <div style={{ textAlign: 'right', marginTop: '8px' }}>
+                                <div style={{ textAlign: 'right', marginTop: '14px' }}>
                                   <Button
                                     type="primary"
                                     size="small"
@@ -880,7 +894,7 @@ const PublicationsManagement: React.FC = () => {
                                 </div>
                               </div>
                             )}
-                          </Card>
+                          </div>
                         );
                       })}
                     </div>
@@ -930,16 +944,16 @@ const PublicationsManagement: React.FC = () => {
               label="大纲小标题标题内容"
               rules={[{ required: true, message: '请填写公文大纲标题' }]}
             >
-              <Input placeholder="例如: 一、涉环保领域线上舆情动态" />
+              <Input placeholder="例如: 一、 每日涉警敏感舆情动态" />
             </Form.Item>
           </Form>
         </Modal>
 
-        {/* 模拟跨模块收集入刊 Dialog（通用采集弹窗组件） */}
+        {/* 模拟跨模块收集入刊 Dialog */}
         <Modal
           title={
             <span>
-              <SnippetsOutlined style={{ color: '#1890ff' }} /> 模拟跨模块收集舆情入刊 (初加工入刊)
+              <SnippetsOutlined style={{ color: '#1890ff' }} /> 模拟跨模块收集舆情入刊 (初加工)
             </span>
           }
           open={collectModalVisible}
@@ -954,43 +968,45 @@ const PublicationsManagement: React.FC = () => {
             form={collectForm}
             layout="vertical"
             initialValues={{
-              platform: '新浪微博',
-              author: '淮安大喇叭',
-              originTitle: '关于流均镇土地流转补偿款拖欠的维权发帖快照',
-              originContent: '今日流均镇村民在微博反映，其承包土地的流转补偿款拖欠三年未发，去镇里要说法也无果，号召大家周三上午去区政府讨公道。原帖阅读量过千，有本地大V正在转发关注。'
+              tag: '涉未成年',
+              title: '网民发视频显示清江浦区里运河边疑似有突发事件，警察在现场摆放围挡',
+              summary: '7月2日19时许，抖音网民“刘有才”刘勇（男，40岁，安徽人）发视频显示：龙首湾驿站河边有多名警察，现场有围挡。'
             }}
           >
             <Alert
-              message="加入快照说明"
-              description="系统将自动提取舆情发布平台及原帖内容快照生成目录底稿。用户收集入刊后，需在排版工作台卡片中进行人工二次精细改写。"
+              message="加入说明"
+              description="系统将自动提取舆情分类标签、标题和事实正文快照生成公文底稿。用户收集入刊后，可到排版工作台进行人工二次精细大改写。"
               type="info"
               showIcon
               style={{ marginBottom: '16px' }}
             />
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
-              <Form.Item name="platform" label="出处平台" rules={[{ required: true }]}>
-                <Input />
-              </Form.Item>
-              <Form.Item name="author" label="原作者昵称" rules={[{ required: true }]}>
-                <Input />
-              </Form.Item>
-            </div>
+            <Form.Item name="tag" label="公文分类标签" rules={[{ required: true }]}>
+              <Select
+                options={[
+                  { value: '涉未成年', label: '【涉未成年】' },
+                  { value: '涉警负面', label: '【涉警负面】' },
+                  { value: '涉校舆情', label: '【涉校舆情】' },
+                  { value: '突发灾情', label: '【突发灾情】' },
+                  { value: '涉法涉诉', label: '【涉法涉诉】' },
+                ]}
+              />
+            </Form.Item>
 
             <Form.Item
-              name="originTitle"
-              label="自动抓取：原帖标题"
+              name="title"
+              label="自动抓取：原帖公文标题"
               rules={[{ required: true }]}
             >
               <Input />
             </Form.Item>
 
             <Form.Item
-              name="originContent"
-              label="自动抓取：原帖正文内容快照 (非全量同步)"
+              name="summary"
+              label="自动抓取：事实简要内容快照 (非全量同步)"
               rules={[{ required: true }]}
             >
-              <Input.TextArea rows={3} />
+              <Input.TextArea rows={4} />
             </Form.Item>
           </Form>
         </Modal>
@@ -999,7 +1015,7 @@ const PublicationsManagement: React.FC = () => {
         <Modal
           title={
             <span>
-              <FileTextOutlined style={{ color: '#faad14' }} /> 本期导为公文 (Word/PDF 预览及下载)
+              <FileTextOutlined style={{ color: '#ff4d4f' }} /> 本期导为公文 (Word/PDF 预览及下载)
             </span>
           }
           open={exportDocVisible}
@@ -1053,7 +1069,7 @@ const PublicationsManagement: React.FC = () => {
               <Divider style={{ borderColor: '#ff4d4f', borderWidth: '2px', margin: '12px 0' }} />
             </div>
 
-            <Paragraph style={{ whiteSpace: 'pre-wrap', lineHeight: '1.8', fontSize: '13px', color: '#333' }}>
+            <Paragraph style={{ whiteSpace: 'pre-wrap', lineHeight: '1.8', fontSize: '14px', color: '#000' }}>
               {selectedIssue && generateExportPlaintext().substring(generateExportPlaintext().indexOf('【期号】'))}
             </Paragraph>
           </div>
@@ -1113,17 +1129,24 @@ const PublicationsManagement: React.FC = () => {
                 width: 200,
               },
               {
+                title: '分类标签',
+                dataIndex: 'tag',
+                key: 'tag',
+                width: 110,
+                render: (text) => <Tag color="purple">{text}</Tag>,
+              },
+              {
                 title: '最终精修公文标题',
                 dataIndex: 'materialTitle',
                 key: 'materialTitle',
-                render: (text) => <strong>{text}</strong>,
+                render: (text) => <strong>▲{text}</strong>,
               },
               {
                 title: '最终修改报送正文 (已剔除快照标签)',
                 dataIndex: 'materialContent',
                 key: 'materialContent',
                 render: (text: string) => (
-                  <Text ellipsis={{ tooltip: text }} style={{ maxWidth: 280 }}>
+                  <Text ellipsis={{ tooltip: text }} style={{ maxWidth: 250 }}>
                     {text}
                   </Text>
                 ),
