@@ -52,7 +52,7 @@ import {
 
 // 导出社交账号定义，供跨库使用
 export interface SocialAccount {
-  platform: 'weibo' | 'wechat' | 'douyin';
+  platform: 'weibo' | 'wechat' | 'douyin' | 'qq';
   username: string;
   id: string; // 账号ID
   followers: string;
@@ -66,7 +66,7 @@ export interface PostItem {
   title?: string;
   content: string;
   publishTime: string;
-  platform: 'weibo' | 'wechat' | 'douyin';
+  platform: 'weibo' | 'wechat' | 'douyin' | 'qq';
   author: string;
   authorId: string;
   reposts: number;
