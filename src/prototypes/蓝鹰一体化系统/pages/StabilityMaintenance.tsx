@@ -18,6 +18,7 @@ import {
   Alert,
   Drawer,
   Descriptions,
+  Tree,
 } from 'antd';
 import {
   SearchOutlined,
@@ -32,8 +33,9 @@ import {
   ReloadOutlined,
   UsergroupAddOutlined,
   UserOutlined,
+  SettingOutlined,
 } from '@ant-design/icons';
-import { generateMockPeople, PersonItem } from './PeopleDatabase';
+import { generateMockPeople, PersonItem, ManagedTag, DEFAULT_MANAGED_TAGS, getTagOptionsByType } from './PeopleDatabase';
 const mapGroupPlatformToSocial = (platform: 'wechat' | 'qq' | 'other'): 'wechat' | 'qq' | 'weibo' => {
   if (platform === 'wechat') return 'wechat';
   if (platform === 'qq') return 'qq';
@@ -397,6 +399,189 @@ const StabilityMaintenance: React.FC = () => {
   // 双通道登记表单的 Group Form
   const [groupForm] = Form.useForm();
 
+  // 标签管理状态与同步
+  const [tagManagerVisible, setTagManagerVisible] = useState(false);
+  const [tagForm] = Form.useForm();
+  const [tagFilterType, setTagFilterType] = useState<'all' | 'opinion' | 'stability'>('all');
+  const [selectedTagKey, setSelectedTagKey] = useState<string | null>(null);
+
+  const [managedTags, setManagedTags] = useState<ManagedTag[]>(() => {
+    const saved = localStorage.getItem('LAN_YING_MANAGED_TAGS');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {}
+    }
+    return DEFAULT_MANAGED_TAGS;
+  });
+
+  React.useEffect(() => {
+    if (tagManagerVisible) {
+      const saved = localStorage.getItem('LAN_YING_MANAGED_TAGS');
+      if (saved) {
+        try {
+          setManagedTags(JSON.parse(saved));
+        } catch (e) {}
+      }
+    }
+  }, [tagManagerVisible]);
+
+  const saveTags = (newTags: ManagedTag[]) => {
+    setManagedTags(newTags);
+    localStorage.setItem('LAN_YING_MANAGED_TAGS', JSON.stringify(newTags));
+  };
+
+  const updateTagNode = (tagsList: ManagedTag[], key: string, newTitle: string, newType: 'opinion' | 'stability'): ManagedTag[] => {
+    return tagsList.map(node => {
+      if (node.key === key) {
+        return { ...node, title: newTitle, type: newType };
+      }
+      if (node.children) {
+        return { ...node, children: updateTagNode(node.children, key, newTitle, newType) };
+      }
+      return node;
+    });
+  };
+
+  const deleteTagNode = (tagsList: ManagedTag[], key: string): ManagedTag[] => {
+    return tagsList
+      .filter(node => node.key !== key)
+      .map(node => {
+        if (node.children) {
+          return { ...node, children: deleteTagNode(node.children, key) };
+        }
+        return node;
+      });
+  };
+
+  const addChildTagNode = (tagsList: ManagedTag[], parentKey: string, newNode: ManagedTag): ManagedTag[] => {
+    return tagsList.map(node => {
+      if (node.key === parentKey) {
+        return {
+          ...node,
+          children: [...(node.children || []), newNode]
+        };
+      }
+      if (node.children) {
+        return { ...node, children: addChildTagNode(node.children, parentKey, newNode) };
+      }
+      return node;
+    });
+  };
+
+  const handleSelectTagNode = (selectedKeys: any[]) => {
+    if (selectedKeys.length > 0) {
+      const key = selectedKeys[0];
+      setSelectedTagKey(key);
+      const findNode = (list: ManagedTag[]): ManagedTag | null => {
+        for (const node of list) {
+          if (node.key === key) return node;
+          if (node.children) {
+            const found = findNode(node.children);
+            if (found) return found;
+          }
+        }
+        return null;
+      };
+      const node = findNode(managedTags);
+      if (node) {
+        tagForm.setFieldsValue({
+          title: node.title,
+          type: node.type,
+        });
+      }
+    } else {
+      setSelectedTagKey(null);
+      tagForm.resetFields();
+    }
+  };
+
+  const handleSaveTagForm = () => {
+    tagForm.validateFields().then(values => {
+      if (!selectedTagKey) return;
+      const updated = updateTagNode(managedTags, selectedTagKey, values.title, values.type);
+      saveTags(updated);
+    });
+  };
+
+  const handleAddRootTag = () => {
+    const newKey = `tag_${Date.now()}`;
+    const newTag: ManagedTag = {
+      key: newKey,
+      title: '新建根标签',
+      type: tagFilterType === 'all' ? 'opinion' : tagFilterType
+    };
+    const updated = [...managedTags, newTag];
+    saveTags(updated);
+    setSelectedTagKey(newKey);
+    tagForm.setFieldsValue({
+      title: newTag.title,
+      type: newTag.type
+    });
+    message.success('已新建根标签，您可在右侧表单中修改其属性');
+  };
+
+  const handleAddChildTag = () => {
+    if (!selectedTagKey) {
+      message.warning('请先在左侧选择一个父级标签节点');
+      return;
+    }
+    const newKey = `tag_${Date.now()}`;
+    const newTag: ManagedTag = {
+      key: newKey,
+      title: '新建子标签',
+      type: tagForm.getFieldValue('type') || 'opinion'
+    };
+    const updated = addChildTagNode(managedTags, selectedTagKey, newTag);
+    saveTags(updated);
+    setSelectedTagKey(newKey);
+    tagForm.setFieldsValue({
+      title: newTag.title,
+      type: newTag.type
+    });
+    message.success('已在所选节点下新建子标签');
+  };
+
+  const handleDeleteSelectedTag = () => {
+    if (!selectedTagKey) return;
+    Modal.confirm({
+      title: '确认要删除该标签吗？',
+      content: '删除此标签将连同其所有下级子标签一并移除，且不可恢复！',
+      okText: '确认删除',
+      okType: 'danger',
+      cancelText: '取消',
+      onOk: () => {
+        const updated = deleteTagNode(managedTags, selectedTagKey);
+        saveTags(updated);
+        setSelectedTagKey(null);
+        tagForm.resetFields();
+        message.success('标签已成功删除');
+      }
+    });
+  };
+
+  const getFilteredTagTree = (tagsList: ManagedTag[]): ManagedTag[] => {
+    if (tagFilterType === 'all') return tagsList;
+    const filter = (list: ManagedTag[]): ManagedTag[] => {
+      return list
+        .map(node => {
+          const matchingChildren = node.children ? filter(node.children) : [];
+          if (node.type === tagFilterType || matchingChildren.length > 0) {
+            return {
+              ...node,
+              children: matchingChildren.length > 0 ? matchingChildren : undefined
+            };
+          }
+          return null;
+        })
+        .filter(Boolean) as ManagedTag[];
+    };
+    return filter(tagsList);
+  };
+
+  // 动态生成的选项列表
+  const stabilityTagOptions = getTagOptionsByType(managedTags, 'stability');
+
   // 查看群成员明细 Drawer
   const [memberDrawerVisible, setMemberDrawerVisible] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<StabilityGroup | null>(null);
@@ -616,12 +801,14 @@ const StabilityMaintenance: React.FC = () => {
     groupForm
       .validateFields()
       .then((values) => {
-        const parsedTags = values.tags
+        const parsedTags = Array.isArray(values.tags)
           ? values.tags
-              .split(/[,，]/)
-              .map((t: string) => t.trim())
-              .filter(Boolean)
-          : [];
+          : (values.tags
+              ? values.tags
+                  .split(/[,，]/)
+                  .map((t: string) => t.trim())
+                  .filter(Boolean)
+              : []);
 
         const newGroup: StabilityGroup = {
           id: `GROUP_${Date.now()}`,
@@ -919,18 +1106,26 @@ const StabilityMaintenance: React.FC = () => {
               </div>
             </Col>
 
-            {/* 手工登记 */}
+            {/* 手工登记与标签管理 */}
             <Col span={6} style={{ textAlign: 'right' }}>
-              <Button
-                type="primary"
-                icon={<UsergroupAddOutlined />}
-                onClick={() => {
-                  setRegisterMode('paste');
-                  setRegisterVisible(true);
-                }}
-              >
-                登记涉稳群组
-              </Button>
+              <Space>
+                <Button
+                  icon={<SettingOutlined />}
+                  onClick={() => setTagManagerVisible(true)}
+                >
+                  标签管理
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<UsergroupAddOutlined />}
+                  onClick={() => {
+                    setRegisterMode('paste');
+                    setRegisterVisible(true);
+                  }}
+                >
+                  登记涉稳群组
+                </Button>
+              </Space>
             </Col>
           </Row>
         </Card>
@@ -1445,8 +1640,12 @@ const StabilityMaintenance: React.FC = () => {
 
                 <Row gutter={16}>
                   <Col span={18}>
-                    <Form.Item name="tags" label="群组分类标签 (英文或中文逗号隔开)" rules={[{ required: true }]}>
-                      <Input placeholder="如：外卖群体维权, 劳资纠纷" />
+                    <Form.Item name="tags" label="群组分类标签 (支持下拉多选或手动敲击回车新增)" rules={[{ required: true }]}>
+                      <Select
+                        mode="tags"
+                        placeholder="选择或输入标签"
+                        options={stabilityTagOptions}
+                      />
                     </Form.Item>
                   </Col>
                   <Col span={6}>
@@ -1548,6 +1747,99 @@ const StabilityMaintenance: React.FC = () => {
               </div>
             </div>
           )}
+        </Modal>
+
+        {/* 4. 全局标签管理 Modal */}
+        <Modal
+          title={
+            <span>
+              <SettingOutlined style={{ color: '#1890ff' }} /> 警舆融合全局标签库维护中心
+            </span>
+          }
+          open={tagManagerVisible}
+          onCancel={() => setTagManagerVisible(false)}
+          footer={[
+            <Button key="close" type="primary" onClick={() => setTagManagerVisible(false)}>
+              关闭窗口
+            </Button>
+          ]}
+          width={700}
+          centered
+        >
+          <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '20px', minHeight: '380px' }}>
+            {/* 左侧树形图 */}
+            <div style={{ borderRight: '1px solid #f0f0f0', paddingRight: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <strong style={{ fontSize: '13px' }}>标签结构树</strong>
+                <Select
+                  size="small"
+                  value={tagFilterType}
+                  onChange={setTagFilterType}
+                  style={{ width: '110px' }}
+                  options={[
+                    { value: 'all', label: '显示全部' },
+                    { value: 'opinion', label: '仅舆情标签' },
+                    { value: 'stability', label: '仅涉稳标签' },
+                  ]}
+                />
+              </div>
+              <Space style={{ marginBottom: '10px' }}>
+                <Button size="small" type="primary" icon={<PlusOutlined />} onClick={handleAddRootTag}>新建根</Button>
+                <Button size="small" icon={<PlusOutlined />} disabled={!selectedTagKey} onClick={handleAddChildTag}>新建子</Button>
+                <Button size="small" danger icon={<DeleteOutlined />} disabled={!selectedTagKey} onClick={handleDeleteSelectedTag}>删除</Button>
+              </Space>
+              
+              <div style={{ maxHeight: '280px', overflowY: 'auto', border: '1px solid #f0f0f0', borderRadius: '4px', padding: '8px' }}>
+                <Tree
+                  showLine={{ showLeafIcon: false }}
+                  treeData={getFilteredTagTree(managedTags) as any}
+                  onSelect={handleSelectTagNode}
+                  selectedKeys={selectedTagKey ? [selectedTagKey] : []}
+                />
+              </div>
+            </div>
+
+            {/* 右侧属性表单 */}
+            <div>
+              <div style={{ fontWeight: 600, fontSize: '13px', marginBottom: '16px' }}>
+                {selectedTagKey ? '静态/层级标签属性编辑' : '请在左侧选择节点进行编辑'}
+              </div>
+              {selectedTagKey ? (
+                <Form form={tagForm} layout="vertical" onValuesChange={handleSaveTagForm}>
+                  <Form.Item
+                    name="title"
+                    label="标签名称"
+                    rules={[{ required: true, message: '请填写标签名称' }]}
+                  >
+                    <Input placeholder="输入标签名称" />
+                  </Form.Item>
+                  <Form.Item
+                    name="type"
+                    label="应用板块"
+                    rules={[{ required: true }]}
+                  >
+                    <Select
+                      options={[
+                        { value: 'opinion', label: '舆情标签' },
+                        { value: 'stability', label: '涉稳标签' },
+                      ]}
+                    />
+                  </Form.Item>
+                  <Alert
+                    message="配置联动说明"
+                    description="在此修改的标签库会即时同步至整个系统的登记和合并模块，支持直接多级穿透配置。"
+                    type="info"
+                    showIcon
+                  />
+                </Form>
+              ) : (
+                <div style={{ height: '240px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', color: '#bfbfbf', background: '#fafafa', borderRadius: '4px' }}>
+                  <SettingOutlined style={{ fontSize: '32px', marginBottom: '10px' }} />
+                  <div>在左侧选择节点进行编辑</div>
+                </div>
+              )}
+            </div>
+          </div>
         </Modal>
       </div>
     </div>
