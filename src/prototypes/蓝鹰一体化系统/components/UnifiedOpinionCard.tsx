@@ -1,5 +1,6 @@
-import React from 'react';
-import { Tag } from 'antd';
+import React, { useState } from 'react';
+import { Tag, Button } from 'antd';
+import AddToPublicationModal from './AddToPublicationModal';
 import {
   BarChartOutlined,
   ClockCircleOutlined,
@@ -88,6 +89,8 @@ const UnifiedOpinionCard: React.FC<UnifiedOpinionCardProps> = ({
   hideIndex = false,
   mediaPreview,
 }) => {
+  const [addToPubOpen, setAddToPubOpen] = useState(false);
+
   const classes = [
     'unified-opinion-card',
     selected ? 'selected' : '',
@@ -207,6 +210,26 @@ const UnifiedOpinionCard: React.FC<UnifiedOpinionCardProps> = ({
           <div className="unified-opinion-actions">
             {footerBadges}
             {actions}
+            <Button
+              type="link"
+              size="small"
+              className="add-to-pub-btn-card"
+              style={{ padding: '0 4px', fontSize: '13px', marginLeft: 8 }}
+              onClick={() => setAddToPubOpen(true)}
+            >
+              添加到刊物
+            </Button>
+            <AddToPublicationModal
+              open={addToPubOpen}
+              onCancel={() => setAddToPubOpen(false)}
+              posts={[{
+                id,
+                title,
+                content: typeof content === 'string' ? content : (summary || title),
+                platform,
+                author,
+              }]}
+            />
           </div>
         </div>
       </div>

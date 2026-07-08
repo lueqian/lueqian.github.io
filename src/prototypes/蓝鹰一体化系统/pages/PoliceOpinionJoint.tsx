@@ -45,6 +45,7 @@ import {
 import dayjs from 'dayjs';
 import * as echarts from 'echarts';
 import UnifiedOpinionCard from '../components/UnifiedOpinionCard';
+import AddToPublicationModal from '../components/AddToPublicationModal';
 
 const { RangePicker } = DatePicker;
 
@@ -366,6 +367,7 @@ const PoliceOpinionJoint: React.FC = () => {
   const [sentimentFilter, setSentimentFilter] = useState({ positive: true, neutral: true, negative: true });
   const [activePlatform, setActivePlatform] = useState('全部');
   const [selectedPosts, setSelectedPosts] = useState<string[]>([]);
+  const [batchPubOpen, setBatchPubOpen] = useState(false);
   const [expandedFramePosts, setExpandedFramePosts] = useState<string[]>([]);
   const [expandedContentPosts, setExpandedContentPosts] = useState<string[]>([]);
 
@@ -1010,6 +1012,29 @@ const PoliceOpinionJoint: React.FC = () => {
                       <Button size="small" type="primary" style={{ marginLeft: '12px' }} onClick={() => message.success(`批量处置已启动 (${selectedPosts.length}条)`)}>
                         批量处置
                       </Button>
+                      <Button
+                        size="small"
+                        type="primary"
+                        style={{ marginLeft: '8px', backgroundColor: '#7c3aed', borderColor: '#7c3aed' }}
+                        onClick={() => setBatchPubOpen(true)}
+                      >
+                        批量添加到刊物
+                      </Button>
+                      <AddToPublicationModal
+                        open={batchPubOpen}
+                        onCancel={() => setBatchPubOpen(false)}
+                        onSuccess={() => setSelectedPosts([])}
+                        posts={selectedPosts.map(id => {
+                          const post = mockPosts.find(p => p.id === id);
+                          return {
+                            id: id,
+                            title: post ? post.content.slice(0, 30) + '...' : '舆情帖文',
+                            content: post ? post.content : '',
+                            platform: post ? post.platform : '',
+                            author: post ? post.author : '',
+                          };
+                        })}
+                      />
                     </span>
                   )}
                 </div>

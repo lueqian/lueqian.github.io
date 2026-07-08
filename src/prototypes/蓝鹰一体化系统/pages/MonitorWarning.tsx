@@ -26,6 +26,7 @@ import type { TabsProps } from 'antd';
 import dayjs from 'dayjs';
 import AIAssistantDrawer from '../components/AIAssistantDrawer';
 import UnifiedOpinionCard from '../components/UnifiedOpinionCard';
+import AddToPublicationModal from '../components/AddToPublicationModal';
 
 const { RangePicker } = DatePicker;
 
@@ -236,6 +237,7 @@ const MonitorWarning: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(10);
   const [selectedOpinionIds, setSelectedOpinionIds] = useState<string[]>([]);
+  const [batchPubOpen, setBatchPubOpen] = useState(false);
 
   // 推送弹窗状态
   const [isPushModalOpen, setIsPushModalOpen] = useState(false);
@@ -912,6 +914,27 @@ const MonitorWarning: React.FC = () => {
             >
               批量推送
             </Button>
+            <Button
+              onClick={() => setBatchPubOpen(true)}
+              style={{ background: '#10b981', color: '#fff', borderColor: '#10b981' }}
+            >
+              批量添加到刊物
+            </Button>
+            <AddToPublicationModal
+              open={batchPubOpen}
+              onCancel={() => setBatchPubOpen(false)}
+              onSuccess={() => setSelectedOpinionIds([])}
+              posts={selectedOpinionIds.map(id => {
+                const item = filteredOpinions.find(o => o.id === id);
+                return {
+                  id: id,
+                  title: item ? item.title : '舆情帖文',
+                  content: item ? item.aiSummary || item.title : '',
+                  platform: item ? item.platform : '',
+                  author: item ? item.author : '',
+                };
+              })}
+            />
             <Button
               onClick={handleBatchExport}
               style={{ background: 'transparent', color: '#fff', borderColor: 'rgba(255, 255, 255, 0.4)' }}

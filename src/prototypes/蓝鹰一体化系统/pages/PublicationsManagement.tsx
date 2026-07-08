@@ -154,7 +154,21 @@ const initialIssues: PublicationIssue[] = [
 
 const PublicationsManagement: React.FC = () => {
   const [treeData, setTreeData] = useState(initialTreeData);
-  const [issues, setIssues] = useState<PublicationIssue[]>(initialIssues);
+  const [issues, setIssues] = useState<PublicationIssue[]>(() => {
+    const saved = localStorage.getItem('LAN_YING_PUBLICATION_ISSUES');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return initialIssues;
+  });
+
+  React.useEffect(() => {
+    localStorage.setItem('LAN_YING_PUBLICATION_ISSUES', JSON.stringify(issues));
+  }, [issues]);
   
   // 单页视图状态: "hub" (目录大厅) 或 "workspace" (排版工作台)
   const [activeView, setActiveView] = useState<'hub' | 'workspace'>('hub');
@@ -275,12 +289,15 @@ const PublicationsManagement: React.FC = () => {
   };
 
   // 4. 原地精修 inline edit 保存与控制
+  const [editingRemarkText, setEditingRemarkText] = useState('');
+
   const handleStartInlineEdit = (item: ArticleMaterial) => {
     if (!selectedIssue || selectedIssue.status === 'archived') return;
     setEditingMaterialId(item.id);
     setEditingTitleText(item.title);
     setEditingSummaryText(item.summary || '');
     setEditingTagText(item.tag || '涉警负面');
+    setEditingRemarkText(item.remark || '');
   };
 
   const handleSaveInlineEdit = (itemId: string) => {
@@ -292,6 +309,7 @@ const PublicationsManagement: React.FC = () => {
           title: editingTitleText,
           summary: editingSummaryText,
           tag: editingTagText,
+          remark: editingRemarkText,
         };
       }
       return m;
@@ -306,7 +324,7 @@ const PublicationsManagement: React.FC = () => {
     });
     setIssues(updatedIssues);
     setEditingMaterialId(null);
-    message.success('公文三要素原地深度精修保存成功！');
+    message.success('公文三要素及备注原地深度精修保存成功！');
   };
 
   // 5. 排序调序交互 (上移 / 下移 / 删除)
@@ -839,6 +857,14 @@ const PublicationsManagement: React.FC = () => {
                                       placeholder="请输入改写加工后的客观事实描述，写清时间、平台、网民及客观内容，去除任何AI主观推测或调查进度..."
                                     />
                                   </Form.Item>
+                                  <Form.Item label="备注说明 (补充说明)">
+                                    <Input.TextArea
+                                      rows={2}
+                                      value={editingRemarkText}
+                                      onChange={(e) => setEditingRemarkText(e.target.value)}
+                                      placeholder="请输入对此条帖文的补充备注或研判方向..."
+                                    />
+                                  </Form.Item>
                                   <div style={{ textAlign: 'right' }}>
                                     <Space>
                                       <Button size="small" onClick={() => setEditingMaterialId(null)}>取消</Button>
@@ -863,7 +889,25 @@ const PublicationsManagement: React.FC = () => {
                                   {item.summary}
                                 </div>
 
-                                {/* 4. 留白说明边界 */}
+                                {/* 4. 备注说明 */}
+                                {item.remark && (
+                                  <div
+                                    style={{
+                                      marginTop: '10px',
+                                      padding: '8px 12px',
+                                      background: '#fffbe6',
+                                      border: '1px solid #ffe58f',
+                                      borderRadius: '4px',
+                                      color: '#d46b08',
+                                      fontSize: '13px',
+                                      fontFamily: 'sans-serif'
+                                    }}
+                                  >
+                                    💡 <strong>备注说明</strong>：{item.remark}
+                                  </div>
+                                )}
+
+                                {/* 5. 留白说明边界 */}
                                 <div
                                   style={{
                                     marginTop: '20px',

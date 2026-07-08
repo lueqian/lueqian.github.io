@@ -60,6 +60,7 @@ import dayjs from 'dayjs';
 import * as echarts from 'echarts';
 import InstructionCommandModal from '../components/InstructionCommandModal';
 import UnifiedOpinionCard from '../components/UnifiedOpinionCard';
+import AddToPublicationModal from '../components/AddToPublicationModal';
 
 const { TabPane } = Tabs;
 
@@ -538,6 +539,7 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
   const [activeTab, setActiveTab] = useState('all');
   const [workView, setWorkView] = useState<'pending' | 'issued'>('pending');
   const [selectedEventIds, setSelectedEventIds] = useState<string[]>([]);
+  const [batchPubOpen, setBatchPubOpen] = useState(false);
   const [ignoredEventIds, setIgnoredEventIds] = useState<string[]>([]);
   const [instructionModalOpen, setInstructionModalOpen] = useState(false);
   const [instructionTargetIds, setInstructionTargetIds] = useState<string[]>([]);
@@ -1828,6 +1830,28 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
                   >
                     批量下达指令
                   </Button>
+                  <Button
+                    type="primary"
+                    style={{ background: '#7c3aed', borderColor: '#7c3aed' }}
+                    onClick={() => setBatchPubOpen(true)}
+                  >
+                    批量添加到刊物
+                  </Button>
+                  <AddToPublicationModal
+                    open={batchPubOpen}
+                    onCancel={() => setBatchPubOpen(false)}
+                    onSuccess={() => setSelectedEventIds([])}
+                    posts={selectedEventIds.map(id => {
+                      const event = visibleEvents.find(e => e.id === id);
+                      return {
+                        id: id,
+                        title: event ? event.title : '舆情帖文',
+                        content: event ? event.content : '',
+                        platform: event ? event.platform : '',
+                        author: event ? event.author : '',
+                      };
+                    })}
+                  />
                   <Button
                     className="batch-ignore-btn"
                     onClick={() => ignoreEvents(selectedEventIds)}

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Button, Checkbox, Empty, Input, Select, Switch, Tag, message } from 'antd';
 import { ClockCircleOutlined } from '@ant-design/icons';
 import UnifiedOpinionCard from '../components/UnifiedOpinionCard';
+import AddToPublicationModal from '../components/AddToPublicationModal';
 
 type EmergencySource = 'monitor-warning' | 'source-control';
 
@@ -268,6 +269,7 @@ const EmergencyResponse: React.FC = () => {
   });
   const [assignedTaskIds, setAssignedTaskIds] = useState<string[]>([]);
   const [selectedSourceTaskIds, setSelectedSourceTaskIds] = useState<string[]>([]);
+  const [batchPubOpen, setBatchPubOpen] = useState(false);
   const [batchAssignee, setBatchAssignee] = useState<string>();
 
   const visibleSourceControlTasks = sourceControlTasks.filter((task) => !assignedTaskIds.includes(task.id));
@@ -399,6 +401,28 @@ const EmergencyResponse: React.FC = () => {
           <Button type="primary" disabled={!batchAssignee} onClick={handleBatchAssign}>
             批量提交
           </Button>
+          <Button
+            type="primary"
+            style={{ background: '#7c3aed', borderColor: '#7c3aed', marginLeft: 8 }}
+            onClick={() => setBatchPubOpen(true)}
+          >
+            批量添加到刊物
+          </Button>
+          <AddToPublicationModal
+            open={batchPubOpen}
+            onCancel={() => setBatchPubOpen(false)}
+            onSuccess={() => setSelectedSourceTaskIds([])}
+            posts={selectedSourceTaskIds.map(id => {
+              const task = visibleSourceControlTasks.find(t => t.id === id);
+              return {
+                id: id,
+                title: task ? task.title : '舆情帖文',
+                content: task ? task.content : '',
+                platform: task ? task.platform : '',
+                author: task ? task.author : '',
+              };
+            })}
+          />
         </div>
       )}
     </>
