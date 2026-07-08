@@ -1250,26 +1250,35 @@ const StabilityMaintenance: React.FC = () => {
                 </Descriptions.Item>
 
                 {/* 融合属性 */}
-                {drawerPerson.source === 'both' && (
-                  <>
-                    <Descriptions.Item label="网民类型 (舆情特质)">
-                      <Tag color="blue">自媒体大V / 网络大V</Tag>
-                    </Descriptions.Item>
-                    <Descriptions.Item label="涉稳群体 (涉稳特质)">
-                      <Tag color="purple">{drawerPerson.groupTag || '未归类'}</Tag>
-                    </Descriptions.Item>
-                  </>
-                )}
-                {drawerPerson.source === 'opinion' && (
-                  <Descriptions.Item label="网民类型 (舆情特质)">
-                    <strong>{drawerPerson.peopleType === 'media' ? '自媒体大V' : '普通网民'}</strong>
-                  </Descriptions.Item>
-                )}
-                {drawerPerson.source === 'stability' && (
-                  <Descriptions.Item label="涉稳群体 (涉稳特质)">
-                    <strong>{drawerPerson.groupTag || '未归类'}</strong>
-                  </Descriptions.Item>
-                )}
+                <Descriptions.Item label="网民类型 (舆情特征)">
+                  {drawerPerson.peopleType === 'media' ? (
+                    <Tag color="blue">自媒体</Tag>
+                  ) : drawerPerson.peopleType === 'kol' ? (
+                    <Tag color="purple">大V</Tag>
+                  ) : (
+                    <span style={{ color: '#8c8c8c' }}>普通网民</span>
+                  )}
+                </Descriptions.Item>
+
+                <Descriptions.Item label="舆情类型标签">
+                  {drawerPerson.opinionTags && drawerPerson.opinionTags.length > 0 ? (
+                    <Space size={4} wrap>
+                      {drawerPerson.opinionTags.map((t) => (
+                        <Tag color="cyan" key={t}>{t}</Tag>
+                      ))}
+                    </Space>
+                  ) : (
+                    <span style={{ color: '#ccc' }}>无</span>
+                  )}
+                </Descriptions.Item>
+
+                <Descriptions.Item label="涉稳群体 (涉稳特征)">
+                  {drawerPerson.groupTag ? (
+                    <Tag color="red">{drawerPerson.groupTag}</Tag>
+                  ) : (
+                    <span style={{ color: '#ccc' }}>无</span>
+                  )}
+                </Descriptions.Item>
 
                 <Descriptions.Item label="现居住地址">{drawerPerson.residentAddress}</Descriptions.Item>
                 <Descriptions.Item label="户籍所在地">{drawerPerson.registeredAddress}</Descriptions.Item>

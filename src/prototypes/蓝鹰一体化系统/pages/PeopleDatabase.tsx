@@ -100,8 +100,9 @@ export interface PersonItem {
   
   // 新增双源头相关字段
   source: 'opinion' | 'stability' | 'both'; // 舆情指令来源 / 涉稳登记来源 / 双源头融合
-  peopleType: 'media' | 'normal'; // 网民类型: 自媒体 / 普通网民
-  groupTag?: string; // 涉稳群体类别
+  peopleType: 'media' | 'kol' | 'normal'; // 网民类型: 自媒体 / 大V / 普通网民
+  opinionTags?: string[]; // 舆情类型标签 (如：外卖员、出租车群体、某小区业主等)
+  groupTag?: string; // 涉稳群体 (涉稳特征) (如：外卖员、出租车群体、某小区业主等)
 }
 
 export const generateMockPeople = (): PersonItem[] => {
@@ -208,8 +209,13 @@ export const generateMockPeople = (): PersonItem[] => {
         
         // 关键扩展字段
         source: finalSource,
-        peopleType: cat.key === '自媒体' ? 'media' : 'normal',
-        groupTag: cat.source === 'stability' ? cat.key : undefined
+        peopleType: cat.key === '自媒体' ? 'media' : cat.key === '本地生活' ? 'kol' : 'normal',
+        opinionTags: (finalSource === 'both' || finalSource === 'opinion')
+          ? [idCounter % 3 === 0 ? '外卖员' : idCounter % 3 === 1 ? '出租车群体' : '某小区业主']
+          : undefined,
+        groupTag: (finalSource === 'both' || finalSource === 'stability')
+          ? (cat.source === 'stability' ? cat.key : (idCounter % 2 === 0 ? '出租车群体' : '某小区业主'))
+          : undefined
       });
       
       idCounter++;
@@ -457,7 +463,8 @@ const PeopleDatabase: React.FC = () => {
         ],
         note: '由舆情指令来源快速建档登记',
         source: 'opinion',
-        peopleType: values.peopleType || 'media'
+        peopleType: values.peopleType || 'media',
+        opinionTags: values.opinionTags || []
       };
 
       setPeopleList([newPerson, ...peopleList]);
@@ -553,6 +560,14 @@ const PeopleDatabase: React.FC = () => {
           ? pendingRegisterData.groupTag
           : p.groupTag;
 
+        const updatedOpinionTags = collisionSourceType === 'opinion'
+          ? pendingRegisterData.opinionTags || []
+          : [];
+        const mergedOpinionTags = Array.from(new Set([
+          ...(p.opinionTags || []),
+          ...updatedOpinionTags
+        ]));
+
         // 追加社媒账号
         const hasSocial = p.socialAccounts.some(
           sa => sa.platform === pendingRegisterData.platform && sa.id === pendingRegisterData.accountId
@@ -573,14 +588,15 @@ const PeopleDatabase: React.FC = () => {
         const newTags = Array.from(new Set([
           ...p.tags, 
           '双源头融合', 
-          collisionSourceType === 'opinion' ? '自媒体' : pendingRegisterData.groupTag
+          collisionSourceType === 'opinion' ? '舆情录入' : pendingRegisterData.groupTag
         ].filter(Boolean) as string[]));
 
         return {
           ...p,
           source: mergedSource,
-          peopleType: updatedPeopleType,
+          peopleType: updatedPeopleType === 'normal' && p.peopleType !== 'normal' ? p.peopleType : updatedPeopleType,
           groupTag: updatedGroupTag,
+          opinionTags: mergedOpinionTags,
           socialAccounts: newSocialList,
           tags: newTags,
           incidentCount: p.incidentCount + 1
@@ -896,15 +912,18 @@ const PeopleDatabase: React.FC = () => {
                       <div style={{ fontSize: '11.5px', color: '#666', lineHeight: '1.8' }}>
                         <div>属地: <strong>{person.department}</strong></div>
                         {/* 融合属性展示 */}
-                        {person.source === 'both' ? (
-                          <>
-                            <div>类型: <Tag color="blue" style={{ fontSize: '10px', padding: '0 2px' }}>自媒体</Tag></div>
-                            <div>群体: <Tag color="purple" style={{ fontSize: '10px', padding: '0 2px' }}>{person.groupTag || '未归类'}</Tag></div>
-                          </>
-                        ) : person.source === 'opinion' ? (
-                          <div>类型: <strong>{person.peopleType === 'media' ? '自媒体大V' : '普通网民'}</strong></div>
-                        ) : (
-                          <div>群体: <strong>{person.groupTag}</strong></div>
+                        <div>类型: <strong style={{ marginLeft: '4px' }}>
+                          {person.peopleType === 'media' ? '自媒体' : person.peopleType === 'kol' ? '大V' : '普通网民'}
+                        </strong></div>
+                        {person.opinionTags && person.opinionTags.length > 0 && (
+                          <div>舆情分类: 
+                            <Space size={2} wrap style={{ marginLeft: '4px' }}>
+                              {person.opinionTags.map(t => <Tag color="blue" key={t} style={{ fontSize: '9px', padding: '0 4px', margin: 0 }}>{t}</Tag>)}
+                            </Space>
+                          </div>
+                        )}
+                        {person.groupTag && (
+                          <div>涉稳群体: <Tag color="purple" style={{ fontSize: '9px', padding: '0 4px', marginLeft: '4px', margin: 0 }}>{person.groupTag}</Tag></div>
                         )}
                         <div style={{ margin: '4px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <span style={{ color: '#888' }}>登记群标:</span>
@@ -1068,23 +1087,35 @@ const PeopleDatabase: React.FC = () => {
                   )}
                 </Descriptions.Item>
 
-                {/* 舆情与涉稳特质的融合呈现 */}
-                {selectedPerson.source === 'both' && (
-                  <>
-                    <Descriptions.Item label="网民类型 (舆情特征)"><Tag color="blue">自媒体大V</Tag></Descriptions.Item>
-                    <Descriptions.Item label="涉稳群体 (涉稳特征)"><Tag color="purple">{selectedPerson.groupTag}</Tag></Descriptions.Item>
-                  </>
-                )}
-                {selectedPerson.source === 'opinion' && (
-                  <Descriptions.Item label="网民类型 (舆情特征)" span={2}>
-                    <strong>{selectedPerson.peopleType === 'media' ? '自媒体大V' : '普通关注网民'}</strong>
-                  </Descriptions.Item>
-                )}
-                {selectedPerson.source === 'stability' && (
-                  <Descriptions.Item label="涉稳群体 (涉稳特征)" span={2}>
-                    <strong>{selectedPerson.groupTag}</strong>
-                  </Descriptions.Item>
-                )}
+                <Descriptions.Item label="网民类型 (舆情特征)">
+                  {selectedPerson.peopleType === 'media' ? (
+                    <Tag color="blue">自媒体</Tag>
+                  ) : selectedPerson.peopleType === 'kol' ? (
+                    <Tag color="purple">大V</Tag>
+                  ) : (
+                    <span style={{ color: '#8c8c8c' }}>普通网民</span>
+                  )}
+                </Descriptions.Item>
+
+                <Descriptions.Item label="舆情类型标签">
+                  {selectedPerson.opinionTags && selectedPerson.opinionTags.length > 0 ? (
+                    <Space size={4} wrap>
+                      {selectedPerson.opinionTags.map((t) => (
+                        <Tag color="cyan" key={t}>{t}</Tag>
+                      ))}
+                    </Space>
+                  ) : (
+                    <span style={{ color: '#ccc' }}>无</span>
+                  )}
+                </Descriptions.Item>
+
+                <Descriptions.Item label="涉稳群体 (涉稳特征)" span={2}>
+                  {selectedPerson.groupTag ? (
+                    <Tag color="red">{selectedPerson.groupTag}</Tag>
+                  ) : (
+                    <span style={{ color: '#ccc' }}>无</span>
+                  )}
+                </Descriptions.Item>
 
                 <Descriptions.Item label="现详细居住地" span={2}>{selectedPerson.residentAddress}</Descriptions.Item>
                 <Descriptions.Item label="备注管控说明" span={2}>{selectedPerson.note}</Descriptions.Item>
@@ -1244,12 +1275,30 @@ const PeopleDatabase: React.FC = () => {
                 </Form.Item>
               </Col>
               <Col span={12}>
-                <Form.Item name="peopleType" label="网民舆情属性类型" rules={[{ required: true }]}>
+                <Form.Item name="peopleType" label="网民舆情属性类型" rules={[{ required: true }]} initialValue="media">
                   <Segmented
                     block
                     options={[
-                      { label: '自媒体大V', value: 'media' },
-                      { label: '普通关注网民', value: 'normal' },
+                      { label: '自媒体', value: 'media' },
+                      { label: '大V', value: 'kol' },
+                      { label: '普通网民', value: 'normal' },
+                    ]}
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Row gutter={16}>
+              <Col span={24}>
+                <Form.Item name="opinionTags" label="舆情类型标签 (可下拉多选或手动敲击回车新增)">
+                  <Select
+                    mode="tags"
+                    placeholder="选择或输入标签，例如：外卖员、出租车群体、某小区业主"
+                    style={{ width: '100%' }}
+                    options={[
+                      { value: '外卖员', label: '外卖员' },
+                      { value: '出租车群体', label: '出租车群体' },
+                      { value: '某小区业主', label: '某小区业主' },
                     ]}
                   />
                 </Form.Item>
@@ -1336,6 +1385,9 @@ const PeopleDatabase: React.FC = () => {
                       { value: '医患群体', label: '医患群体' },
                       { value: '退役军人', label: '退役安置群体' },
                       { value: '涉法涉诉', label: '涉法涉诉上访' },
+                      { value: '外卖员', label: '外卖员群体' },
+                      { value: '出租车群体', label: '出租车群体' },
+                      { value: '某小区业主', label: '某小区业主群体' },
                     ]}
                   />
                 </Form.Item>
