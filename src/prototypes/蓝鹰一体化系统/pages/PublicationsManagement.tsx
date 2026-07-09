@@ -293,7 +293,7 @@ const PublicationsManagement: React.FC = () => {
   const [editingRemarkText, setEditingRemarkText] = useState('');
 
   const handleStartInlineEdit = (item: ArticleMaterial) => {
-    if (!selectedIssue || selectedIssue.status === 'archived') return;
+    if (!selectedIssue) return;
     setEditingMaterialId(item.id);
     setEditingTitleText(item.title);
     setEditingSummaryText(item.summary || '');
@@ -325,12 +325,12 @@ const PublicationsManagement: React.FC = () => {
     });
     setIssues(updatedIssues);
     setEditingMaterialId(null);
-    message.success('公文三要素及备注原地深度精修保存成功！');
+    message.success('公文三要素及核实情况原地深度精修保存成功！');
   };
 
   // 5. 排序调序交互 (上移 / 下移 / 删除)
   const handleMoveMaterial = (index: number, direction: 'up' | 'down') => {
-    if (!selectedIssue || selectedIssue.status === 'archived') return;
+    if (!selectedIssue) return;
     const newList = [...selectedIssue.materials];
     const targetIdx = direction === 'up' ? index - 1 : index + 1;
     if (targetIdx < 0 || targetIdx >= newList.length) return;
@@ -351,7 +351,7 @@ const PublicationsManagement: React.FC = () => {
   };
 
   const handleDeleteMaterial = (index: number) => {
-    if (!selectedIssue || selectedIssue.status === 'archived') return;
+    if (!selectedIssue) return;
     const newList = [...selectedIssue.materials];
     newList.splice(index, 1);
 
@@ -574,7 +574,7 @@ const PublicationsManagement: React.FC = () => {
                         label = '已导出公文';
                       } else if (status === 'archived') {
                         color = 'green';
-                        label = '已归档锁死';
+                        label = '已存档';
                       }
                       return <Tag color={color}>{label}</Tag>;
                     },
@@ -587,11 +587,10 @@ const PublicationsManagement: React.FC = () => {
                         <Button
                           type="primary"
                           size="small"
-                          ghost={record.status === 'archived'}
                           icon={<SnippetsOutlined />}
                           onClick={() => handleEnterWorkspace(record)}
                         >
-                          {record.status === 'archived' ? '查看只读稿' : '进入排版加工台'}
+                          进入排版加工台
                         </Button>
                       </Space>
                     ),
@@ -624,19 +623,6 @@ const PublicationsManagement: React.FC = () => {
                       返回大厅台账
                     </Button>
                     <Space>
-                      {selectedIssue.status !== 'archived' ? (
-                        <Button
-                          type="primary"
-                          danger
-                          icon={<LockOutlined />}
-                          onClick={handleLockPublication}
-                        >
-                          归档锁死
-                        </Button>
-                      ) : (
-                        <Tag color="green" icon={<LockOutlined />} style={{ padding: '4px 10px', fontSize: '13px' }}>已归档锁定</Tag>
-                      )}
-                      
                       {/* 双轨制导出：动作一（导出Word/PDF公文） */}
                       <Button
                         type="primary"
@@ -658,8 +644,8 @@ const PublicationsManagement: React.FC = () => {
                     <Col span={6}>报送范围: <strong style={{ color: '#ff4d4f' }}>{selectedIssue.scope}</strong></Col>
                     <Col span={6}>
                       当前状态: 
-                      <Tag color={selectedIssue.status === 'archived' ? 'green' : selectedIssue.status === 'exported' ? 'blue' : 'orange'} style={{ marginLeft: '6px' }}>
-                        {selectedIssue.status === 'archived' ? '已锁死只读' : selectedIssue.status === 'exported' ? '已导出底稿' : '初稿加工中'}
+                      <Tag color={selectedIssue.status === 'exported' ? 'blue' : 'orange'} style={{ marginLeft: '6px' }}>
+                        {selectedIssue.status === 'exported' ? '已导出底稿' : '初稿加工中'}
                       </Tag>
                     </Col>
                   </Row>

@@ -451,8 +451,6 @@ const PeopleDatabase: React.FC = () => {
   const [selectedDept, setSelectedDept] = useState<string>('all');
   const [selectedTreeKey, setSelectedTreeKey] = useState<string>('all');
   
-  // 新增：人员来源筛选状态 (默认选中舆情指令来源板块)
-  const [selectedSource, setSelectedSource] = useState<'all' | 'opinion' | 'stability'>('opinion');
 
   // 人员详情 Modal
   const [detailVisible, setDetailVisible] = useState(false);
@@ -912,11 +910,8 @@ const PeopleDatabase: React.FC = () => {
         const matchTree = p.tags.some(tag => tag === selectedTreeKey);
         if (!matchTree) return false;
       }
-      // 5. 新增：人员来源筛选
-      if (selectedSource !== 'all') {
-        if (selectedSource === 'opinion' && p.source !== 'opinion' && p.source !== 'both') return false;
-        if (selectedSource === 'stability' && p.source !== 'stability' && p.source !== 'both') return false;
-      }
+      // 5. 仅展示舆情指令来源人员库（opinion / both）
+      if (p.source !== 'opinion' && p.source !== 'both') return false;
 
       return true;
     });
@@ -949,41 +944,7 @@ const PeopleDatabase: React.FC = () => {
   return (
     <div className="dark-watermark-container">
       <div className="custom-page-container">
-        {/* 数据指标看板 */}
-        <Row gutter={16} style={{ marginBottom: '16px' }}>
-          <Col span={6}>
-            <Card size="small" style={{ background: '#fff1f0', borderLeft: '4px solid #ff4d4f' }}>
-              <div style={{ color: '#666', fontSize: '12px' }}>高风险人员 (Red)</div>
-              <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#cf1322', marginTop: '4px' }}>
-                {peopleList.filter(p => p.riskLevel === 'high').length} <span style={{ fontSize: '12px', fontWeight: 'normal', color: '#999' }}>人</span>
-              </div>
-            </Card>
-          </Col>
-          <Col span={6}>
-            <Card size="small" style={{ background: '#f6ffed', borderLeft: '4px solid #52c41a' }}>
-              <div style={{ color: '#666', fontSize: '12px' }}>在库重点人员总数</div>
-              <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#389e0d', marginTop: '4px' }}>
-                {peopleList.length} <span style={{ fontSize: '12px', fontWeight: 'normal', color: '#999' }}>人</span>
-              </div>
-            </Card>
-          </Col>
-          <Col span={6}>
-            <Card size="small" style={{ background: '#e6f7ff', borderLeft: '4px solid #1890ff' }}>
-              <div style={{ color: '#666', fontSize: '12px' }}>已绑定监控账号</div>
-              <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#096dd9', marginTop: '4px' }}>
-                {peopleList.reduce((acc, curr) => acc + curr.socialAccounts.length, 0)} <span style={{ fontSize: '12px', fontWeight: 'normal', color: '#999' }}>个</span>
-              </div>
-            </Card>
-          </Col>
-          <Col span={6}>
-            <Card size="small" style={{ background: '#f9f0ff', borderLeft: '4px solid #722ed1' }}>
-              <div style={{ color: '#666', fontSize: '12px' }}>双源头融合画像人员</div>
-              <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#531dab', marginTop: '4px' }}>
-                {peopleList.filter(p => p.source === 'both').length} <span style={{ fontSize: '12px', fontWeight: 'normal', color: '#999' }}>人</span>
-              </div>
-            </Card>
-          </Col>
-        </Row>
+
 
         {/* 主体双栏布局 */}
         <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: '16px' }}>
@@ -1009,45 +970,7 @@ const PeopleDatabase: React.FC = () => {
 
           {/* 右侧主区域 */}
           <div>
-            {/* 新增：人员来源大 Tab 切换（带各来源人数动态统计，以 Segmented 渲染） */}
-            <div style={{ marginBottom: '12px' }}>
-              <Segmented
-                size="large"
-                className="custom-segmented-tab"
-                value={selectedSource}
-                onChange={(val) => setSelectedSource(val as any)}
-                options={[
-                  {
-                    label: (
-                      <div style={{ padding: '2px 12px', fontSize: '13.5px' }}>
-                        <FileTextOutlined style={{ color: '#1890ff', marginRight: '6px' }} />
-                        舆情指令人员库 ({peopleList.filter(p => p.source === 'opinion' || p.source === 'both').length}人)
-                      </div>
-                    ),
-                    value: 'opinion',
-                  },
-                  {
-                    label: (
-                      <div style={{ padding: '2px 12px', fontSize: '13.5px' }}>
-                        <TeamOutlined style={{ color: '#722ed1', marginRight: '6px' }} />
-                        涉稳登记人员库 ({peopleList.filter(p => p.source === 'stability' || p.source === 'both').length}人)
-                      </div>
-                    ),
-                    value: 'stability',
-                  },
-                  {
-                    label: (
-                      <div style={{ padding: '2px 12px', fontSize: '13.5px' }}>
-                        <UsergroupAddOutlined style={{ color: '#52c41a', marginRight: '6px' }} />
-                        全部人员总台账 ({peopleList.length}人)
-                      </div>
-                    ),
-                    value: 'all',
-                  },
-                ]}
-                style={{ background: '#fff', border: '1px solid #d9d9d9', borderRadius: '6px' }}
-              />
-            </div>
+
 
             {/* 顶部综合筛选区 */}
             <Card size="small" style={{ marginBottom: '12px' }}>
@@ -1064,7 +987,7 @@ const PeopleDatabase: React.FC = () => {
                 </Col>
 
                 {/* 风险等级 */}
-                <Col span={5}>
+                <Col span={6}>
                   <div style={{ display: 'flex', alignItems: 'center' }}>
                     <span style={{ fontSize: '12px', color: '#555', marginRight: '6px', whiteSpace: 'nowrap' }}>风险:</span>
                     <Select
@@ -1081,26 +1004,8 @@ const PeopleDatabase: React.FC = () => {
                   </div>
                 </Col>
 
-                {/* 责任属地 */}
-                <Col span={5}>
-                  <div style={{ display: 'flex', alignItems: 'center' }}>
-                    <span style={{ fontSize: '12px', color: '#555', marginRight: '6px', whiteSpace: 'nowrap' }}>属地:</span>
-                    <Select
-                      style={{ width: '100%' }}
-                      value={selectedDept}
-                      onChange={setSelectedDept}
-                      options={[
-                        { value: 'all', label: '全部' },
-                        { value: '淮安区', label: '淮安区' },
-                        { value: '清江浦区', label: '清江浦区' },
-                        { value: '洪泽区', label: '洪泽区' },
-                      ]}
-                    />
-                  </div>
-                </Col>
-
                 {/* 视图切换与手工登记按钮组 */}
-                <Col span={7} style={{ textAlign: 'right' }}>
+                <Col span={11} style={{ textAlign: 'right' }}>
                   <Space>
                     <Segmented
                       value={viewMode}
@@ -1168,51 +1073,28 @@ const PeopleDatabase: React.FC = () => {
                       }}
                       style={{ borderTop, position: 'relative' }}
                     >
-                      {/* 融合状态标识（红/蓝/紫角标） */}
-                      <div style={{ position: 'absolute', top: '8px', right: '8px' }}>
-                        {person.source === 'both' ? (
-                          <Tag color="red" style={{ margin: 0, fontSize: '10px', padding: '0 4px' }}>融合</Tag>
-                        ) : person.source === 'opinion' ? (
-                          <Tag color="blue" style={{ margin: 0, fontSize: '10px', padding: '0 4px' }}>舆情</Tag>
-                        ) : (
-                          <Tag color="purple" style={{ margin: 0, fontSize: '10px', padding: '0 4px' }}>涉稳</Tag>
-                        )}
-                      </div>
+
 
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <Avatar style={{ backgroundColor: '#87d068' }}>{person.name[0]}</Avatar>
                         <div>
                           <div style={{ fontWeight: 600, fontSize: '14px' }}>{person.name}</div>
-                          <div style={{ fontSize: '12px', color: '#999' }}>{person.gender} | {person.age}岁</div>
+                          <div style={{ fontSize: '12px', color: '#999' }}>
+                            {person.peopleType === 'media' ? '自媒体' : person.peopleType === 'kol' ? '大V' : '普通网民'}
+                          </div>
                         </div>
                       </div>
 
                       <Divider style={{ margin: '8px 0' }} />
 
                       <div style={{ fontSize: '11.5px', color: '#666', lineHeight: '1.8' }}>
-                        <div>属地: <strong>{person.department}</strong></div>
-                        {/* 融合属性展示 */}
-                        <div>类型: <strong style={{ marginLeft: '4px' }}>
-                          {person.peopleType === 'media' ? '自媒体' : person.peopleType === 'kol' ? '大V' : '普通网民'}
-                        </strong></div>
                         {person.opinionTags && person.opinionTags.length > 0 && (
-                          <div>舆情分类: 
+                          <div>舆情分类:
                             <Space size={2} wrap style={{ marginLeft: '4px' }}>
                               {person.opinionTags.map(t => <Tag color="blue" key={t} style={{ fontSize: '9px', padding: '0 4px', margin: 0 }}>{t}</Tag>)}
                             </Space>
                           </div>
                         )}
-                        {person.groupTag && (
-                          <div>涉稳群体: <Tag color="purple" style={{ fontSize: '9px', padding: '0 4px', marginLeft: '4px', margin: 0 }}>{person.groupTag}</Tag></div>
-                        )}
-                        <div style={{ margin: '4px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ color: '#888' }}>登记群标:</span>
-                          {renderTagsWithCollapse(person.tags)}
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span>社媒平台:</span>
-                          {renderPlatformIcons(person.socialAccounts)}
-                        </div>
                       </div>
                     </Card>
                   );
@@ -1234,68 +1116,21 @@ const PeopleDatabase: React.FC = () => {
                   })}
                   columns={[
                     {
-                      title: '重点人姓名',
+                      title: '姓名',
                       dataIndex: 'name',
                       key: 'name',
                       width: 100,
-                      render: (text, record) => (
-                        <Space>
-                          <strong>{text}</strong>
-                          {record.source === 'both' && <Tag color="red">融合</Tag>}
+                      render: (text) => <strong>{text}</strong>
+                    },
+                    {
+                      title: '舆情类型标签',
+                      dataIndex: 'opinionTags',
+                      key: 'opinionTags',
+                      render: (tags: string[]) => tags && tags.length > 0 ? (
+                        <Space size={4} wrap>
+                          {tags.map(t => <Tag color="cyan" key={t} style={{ fontSize: '11px' }}>{t}</Tag>)}
                         </Space>
-                      )
-                    },
-                    {
-                      title: '基本特征',
-                      key: 'info',
-                      width: 110,
-                      render: (_, r) => <span>{r.gender} | {r.age}岁</span>
-                    },
-                    {
-                      title: '脱敏身份证号',
-                      dataIndex: 'idCard',
-                      key: 'idCard',
-                      render: (val: string) => <code>{val.substring(0, 6)}********{val.substring(14)}</code>
-                    },
-                    {
-                      title: '脱敏手机号',
-                      dataIndex: 'phone',
-                      key: 'phone',
-                      render: (val: string) => <span>{val.substring(0, 3)}****{val.substring(7)}</span>
-                    },
-                    {
-                      title: '人员来源',
-                      dataIndex: 'source',
-                      key: 'source',
-                      render: (val) => {
-                        if (val === 'both') return <Tag color="red">双源头融合</Tag>;
-                        if (val === 'opinion') return <Tag color="blue">舆情指令</Tag>;
-                        return <Tag color="purple">涉稳登记</Tag>;
-                      }
-                    },
-                    {
-                      title: '风险等级',
-                      dataIndex: 'riskLevel',
-                      key: 'riskLevel',
-                      width: 100,
-                      render: (val) => {
-                        if (val === 'high') return <Tag color="red">高风险</Tag>;
-                        if (val === 'medium') return <Tag color="orange">中风险</Tag>;
-                        return <Tag color="blue">低风险</Tag>;
-                      }
-                    },
-                    {
-                      title: '群体类别/多级标签',
-                      dataIndex: 'tags',
-                      key: 'tags',
-                      width: 160,
-                      render: (tags: string[]) => renderTagsWithCollapse(tags)
-                    },
-                    {
-                      title: '责任属地',
-                      dataIndex: 'department',
-                      key: 'department',
-                      width: 100,
+                      ) : <span style={{ color: '#ccc' }}>无</span>
                     }
                   ]}
                 />
@@ -1352,32 +1187,7 @@ const PeopleDatabase: React.FC = () => {
                 <Descriptions.Item label="脱敏身份证"><code>{selectedPerson.idCard.substring(0, 6)}********{selectedPerson.idCard.substring(14)}</code></Descriptions.Item>
                 <Descriptions.Item label="脱敏手机号"><span>{selectedPerson.phone.substring(0, 3)}****{selectedPerson.phone.substring(7)}</span></Descriptions.Item>
                 
-                {/* 来源标识双重融合表达 */}
-                <Descriptions.Item label="人员建档来源" span={2}>
-                  {selectedPerson.source === 'both' ? (
-                    <Space>
-                      <Tag color="red" style={{ fontWeight: 'bold' }}>双源头融合身份</Tag>
-                      <Tag color="blue">舆情指令来源</Tag>
-                      <Tag color="purple">涉稳登记来源</Tag>
-                    </Space>
-                  ) : selectedPerson.source === 'opinion' ? (
-                    <Tag color="blue">舆情指令录入</Tag>
-                  ) : (
-                    <Tag color="purple">涉稳台账登记</Tag>
-                  )}
-                </Descriptions.Item>
-
-                <Descriptions.Item label="网民类型 (舆情特征)">
-                  {selectedPerson.peopleType === 'media' ? (
-                    <Tag color="blue">自媒体</Tag>
-                  ) : selectedPerson.peopleType === 'kol' ? (
-                    <Tag color="purple">大V</Tag>
-                  ) : (
-                    <span style={{ color: '#8c8c8c' }}>普通网民</span>
-                  )}
-                </Descriptions.Item>
-
-                <Descriptions.Item label="舆情类型标签">
+                <Descriptions.Item label="舆情类型标签" span={2}>
                   {selectedPerson.opinionTags && selectedPerson.opinionTags.length > 0 ? (
                     <Space size={4} wrap>
                       {selectedPerson.opinionTags.map((t) => (
@@ -1389,13 +1199,7 @@ const PeopleDatabase: React.FC = () => {
                   )}
                 </Descriptions.Item>
 
-                <Descriptions.Item label="涉稳群体 (涉稳特征)" span={2}>
-                  {selectedPerson.groupTag ? (
-                    <Tag color="red">{selectedPerson.groupTag}</Tag>
-                  ) : (
-                    <span style={{ color: '#ccc' }}>无</span>
-                  )}
-                </Descriptions.Item>
+
 
                 <Descriptions.Item label="现详细居住地" span={2}>{selectedPerson.residentAddress}</Descriptions.Item>
                 <Descriptions.Item label="备注管控说明" span={2}>{selectedPerson.note}</Descriptions.Item>
@@ -1549,21 +1353,9 @@ const PeopleDatabase: React.FC = () => {
             </Row>
 
             <Row gutter={16}>
-              <Col span={12}>
+              <Col span={24}>
                 <Form.Item name="idCard" label="身份证号" rules={[{ required: true, message: '身份证' }]}>
                   <Input placeholder="身份证号 (唯一性校验)" />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item name="peopleType" label="网民舆情属性类型" rules={[{ required: true }]} initialValue="media">
-                  <Segmented
-                    block
-                    options={[
-                      { label: '自媒体', value: 'media' },
-                      { label: '大V', value: 'kol' },
-                      { label: '普通网民', value: 'normal' },
-                    ]}
-                  />
                 </Form.Item>
               </Col>
             </Row>
@@ -1744,7 +1536,7 @@ const PeopleDatabase: React.FC = () => {
         <Modal
           title={
             <span>
-              <SettingOutlined style={{ color: '#1890ff' }} /> 警舆融合全局标签库维护中心
+              <SettingOutlined style={{ color: '#1890ff' }} /> 标签管理
             </span>
           }
           open={tagManagerVisible}
@@ -1760,20 +1552,6 @@ const PeopleDatabase: React.FC = () => {
           <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '20px', minHeight: '380px' }}>
             {/* 左侧树形图 */}
             <div style={{ borderRight: '1px solid #f0f0f0', paddingRight: '16px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                <strong style={{ fontSize: '13px' }}>标签结构树</strong>
-                <Select
-                  size="small"
-                  value={tagFilterType}
-                  onChange={setTagFilterType}
-                  style={{ width: '110px' }}
-                  options={[
-                    { value: 'all', label: '显示全部' },
-                    { value: 'opinion', label: '仅舆情标签' },
-                    { value: 'stability', label: '仅涉稳标签' },
-                  ]}
-                />
-              </div>
               <Space style={{ marginBottom: '10px' }}>
                 <Button size="small" type="primary" icon={<PlusOutlined />} onClick={handleAddRootTag}>新建根</Button>
                 <Button size="small" icon={<PlusOutlined />} disabled={!selectedTagKey} onClick={handleAddChildTag}>新建子</Button>
