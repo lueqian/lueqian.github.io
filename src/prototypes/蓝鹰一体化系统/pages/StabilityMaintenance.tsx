@@ -51,6 +51,8 @@ import {
   CheckOutlined,
   UserAddOutlined,
   TeamOutlined,
+  SyncOutlined,
+  SafetyCertificateOutlined,
 } from '@ant-design/icons';
 import { PersonItem } from './PeopleDatabase';
 
@@ -65,6 +67,7 @@ interface StabilityTagItem {
   peopleCount: number;
   groupCount: number;
   updateTime: string;
+  visibleDepartments?: string[];
 }
 
 // 动态流接口
@@ -116,6 +119,7 @@ const mockTagsList: StabilityTagItem[] = [
     peopleCount: 18,
     groupCount: 4,
     updateTime: '2026-07-08 16:30',
+    visibleDepartments: ['网安支队', '天河分局'],
   },
   {
     key: 'tag_002',
@@ -125,6 +129,7 @@ const mockTagsList: StabilityTagItem[] = [
     peopleCount: 12,
     groupCount: 3,
     updateTime: '2026-07-08 15:40',
+    visibleDepartments: ['网安支队', '黄埔分局'],
   },
   {
     key: 'tag_003',
@@ -134,6 +139,7 @@ const mockTagsList: StabilityTagItem[] = [
     peopleCount: 6,
     groupCount: 2,
     updateTime: '2026-07-07 10:20',
+    visibleDepartments: ['越秀分局'],
   },
   {
     key: 'tag_004',
@@ -143,6 +149,7 @@ const mockTagsList: StabilityTagItem[] = [
     peopleCount: 25,
     groupCount: 6,
     updateTime: '2026-07-08 14:15',
+    visibleDepartments: ['白云分局', '交警支队'],
   },
 ];
 
@@ -269,6 +276,12 @@ const StabilityMaintenance: React.FC = () => {
   // 页面导航控制: 'list' (主列表) | 'detail' (详情控制台)
   const [currentView, setCurrentView] = useState<'list' | 'detail'>('list');
   const [tagsList, setTagsList] = useState<StabilityTagItem[]>(mockTagsList);
+  
+  // 统计指标计算
+  const totalEvents = tagsList.length;
+  const totalDynamics = tagsList.reduce((sum, tag) => sum + tag.dynamicCount, 0);
+  const totalPeople = tagsList.reduce((sum, tag) => sum + tag.peopleCount, 0);
+  const totalGroups = tagsList.reduce((sum, tag) => sum + tag.groupCount, 0);
   const [selectedTag, setSelectedTag] = useState<StabilityTagItem>(mockTagsList[0]);
   
   // 筛选与检索过滤
@@ -334,19 +347,50 @@ const StabilityMaintenance: React.FC = () => {
   const [formAddEvent] = Form.useForm();
   const [formAddDynamic] = Form.useForm();
 
+  // 网民人员库同步与导出状态
+  const [syncedPeople, setSyncedPeople] = useState<string[]>(['PERSON_MAN_001', 'PERSON_MAN_002']);
+  const [syncingId, setSyncingId] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportProgress, setExportProgress] = useState(0);
+
+  // 详情页人员 Tab 搜索状态
+  const [peopleSearchName, setPeopleSearchName] = useState('');
+  const [peopleSearchAddress, setPeopleSearchAddress] = useState('');
+
+  // 详情页人员 Tab 过滤列表获取
+  const getFilteredPeopleList = () => {
+    const list = peopleMap[selectedTag.key] || [];
+    return list.filter(p => {
+      const matchName = !peopleSearchName.trim() || p.name.toLowerCase().includes(peopleSearchName.toLowerCase().trim());
+      const matchAddress = !peopleSearchAddress.trim() || (p.registeredAddress && p.registeredAddress.toLowerCase().includes(peopleSearchAddress.toLowerCase().trim()));
+      return matchName && matchAddress;
+    });
+  };
+
+  // 稳情库首页部门筛选状态
+  const [selectedDeptFilter, setSelectedDeptFilter] = useState<string | undefined>(undefined);
+
   // 监听数据变动，自动同步过滤
   React.useEffect(() => {
-    if (!searchText.trim()) {
-      setFilterTags(tagsList);
-    } else {
-      const filtered = tagsList.filter(
+    let filtered = tagsList;
+
+    if (searchText.trim()) {
+      const searchVal = searchText.toLowerCase().trim();
+      filtered = filtered.filter(
         (t) =>
-          t.name.toLowerCase().includes(searchText.toLowerCase()) ||
-          (t.type && t.type.toLowerCase().includes(searchText.toLowerCase()))
+          t.name.toLowerCase().includes(searchVal) ||
+          (t.type && t.type.toLowerCase().includes(searchVal))
       );
-      setFilterTags(filtered);
     }
-  }, [tagsList, searchText]);
+
+    if (selectedDeptFilter) {
+      filtered = filtered.filter(
+        (t) => t.visibleDepartments && t.visibleDepartments.includes(selectedDeptFilter)
+      );
+    }
+
+    setFilterTags(filtered);
+  }, [tagsList, searchText, selectedDeptFilter]);
 
   // 搜索处理
   const handleSearch = (val: string) => {
@@ -473,6 +517,7 @@ const StabilityMaintenance: React.FC = () => {
         peopleCount: 0,
         groupCount: 0,
         updateTime: new Date().toISOString().replace('T', ' ').substring(0, 16),
+        visibleDepartments: values.visibleDepartments || ['网安支队'],
       };
 
       // 初始化隔离的关联容器映射
@@ -528,6 +573,26 @@ const StabilityMaintenance: React.FC = () => {
     });
     // 默认将其勾选
     setSelectedParsedPeople(prev => [...prev, newTempId]);
+  };
+
+  // 手动补充未提取到的群聊
+  const handleAddParsedGroup = () => {
+    const newTempId = `g_manual_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    setParsedInfo(prev => {
+      const newGroup = {
+        tempId: newTempId,
+        name: '',
+        platform: 'wechat' as const,
+        memberCount: 100
+      };
+      const nextGroups = prev ? [...prev.groups, newGroup] : [newGroup];
+      return {
+        groups: nextGroups,
+        people: prev ? prev.people : []
+      };
+    });
+    // 默认将其勾选
+    setSelectedParsedGroups(prev => [...prev, newTempId]);
   };
 
   // 一键提取动态中的微信/QQ群聊以及涉案网民身份信息
@@ -791,6 +856,27 @@ const StabilityMaintenance: React.FC = () => {
     setAddDynamicModalOpen(true);
   };
 
+  // 模拟导出防伪存证报告的加载进度
+  const handleExportEvidence = () => {
+    setIsExporting(true);
+    setExportProgress(0);
+    
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += Math.floor(Math.random() * 12) + 6;
+      if (progress >= 100) {
+        progress = 100;
+        clearInterval(interval);
+        setTimeout(() => {
+          setIsExporting(false);
+          setEvidenceVisible(false);
+          message.success('哈希存证证书已顺利物理保存并输出PDF，数字防伪哈希已存链！');
+        }, 600);
+      }
+      setExportProgress(progress);
+    }, 120);
+  };
+
   // 平台标签渲染
   const renderPlatform = (platform: 'wechat' | 'qq' | 'other') => {
     if (platform === 'wechat') {
@@ -847,15 +933,33 @@ const StabilityMaintenance: React.FC = () => {
                     </Button>
                   </Space>
                 </Col>
-                <Col span={8}>
-                  <Input
-                    placeholder="输入事件/类型关键字进行过滤..."
-                    prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
-                    value={searchText}
-                    onChange={(e) => handleSearch(e.target.value)}
-                    allowClear
-                    style={{ borderRadius: '6px' }}
-                  />
+                <Col span={14} style={{ textAlign: 'right' }}>
+                  <Space size="middle">
+                    <Select
+                      placeholder="按部门可见范围筛选..."
+                      allowClear
+                      value={selectedDeptFilter}
+                      onChange={(val) => setSelectedDeptFilter(val)}
+                      style={{ width: 180, borderRadius: '6px', textAlign: 'left' }}
+                      options={[
+                        { value: '网安支队', label: '网安支队' },
+                        { value: '治安支队', label: '治安支队' },
+                        { value: '天河分局', label: '天河分局' },
+                        { value: '白云分局', label: '白云分局' },
+                        { value: '越秀分局', label: '越秀分局' },
+                        { value: '黄埔分局', label: '黄埔分局' },
+                        { value: '交警支队', label: '交警支队' },
+                      ]}
+                    />
+                    <Input
+                      placeholder="输入事件/类型关键字进行过滤..."
+                      prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
+                      value={searchText}
+                      onChange={(e) => handleSearch(e.target.value)}
+                      allowClear
+                      style={{ borderRadius: '6px', width: 260 }}
+                    />
+                  </Space>
                 </Col>
               </Row>
             </Card>
@@ -878,6 +982,21 @@ const StabilityMaintenance: React.FC = () => {
                     dataIndex: 'type',
                     key: 'type',
                     render: (text) => <Tag color="blue">{text || '其他维权'}</Tag>,
+                  },
+                  {
+                    title: '可见部门范围',
+                    dataIndex: 'visibleDepartments',
+                    key: 'visibleDepartments',
+                    render: (depts) => {
+                      if (!depts || depts.length === 0) return <Tag color="default">仅创建人可见</Tag>;
+                      return (
+                        <Space size={[0, 4]} wrap>
+                          {depts.map((d: string) => (
+                            <Tag color="geekblue" key={d}>{d}</Tag>
+                          ))}
+                        </Space>
+                      );
+                    }
                   },
                   {
                     title: '关联动态数',
@@ -1043,8 +1162,44 @@ const StabilityMaintenance: React.FC = () => {
                     ),
                     children: (
                       <div style={{ padding: '20px' }}>
+                        {/* 重点人员检索筛选区 */}
+                        <Row gutter={16} align="middle" style={{ marginBottom: '16px' }}>
+                          <Col span={6}>
+                            <Input
+                              placeholder="输入重点人姓名搜索..."
+                              prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
+                              value={peopleSearchName}
+                              onChange={(e) => setPeopleSearchName(e.target.value)}
+                              allowClear
+                              style={{ borderRadius: '6px' }}
+                            />
+                          </Col>
+                          <Col span={8}>
+                            <Input
+                              placeholder="输入户籍地关键字搜索..."
+                              prefix={<EnvironmentOutlined style={{ color: '#bfbfbf' }} />}
+                              value={peopleSearchAddress}
+                              onChange={(e) => setPeopleSearchAddress(e.target.value)}
+                              allowClear
+                              style={{ borderRadius: '6px' }}
+                            />
+                          </Col>
+                          <Col span={10} style={{ textAlign: 'right' }}>
+                            <Button 
+                              icon={<ReloadOutlined />} 
+                              onClick={() => {
+                                setPeopleSearchName('');
+                                setPeopleSearchAddress('');
+                              }}
+                              style={{ borderRadius: '6px' }}
+                            >
+                              重置
+                            </Button>
+                          </Col>
+                        </Row>
+
                         <Table
-                          dataSource={peopleMap[selectedTag.key] || []}
+                          dataSource={getFilteredPeopleList()}
                           rowKey="id"
                           pagination={false}
                           columns={[
@@ -1092,6 +1247,13 @@ const StabilityMaintenance: React.FC = () => {
                               dataIndex: 'phone',
                               key: 'phone',
                               render: (text) => `${text.substr(0, 3)}****${text.substr(7, 4)}`,
+                            },
+                            {
+                              title: '户籍地',
+                              dataIndex: 'registeredAddress',
+                              key: 'registeredAddress',
+                              width: 180,
+                              render: (text) => text || '暂无户籍地登记'
                             },
                             {
                               title: '相关群组',
@@ -1261,13 +1423,30 @@ const StabilityMaintenance: React.FC = () => {
       >
         {selectedDynamic && (
           <div>
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ fontWeight: 'bold', marginBottom: 8, fontSize: '14px', color: '#262626' }}>
-                标题：
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+              <div style={{ flex: 1, marginRight: 16 }}>
+                <div style={{ fontWeight: 'bold', marginBottom: 8, fontSize: '14px', color: '#262626' }}>
+                  标题：
+                </div>
+                <h3 style={{ fontWeight: 'bold', color: '#1890ff', margin: 0, fontSize: '16px' }}>
+                  {selectedDynamic.title}
+                </h3>
               </div>
-              <h3 style={{ fontWeight: 'bold', color: '#1890ff', margin: '0 0 16px 0', fontSize: '16px' }}>
-                {selectedDynamic.title}
-              </h3>
+              <Button 
+                type="primary" 
+                danger 
+                ghost 
+                icon={<SafetyCertificateOutlined />} 
+                onClick={() => {
+                  const hash = 'SHA256:' + Array.from({length:64}, () => Math.floor(Math.random()*16).toString(16)).join('');
+                  const certText = `存证编号: E-EVID-${Date.now()}-${Math.floor(1000 + Math.random()*9000)}\n存证哈希: ${hash}`;
+                  setEvidenceText(certText);
+                  setEvidenceVisible(true);
+                }}
+                style={{ flexShrink: 0, marginTop: 16 }}
+              >
+                电子存证单
+              </Button>
             </div>
 
             <div style={{ marginBottom: 20 }}>
@@ -1394,6 +1573,27 @@ const StabilityMaintenance: React.FC = () => {
                   {activePerson.tags.map(t => (
                     <Tag color={t.includes('高风险') || t.includes('群主') || t.includes('核心') ? 'red' : 'geekblue'} key={t}>{t}</Tag>
                   ))}
+                  {syncedPeople.includes(activePerson.id) ? (
+                    <Tag color="success" icon={<CheckCircleOutlined />}>已录入人员库</Tag>
+                  ) : (
+                    <Tag 
+                      color="warning" 
+                      icon={<SyncOutlined spin={syncingId === activePerson.id} />} 
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => {
+                        if (syncingId) return;
+                        setSyncingId(activePerson.id);
+                        message.loading({ content: '正在同步网民信息及涉稳特征至系统人员库...', key: 'sync-db' });
+                        setTimeout(() => {
+                          setSyncedPeople(prev => [...prev, activePerson.id]);
+                          setSyncingId(null);
+                          message.success({ content: `涉稳网民【${activePerson.name}】已成功同步至全量人员库！`, key: 'sync-db', duration: 2 });
+                        }, 1200);
+                      }}
+                    >
+                      未录入人员库（点击同步）
+                    </Tag>
+                  )}
                 </div>
               </div>
             </div>
@@ -1653,20 +1853,128 @@ const StabilityMaintenance: React.FC = () => {
 
       {/* ==================== 内网物理取证 Modal ==================== */}
       <Modal
-        title={<span><CheckCircleOutlined style={{ color: '#52c41a', marginRight: 8 }} /> 蓝鹰一体化系统 - 内网取证存证证书</span>}
+        title={<span><SafetyCertificateOutlined style={{ color: '#ff4d4f', marginRight: 8 }} /> 蓝鹰一体化系统 - 电子证据司法存证报告</span>}
         open={evidenceVisible}
-        onCancel={() => setEvidenceVisible(false)}
-        footer={[
-          <Button key="close" onClick={() => setEvidenceVisible(false)}>关闭</Button>,
-          <Button key="download" type="primary" onClick={() => message.success('哈希存证证书已顺利物理保存并输出PDF，哈希签名成功生成！')}>
-            导出存证报告
+        onCancel={() => !isExporting && setEvidenceVisible(false)}
+        footer={isExporting ? [
+          <Button key="exporting" type="primary" loading disabled>
+            正在生成导出报告...
+          </Button>
+        ] : [
+          <Button key="close" disabled={isExporting} onClick={() => setEvidenceVisible(false)}>关闭</Button>,
+          <Button key="download" type="primary" danger disabled={isExporting} onClick={handleExportEvidence}>
+            导出防伪报告
           </Button>
         ]}
+        width={600}
         destroyOnClose
+        centered
       >
-        <div style={{ background: '#f5f5f5', padding: '16px', borderRadius: '6px', fontFamily: 'monospace', fontSize: '13px', lineHeight: '1.6', whiteSpace: 'pre-wrap', border: '1px solid #d9d9d9' }}>
-          {evidenceText}
-        </div>
+        {isExporting ? (
+          <div style={{ textAlign: 'center', padding: '40px 0' }}>
+            <Progress type="circle" percent={exportProgress} strokeColor={{ '0%': '#ff4d4f', '100%': '#52c41a' }} />
+            <div style={{ marginTop: 20, fontWeight: 'bold', color: '#ff4d4f', fontSize: '15px' }}>
+              {exportProgress < 25 && '正在计算电子数据摘要哈希 (SHA-256)...'}
+              {exportProgress >= 25 && exportProgress < 55 && '正在向存证链（司法区块链）提交存证凭证...'}
+              {exportProgress >= 55 && exportProgress < 85 && '正在附加取证网安民警数字签名与时间戳...'}
+              {exportProgress >= 85 && '正在物理生成防伪存证报告PDF文件...'}
+            </div>
+          </div>
+        ) : (
+          <div style={{ 
+            background: '#fafafa', 
+            border: '1.5px solid #d9d9d9', 
+            borderRadius: '8px', 
+            padding: '20px', 
+            position: 'relative',
+            boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.02)'
+          }}>
+            {/* 证书顶部警徽与标题 */}
+            <div style={{ textAlign: 'center', marginBottom: 16 }}>
+              <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#ff4d4f', letterSpacing: 1 }}>
+                电子数据取证司法存证证书
+              </div>
+              <div style={{ fontSize: '10px', color: '#8c8c8c', marginTop: 2, fontFamily: 'monospace' }}>
+                FEDERAL SECURITY DIGITAL EVIDENCE CERTIFICATE
+              </div>
+              <Divider style={{ margin: '8px 0 12px 0', borderColor: '#d9d9d9' }} />
+            </div>
+
+            {/* 证书内容 Descriptions */}
+            <Descriptions size="small" column={1} bordered style={{ marginBottom: 12 }}>
+              <Descriptions.Item label="存证编号">
+                <span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>
+                  {evidenceText.match(/存证编号:\s*(\S+)/)?.[1] || `E-EVID-${Date.now()}-2231`}
+                </span>
+              </Descriptions.Item>
+              <Descriptions.Item label="所属事件">
+                <span style={{ fontWeight: '500' }}>{selectedTag?.name}</span>
+              </Descriptions.Item>
+              <Descriptions.Item label="存证哈希 (SHA-256)">
+                <Tooltip title="点击复制哈希值">
+                  <span 
+                    style={{ fontFamily: 'monospace', fontSize: '10px', cursor: 'pointer', color: '#1890ff', wordBreak: 'break-all' }}
+                    onClick={() => {
+                      const h = evidenceText.match(/存证哈希:\s*(\S+)/)?.[1];
+                      if (h) {
+                        navigator.clipboard.writeText(h);
+                        message.success('存证哈希已复制到剪贴板！');
+                      }
+                    }}
+                  >
+                    {evidenceText.match(/存证哈希:\s*(\S+)/)?.[1] || 'SHA256:8f4c2e8a1d7f0e9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2a1b0c9d8e7f6a5b'}
+                  </span>
+                </Tooltip>
+              </Descriptions.Item>
+              <Descriptions.Item label="区块高度">
+                <span style={{ color: '#52c41a', fontWeight: 'bold' }}>#15,804,219 (已同步至内网司法链)</span>
+              </Descriptions.Item>
+              <Descriptions.Item label="取证时间">
+                <span>{selectedDynamic?.publishTime || new Date().toISOString().replace('T', ' ').substring(0, 16)}</span>
+              </Descriptions.Item>
+              <Descriptions.Item label="取证人">
+                <span>网安支队 | 警号 024831 ({selectedDynamic?.author || '李工'})</span>
+              </Descriptions.Item>
+            </Descriptions>
+
+            {/* 取证正文 */}
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#262626', marginBottom: 4 }}>取证摘要正文：</div>
+              <div style={{ 
+                background: '#f5f5f5', 
+                padding: '10px 12px', 
+                borderRadius: '6px', 
+                fontSize: '11px', 
+                color: '#595959', 
+                fontFamily: 'monospace',
+                maxHeight: '90px',
+                overflowY: 'auto',
+                whiteSpace: 'pre-wrap',
+                border: '1px solid #e8e8e8'
+              }}>
+                {selectedDynamic?.content}
+              </div>
+            </div>
+
+            {/* 核验底章印记 */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
+              <div style={{ 
+                border: '2px solid #52c41a', 
+                color: '#52c41a', 
+                padding: '2px 8px', 
+                borderRadius: '4px', 
+                fontWeight: 'bold', 
+                transform: 'rotate(-5deg)',
+                fontSize: '12px',
+                letterSpacing: 1,
+                boxShadow: '0 0 4px rgba(82,196,26,0.15)',
+                background: 'rgba(82,196,26,0.02)'
+              }}>
+                ✓ 司法存证核验通过
+              </div>
+            </div>
+          </div>
+        )}
       </Modal>
 
       {/* ==================== 1. 新增事件/标签 Modal ==================== */}
@@ -1728,6 +2036,26 @@ const StabilityMaintenance: React.FC = () => {
                   </Space>
                 </>
               )}
+            />
+          </Form.Item>
+          <Form.Item
+            name="visibleDepartments"
+            label="指定部门可见范围"
+            rules={[{ required: true, message: '请选择允许查看该事件的部门！' }]}
+            initialValue={['网安支队']}
+          >
+            <Select
+              mode="multiple"
+              placeholder="选择可见的部门（可多选）"
+              options={[
+                { value: '网安支队', label: '网安支队' },
+                { value: '治安支队', label: '治安支队' },
+                { value: '天河分局', label: '天河分局' },
+                { value: '白云分局', label: '白云分局' },
+                { value: '越秀分局', label: '越秀分局' },
+                { value: '黄埔分局', label: '黄埔分局' },
+                { value: '交警支队', label: '交警支队' },
+              ]}
             />
           </Form.Item>
         </Form>
@@ -1868,7 +2196,21 @@ const StabilityMaintenance: React.FC = () => {
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 {/* 提取的群聊 - 堆叠一 */}
-                <Card size="small" title={<span><WechatOutlined style={{ color: '#52c41a', marginRight: 6 }} /> 提取群聊 ({parsedInfo.groups.length})</span>}>
+                <Card 
+                  size="small" 
+                  title={<span><WechatOutlined style={{ color: '#52c41a', marginRight: 6 }} /> 提取群聊 ({parsedInfo.groups.length})</span>}
+                  extra={
+                    <Button
+                      type="primary"
+                      size="small"
+                      icon={<PlusOutlined />}
+                      onClick={handleAddParsedGroup}
+                      style={{ fontSize: 12, background: '#52c41a', borderColor: '#52c41a' }}
+                    >
+                      手动新增群聊
+                    </Button>
+                  }
+                >
                   {parsedInfo.groups.length === 0 ? (
                     <span style={{ color: '#bfbfbf', fontSize: 12 }}>未提取到群聊</span>
                   ) : (
@@ -1921,15 +2263,20 @@ const StabilityMaintenance: React.FC = () => {
                   size="small" 
                   title={<span><UserAddOutlined style={{ color: '#1890ff', marginRight: 6 }} /> 提取重点网民 ({parsedInfo.people.length})</span>}
                   extra={
-                    <Button
-                      type="primary"
-                      size="small"
-                      icon={<PlusOutlined />}
-                      onClick={handleAddParsedPerson}
-                      style={{ fontSize: 12, background: '#1890ff', borderColor: '#1890ff' }}
-                    >
-                      手动新增网民
-                    </Button>
+                    <Space size="middle">
+                      <Tooltip title="系统检测到明文输入（如18位身份证、11位手机号），入库后将自动实施脱敏掩码，保障内网信息安全。">
+                        <InfoCircleOutlined style={{ color: '#fa8c16', cursor: 'pointer' }} />
+                      </Tooltip>
+                      <Button
+                        type="primary"
+                        size="small"
+                        icon={<PlusOutlined />}
+                        onClick={handleAddParsedPerson}
+                        style={{ fontSize: 12, background: '#1890ff', borderColor: '#1890ff' }}
+                      >
+                        手动新增网民
+                      </Button>
+                    </Space>
                   }
                 >
                   {parsedInfo.people.length === 0 ? (
@@ -1945,6 +2292,10 @@ const StabilityMaintenance: React.FC = () => {
                         if (p.role === '群主') tagColor = 'red';
                         else if (p.role === '管理员') tagColor = 'orange';
                         
+                        // 校验逻辑：允许脱敏格式或标准格式。若有字符且不符合格式，则标黄警示
+                        const isPhoneValid = !p.phone || p.phone === '-' || p.phone === '' || /^1\d{10}$/.test(p.phone) || /^1\d{2}\*{4}\d{4}$/.test(p.phone);
+                        const isIdCardValid = !p.idCard || p.idCard === '-' || p.idCard === '' || /^\d{17}[\dXx]$/.test(p.idCard) || /^\d{6}\*{8}\d{3}[\dXx]$/.test(p.idCard);
+
                         return (
                           <div key={p.tempId} style={{ margin: '12px 0', borderBottom: '1px solid #f0f0f0', paddingBottom: '12px' }}>
                             <Checkbox value={p.tempId}>
@@ -1969,23 +2320,27 @@ const StabilityMaintenance: React.FC = () => {
                                     ]}
                                   />
                                   <span style={{ fontSize: 12, color: '#8c8c8c' }}>手机号:</span>
-                                  <Input
-                                    size="small"
-                                    placeholder="手机号"
-                                    value={p.phone}
-                                    onChange={(e) => handleUpdateParsedPerson(index, 'phone', e.target.value)}
-                                    style={{ width: 140 }}
-                                  />
+                                  <Tooltip title={!isPhoneValid ? "手机号格式不合规，标准格式应为11位手机号" : undefined} open={!isPhoneValid ? undefined : false}>
+                                    <Input
+                                      size="small"
+                                      placeholder="手机号"
+                                      value={p.phone}
+                                      onChange={(e) => handleUpdateParsedPerson(index, 'phone', e.target.value)}
+                                      style={{ width: 140, borderColor: !isPhoneValid ? '#fa8c16' : undefined }}
+                                    />
+                                  </Tooltip>
                                 </Space>
                                 <Space size={8} wrap style={{ marginTop: 4 }}>
                                   <span style={{ fontSize: 12, color: '#8c8c8c' }}>身份证:</span>
-                                  <Input
-                                    size="small"
-                                    placeholder="身份证号"
-                                    value={p.idCard}
-                                    onChange={(e) => handleUpdateParsedPerson(index, 'idCard', e.target.value)}
-                                    style={{ width: 180 }}
-                                  />
+                                  <Tooltip title={!isIdCardValid ? "身份证格式不合规，标准格式应为18位身份证号" : undefined} open={!isIdCardValid ? undefined : false}>
+                                    <Input
+                                      size="small"
+                                      placeholder="身份证号"
+                                      value={p.idCard}
+                                      onChange={(e) => handleUpdateParsedPerson(index, 'idCard', e.target.value)}
+                                      style={{ width: 180, borderColor: !isIdCardValid ? '#fa8c16' : undefined }}
+                                    />
+                                  </Tooltip>
                                   <span style={{ fontSize: 12, color: '#8c8c8c' }}>户籍地:</span>
                                   <Input
                                     size="small"
