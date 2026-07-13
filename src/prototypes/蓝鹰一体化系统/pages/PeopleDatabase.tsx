@@ -9,6 +9,7 @@ import {
   Modal,
   Form,
   Tree,
+  TreeSelect,
   message,
   Space,
   Avatar,
@@ -417,26 +418,29 @@ const initialCategoryTree = [
   {
     title: '网络大V',
     key: '大V',
+    value: '大V',
     children: [
-      { title: '自媒体', key: '自媒体' },
-      { title: '本地生活', key: '本地生活' },
+      { title: '自媒体', key: '自媒体', value: '自媒体' },
+      { title: '本地生活', key: '本地生活', value: '本地生活' },
     ],
   },
   {
     title: '维权群体',
     key: '维权',
+    value: '维权',
     children: [
-      { title: '房产维权', key: '房产维权' },
-      { title: '环保维权', key: '环保维权' },
-      { title: '医患群体', key: '医患群体' },
+      { title: '房产维权', key: '房产维权', value: '房产维权' },
+      { title: '环保维权', key: '环保维权', value: '环保维权' },
+      { title: '医患群体', key: '医患群体', value: '医患群体' },
     ],
   },
   {
     title: '特殊诉求群体',
     key: '特殊',
+    value: '特殊',
     children: [
-      { title: '退役军人', key: '退役军人' },
-      { title: '涉法涉诉', key: '涉法涉诉' },
+      { title: '退役军人', key: '退役军人', value: '退役军人' },
+      { title: '涉法涉诉', key: '涉法涉诉', value: '涉法涉诉' },
     ],
   },
 ];
@@ -449,7 +453,7 @@ const PeopleDatabase: React.FC = () => {
   const [searchText, setSearchText] = useState('');
   const [selectedRisk, setSelectedRisk] = useState<string>('all');
   const [selectedDept, setSelectedDept] = useState<string>('all');
-  const [selectedTreeKey, setSelectedTreeKey] = useState<string>('all');
+  const [selectedTreeKeys, setSelectedTreeKeys] = useState<string[]>([]);
   
 
   // 人员详情 Modal
@@ -901,14 +905,14 @@ const PeopleDatabase: React.FC = () => {
         const matchSocial = p.socialAccounts.some(sa => sa.username.toLowerCase().includes(query) || sa.id.includes(query));
         if (!matchName && !matchCard && !matchPhone && !matchSocial) return false;
       }
-      // 2. 风险等级
-      if (selectedRisk !== 'all' && p.riskLevel !== selectedRisk) return false;
       // 3. 属地
       if (selectedDept !== 'all' && p.department !== selectedDept) return false;
-      // 4. 左侧标签树
-      if (selectedTreeKey !== 'all') {
-        const matchTree = p.tags.some(tag => tag === selectedTreeKey);
-        if (!matchTree) return false;
+      // 4. 顶部标签树下拉多选过滤
+      if (selectedTreeKeys && selectedTreeKeys.length > 0) {
+        const hasMatch = selectedTreeKeys.some(key => {
+          return p.tags.some(tag => tag === key) || p.type === key || (key === '大V' && p.type === '网络大V') || (key === '维权' && p.type === '维权群体') || (key === '特殊' && p.type === '特殊诉求群体');
+        });
+        if (!hasMatch) return false;
       }
       // 5. 仅展示舆情指令来源人员库（opinion / both）
       if (p.source !== 'opinion' && p.source !== 'both') return false;
@@ -946,28 +950,8 @@ const PeopleDatabase: React.FC = () => {
       <div className="custom-page-container">
 
 
-        {/* 主体双栏布局 */}
-        <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: '16px' }}>
-          {/* 左侧多级标签树 */}
-          <Card size="small" className="filter-sidebar-card" style={{ height: 'calc(100vh - 270px)', overflowY: 'auto' }}>
-            <div className="sidebar-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <PartitionOutlined />
-              <span>人员属性多级分类</span>
-            </div>
-            <Tree
-              defaultExpandAll
-              treeData={[
-                { title: '展示全部人员', key: 'all' },
-                ...initialCategoryTree
-              ]}
-              onSelect={(keys) => {
-                if (keys.length > 0) {
-                  setSelectedTreeKey(keys[0] as string);
-                }
-              }}
-            />
-          </Card>
-
+        {/* 主体单栏布局 */}
+        <div style={{ display: 'block' }}>
           {/* 右侧主区域 */}
           <div>
 
@@ -976,7 +960,7 @@ const PeopleDatabase: React.FC = () => {
             <Card size="small" style={{ marginBottom: '12px' }}>
               <Row gutter={12} align="middle">
                 {/* 搜索 */}
-                <Col span={7}>
+                <Col span={8}>
                   <Input
                     placeholder="姓名/身份证号/手机号/社交ID..."
                     prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
@@ -986,68 +970,34 @@ const PeopleDatabase: React.FC = () => {
                   />
                 </Col>
 
-                {/* 风险等级 */}
-                <Col span={6}>
+                {/* 人员属性多级分类（下拉多选） */}
+                <Col span={10}>
                   <div style={{ display: 'flex', alignItems: 'center' }}>
-                    <span style={{ fontSize: '12px', color: '#555', marginRight: '6px', whiteSpace: 'nowrap' }}>风险:</span>
-                    <Select
+                    <span style={{ fontSize: '12px', color: '#555', marginRight: '6px', whiteSpace: 'nowrap' }}>属性分类:</span>
+                    <TreeSelect
                       style={{ width: '100%' }}
-                      value={selectedRisk}
-                      onChange={setSelectedRisk}
-                      options={[
-                        { value: 'all', label: '全部' },
-                        { value: 'high', label: '高风险' },
-                        { value: 'medium', label: '中风险' },
-                        { value: 'low', label: '低风险' },
-                      ]}
+                      value={selectedTreeKeys}
+                      onChange={(keys) => setSelectedTreeKeys(keys)}
+                      treeData={initialCategoryTree}
+                      placeholder="选择人员属性分类 (可多选)"
+                      allowClear
+                      multiple
+                      treeDefaultExpandAll
+                      maxTagCount="responsive"
                     />
                   </div>
                 </Col>
 
-                {/* 视图切换与手工登记按钮组 */}
-                <Col span={11} style={{ textAlign: 'right' }}>
-                  <Space>
-                    <Segmented
-                      value={viewMode}
-                      onChange={(val) => setViewMode(val as any)}
-                      options={[
-                        { value: 'card', icon: <AppstoreOutlined /> },
-                        { value: 'table', icon: <UnorderedListOutlined /> },
-                      ]}
-                    />
-
-                    {/* 双通道登记下拉菜单（新增） */}
-                    <Button 
-                      icon={<SettingOutlined />} 
-                      onClick={() => setTagManagerVisible(true)}
-                    >
-                      标签管理
-                    </Button>
-
-                    <Dropdown
-                      menu={{
-                        items: [
-                          {
-                            key: 'opinion',
-                            icon: <FileTextOutlined style={{ color: '#1890ff' }} />,
-                            label: '登记舆情指令重点网民',
-                            onClick: () => setOpinionModalVisible(true),
-                          },
-                          {
-                            key: 'stability',
-                            icon: <TeamOutlined style={{ color: '#722ed1' }} />,
-                            label: '登记涉稳源头重点网民',
-                            onClick: () => setStabilityModalVisible(true),
-                          },
-                        ],
-                      }}
-                      placement="bottomRight"
-                    >
-                      <Button type="primary" icon={<UserAddOutlined />}>
-                        登记人员
-                      </Button>
-                    </Dropdown>
-                  </Space>
+                {/* 视图切换 */}
+                <Col span={6} style={{ textAlign: 'right' }}>
+                  <Segmented
+                    value={viewMode}
+                    onChange={(val) => setViewMode(val as any)}
+                    options={[
+                      { value: 'card', icon: <AppstoreOutlined /> },
+                      { value: 'table', icon: <UnorderedListOutlined /> },
+                    ]}
+                  />
                 </Col>
               </Row>
             </Card>
@@ -1057,11 +1007,6 @@ const PeopleDatabase: React.FC = () => {
               /* ================== 卡片视图 ================== */
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '12px' }}>
                 {currentList.map((person) => {
-                  let borderTop = '3px solid #d9d9d9';
-                  if (person.riskLevel === 'high') borderTop = '3px solid #ff4d4f';
-                  else if (person.riskLevel === 'medium') borderTop = '3px solid #faad14';
-                  else if (person.riskLevel === 'low') borderTop = '3px solid #1890ff';
-
                   return (
                     <Card
                       key={person.id}
@@ -1071,7 +1016,7 @@ const PeopleDatabase: React.FC = () => {
                         setSelectedPerson(person);
                         setDetailVisible(true);
                       }}
-                      style={{ borderTop, position: 'relative' }}
+                      style={{ borderTop: '3px solid #1890ff', position: 'relative' }}
                     >
 
 
@@ -1088,8 +1033,9 @@ const PeopleDatabase: React.FC = () => {
                       <Divider style={{ margin: '8px 0' }} />
 
                       <div style={{ fontSize: '11.5px', color: '#666', lineHeight: '1.8' }}>
+                        <div>归属地: <span style={{ color: '#333' }}>{person.department}</span></div>
                         {person.opinionTags && person.opinionTags.length > 0 && (
-                          <div>舆情分类:
+                          <div style={{ marginTop: '4px' }}>舆情分类:
                             <Space size={2} wrap style={{ marginLeft: '4px' }}>
                               {person.opinionTags.map(t => <Tag color="blue" key={t} style={{ fontSize: '9px', padding: '0 4px', margin: 0 }}>{t}</Tag>)}
                             </Space>
@@ -1123,6 +1069,13 @@ const PeopleDatabase: React.FC = () => {
                       render: (text) => <strong>{text}</strong>
                     },
                     {
+                      title: '归属地',
+                      dataIndex: 'department',
+                      key: 'department',
+                      width: 120,
+                      render: (text) => <span>{text}</span>
+                    },
+                    {
                       title: '舆情类型标签',
                       dataIndex: 'opinionTags',
                       key: 'opinionTags',
@@ -1143,7 +1096,7 @@ const PeopleDatabase: React.FC = () => {
         <Modal
           title={
             <span>
-              <FileSearchOutlined /> 蓝鹰人员全量画像监视台账
+              <FileSearchOutlined /> 人员详情
             </span>
           }
           open={detailVisible}
@@ -1169,13 +1122,6 @@ const PeopleDatabase: React.FC = () => {
                     </span>
                   </h3>
                   <Space style={{ marginTop: '4px' }}>
-                    {selectedPerson.riskLevel === 'high' ? (
-                      <Tag color="red">🔴 极高风险关注</Tag>
-                    ) : selectedPerson.riskLevel === 'medium' ? (
-                      <Tag color="orange">🟡 中度风险监控</Tag>
-                    ) : (
-                      <Tag color="blue">🔵 一般关注网民</Tag>
-                    )}
                     <Tag color="cyan">属地: {selectedPerson.department}分局</Tag>
                     <Tag color="blue">关联取证事件: {selectedPerson.incidentCount}起</Tag>
                   </Space>
@@ -1183,7 +1129,7 @@ const PeopleDatabase: React.FC = () => {
               </div>
 
               {/* 关键：个人基本字段 Descriptions（包含双源头融合露出） */}
-              <Descriptions title="内网登记基础特征" bordered size="small" column={2} style={{ marginBottom: '16px' }}>
+              <Descriptions title="人员信息" bordered size="small" column={2} style={{ marginBottom: '16px' }}>
                 <Descriptions.Item label="脱敏身份证"><code>{selectedPerson.idCard.substring(0, 6)}********{selectedPerson.idCard.substring(14)}</code></Descriptions.Item>
                 <Descriptions.Item label="脱敏手机号"><span>{selectedPerson.phone.substring(0, 3)}****{selectedPerson.phone.substring(7)}</span></Descriptions.Item>
                 
@@ -1207,7 +1153,7 @@ const PeopleDatabase: React.FC = () => {
 
               {/* 社交账号矩阵（一对多绑定） */}
               <div style={{ marginBottom: '16px' }}>
-                <div style={{ fontWeight: 600, color: '#333', marginBottom: '8px', fontSize: '13px' }}>绑定社交账号矩阵</div>
+                <div style={{ fontWeight: 600, color: '#333', marginBottom: '8px', fontSize: '13px' }}>关联账号</div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '8px' }}>
                   {selectedPerson.socialAccounts.map((account, index) => (
                     <Card key={index} size="small" style={{ background: '#fafafa', border: '1px solid #e8e8e8' }}>
@@ -1232,7 +1178,7 @@ const PeopleDatabase: React.FC = () => {
               <div>
                 <div style={{ fontWeight: 600, color: '#333', marginBottom: '10px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <LinkOutlined style={{ color: '#1890ff' }} />
-                  <span>客观取证帖文动态脉络流</span>
+                  <span>关联事件</span>
                   <span style={{ fontWeight: 'normal', color: '#999', fontSize: '11px' }}>(内网直达，不提供AI概要摘要)</span>
                 </div>
 
