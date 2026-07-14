@@ -54,6 +54,7 @@ import {
   LineChartOutlined,
   DeleteOutlined,
   PlusOutlined,
+  SafetyOutlined,
 } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import dayjs from 'dayjs';
@@ -537,7 +538,6 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
     setEditingTask(null);
   };
   const [activeTab, setActiveTab] = useState('all');
-  const [workView, setWorkView] = useState<'pending' | 'issued'>('pending');
   const [selectedEventIds, setSelectedEventIds] = useState<string[]>([]);
   const [batchPubOpen, setBatchPubOpen] = useState(false);
   const [ignoredEventIds, setIgnoredEventIds] = useState<string[]>([]);
@@ -545,6 +545,13 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
   const [instructionTargetIds, setInstructionTargetIds] = useState<string[]>([]);
   const [detailInstruction, setDetailInstruction] = useState<IssuedInstruction | null>(null);
   const [linkStatusMap, setLinkStatusMap] = useState<Record<string, IssuedInstruction['linkStatus']>>({});
+  const [onlyShowIssued, setOnlyShowIssued] = useState(false);
+
+  // 批量失效监测相关状态
+  const [isDetectModalOpen, setIsDetectModalOpen] = useState(false);
+  const [isDetecting, setIsDetecting] = useState(false);
+  const [detectProgress, setDetectProgress] = useState(0);
+  const [detectResults, setDetectResults] = useState<{ id: string; eventId: string; title: string; platform: string; instructionNames: string[]; linkStatus: string }[]>([]);
 
   // 新增：一级 Tab 状态（articles: 文章列表, analysis: 快速分析, statistics: 工作情况统计, summary: 舆情综述）
   const [firstLevelTab, setFirstLevelTab] = useState<'articles' | 'analysis' | 'statistics' | 'summary'>('articles');
@@ -1336,7 +1343,21 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
     };
   }, [firstLevelTab, trendDimension]);
 
-  const visibleEvents = eventList.filter((event) => !ignoredEventIds.includes(event.id));
+  const visibleEvents = eventList
+    .filter((event) => !ignoredEventIds.includes(event.id))
+    .filter((event) => {
+      if (onlyShowIssued) {
+        const hasInstruction = issuedInstructions.some(item => item.eventId === event.id);
+        if (!hasInstruction) return false;
+      }
+      if (activeTab === 'all') return true;
+      if (activeTab === 'weibo') return event.platform === '微博';
+      if (activeTab === 'douyin') return event.platform === '抖音';
+      if (activeTab === 'wechat') return event.platform === '微信';
+      if (activeTab === 'news') return event.platform === '新闻';
+      if (activeTab === 'warning') return event.isWaring;
+      return true;
+    });
   const allSelected = visibleEvents.length > 0 && selectedEventIds.length === visibleEvents.length;
 
   // 更多操作菜单
@@ -1368,7 +1389,112 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
   const handleInstructionSubmit = () => {
     setInstructionModalOpen(false);
     setSelectedEventIds([]);
-    setWorkView('issued');
+    setOnlyShowIssued(true);
+  };
+
+  // 批量失效监测相关方法
+  const openBatchDetectModal = () => {
+    setIsDetectModalOpen(true);
+    setIsDetecting(true);
+    setDetectProgress(0);
+    
+    // 获取需要监测的帖文：如果当前有选中项，则监测选中项中已下达指令的项；否则默认对列表中所有已下达指令的项进行监测
+    const targetEvents = selectedEventIds.length > 0
+      ? visibleEvents.filter(e => selectedEventIds.includes(e.id) && issuedInstructions.some(item => item.eventId === e.id))
+      : eventList.filter(e => issuedInstructions.some(item => item.eventId === e.id));
+      
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += 10;
+      setDetectProgress(progress);
+      if (progress >= 100) {
+        clearInterval(interval);
+        
+        // 随机让其中一些状态更新为链接失效，模拟真实检测
+        const results = targetEvents.map(e => {
+          const record = issuedInstructions.find(item => item.eventId === e.id);
+          let mockStatus = record ? (linkStatusMap[record.id] || record.linkStatus) : '未检测';
+          if (mockStatus === '未检测' || mockStatus === '仍可访问') {
+            mockStatus = Math.random() > 0.4 ? '链接失效' : '仍可访问';
+          }
+          return {
+            id: record?.id || `mock-${e.id}`,
+            eventId: e.id,
+            title: e.title,
+            platform: e.platform,
+            instructionNames: record?.instructionNames || ['待研判'],
+            linkStatus: mockStatus
+          };
+        });
+        
+        // 优先展示已失效（链接失效）的记录
+        const sortedResults = [...results].sort((a, b) => {
+          if (a.linkStatus === '链接失效' && b.linkStatus !== '链接失效') return -1;
+          if (a.linkStatus !== '链接失效' && b.linkStatus === '链接失效') return 1;
+          return 0;
+        });
+        
+        setDetectResults(sortedResults);
+        setIsDetecting(false);
+      }
+    }, 150);
+  };
+
+  const handleBatchDetectConfirm = () => {
+    const updatedStatusMap = { ...linkStatusMap };
+    detectResults.forEach(item => {
+      updatedStatusMap[item.id] = item.linkStatus as any;
+    });
+    setLinkStatusMap(updatedStatusMap);
+    setIsDetectModalOpen(false);
+    message.success('已成功同步失效监测状态至列表');
+  };
+
+  const renderInstructionProcessSlot = (eventId: string) => {
+    const record = issuedInstructions.find(item => item.eventId === eventId);
+    if (!record) return null;
+    
+    const linkStatus = linkStatusMap[record.id] || record.linkStatus;
+    
+    return (
+      <div className="issued-instruction-process-slot" style={{
+        marginTop: 12,
+        padding: '12px 16px',
+        background: 'rgba(24, 144, 255, 0.03)',
+        borderRadius: 6,
+        border: '1px solid rgba(24, 144, 255, 0.12)',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: '13px', color: '#555' }}>
+            <span><strong>已下达指令：</strong>{record.instructionNames.join('、')}</span>
+            <span><strong>接收属地/部门：</strong>{record.receiverArea} ({record.receiverPost})</span>
+            <span><strong>接收人员：</strong>{record.receiverUser}</span>
+            <span><strong>截止时间：</strong>{record.deadline}</span>
+            <span><strong>处置状态：</strong>
+              <Tag className={`command-status-tag ${getStatusClassName(record.status)}`}>{record.status}</Tag>
+            </span>
+            <span><strong>链接状态：</strong>
+              <Tag className={`link-status-tag ${getLinkStatusClassName(linkStatus)}`}>
+                <LinkOutlined /> {linkStatus}
+              </Tag>
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Button size="small" icon={<SyncOutlined />} onClick={() => handleDetectLink(record.id)}>
+              检测链接
+            </Button>
+            <Button size="small" type="primary" onClick={() => setDetailInstruction(record)}>
+              查看进度
+            </Button>
+          </div>
+        </div>
+        {record.latestFeedback && (
+          <div style={{ marginTop: 8, fontSize: '12px', color: '#777', borderTop: '1px dashed #e8e8e8', paddingTop: 8 }}>
+            <strong>最新反馈：</strong>{record.latestFeedback}
+          </div>
+        )}
+      </div>
+    );
   };
 
   const handleDetectLink = (recordId: string) => {
@@ -1417,6 +1543,7 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
       warningLabel={event.isWaring ? <><ExclamationCircleOutlined /> 预警</> : undefined}
       hasVideo={!!event.videoUrl}
       selected={selectedEventIds.includes(event.id)}
+      processSlot={renderInstructionProcessSlot(event.id)}
       selectionSlot={
         <Checkbox
           checked={selectedEventIds.includes(event.id)}
@@ -1729,93 +1856,61 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
           <>
             {/* 搜索筛选栏 */}
             <div className="detail-filter-bar">
-              <div className="filter-search">
+              <div className="filter-search" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                 <Input
                   prefix={<SearchOutlined />}
-                  placeholder={workView === 'pending' ? '搜索事件内容' : '搜索已下达指令'}
+                  placeholder="搜索事件内容"
                   className="event-search-input"
                 />
+                <Checkbox 
+                  checked={onlyShowIssued} 
+                  onChange={(e) => setOnlyShowIssued(e.target.checked)}
+                  style={{ whiteSpace: 'nowrap', fontSize: '13px', marginLeft: 8 }}
+                >
+                  仅看已下达指令
+                </Checkbox>
               </div>
               <div className="filter-actions-detail">
-                {workView === 'issued' && (
-                  <Button icon={<SyncOutlined />}>批量检测链接</Button>
-                )}
+                <Button icon={<SafetyOutlined />} type="primary" onClick={openBatchDetectModal}>
+                  批量失效监测
+                </Button>
                 <Button icon={<FilterOutlined />}>筛选</Button>
                 <Button>排序 <DownOutlined /></Button>
                 <Button>时间 <DownOutlined /></Button>
               </div>
             </div>
 
-            <div className="work-view-switch">
-              <button
-                type="button"
-                className={workView === 'pending' ? 'active' : ''}
-                onClick={() => setWorkView('pending')}
-              >
-                待研判帖文
-                <Badge count={visibleEvents.length} />
-              </button>
-              <button
-                type="button"
-                className={workView === 'issued' ? 'active' : ''}
-                onClick={() => setWorkView('issued')}
-              >
-                已下达指令
-                <Badge count={issuedInstructions.length} />
-              </button>
-            </div>
-
             {/* 分类Tab */}
-            {workView === 'pending' ? (
-              <div className="detail-tabs-bar">
-                <Tabs activeKey={activeTab} onChange={setActiveTab} className="detail-tabs">
-                  <TabPane tab="全部" key="all" />
-                  <TabPane tab="微博" key="weibo" />
-                  <TabPane tab="抖音" key="douyin" />
-                  <TabPane tab="微信" key="wechat" />
-                  <TabPane tab="新闻" key="news" />
-                  <TabPane tab="预警" key="warning" />
-                </Tabs>
-                <div className="tabs-extra">
-                  <Checkbox
-                    checked={allSelected}
-                    indeterminate={selectedEventIds.length > 0 && !allSelected}
-                    onChange={(e) => setSelectedEventIds(e.target.checked ? visibleEvents.map((event) => event.id) : [])}
-                  >
-                    全选
-                  </Checkbox>
-                  <span className="total-count">共 {visibleEvents.length} 条</span>
-                </div>
+            <div className="detail-tabs-bar">
+              <Tabs activeKey={activeTab} onChange={setActiveTab} className="detail-tabs">
+                <TabPane tab="全部" key="all" />
+                <TabPane tab="微博" key="weibo" />
+                <TabPane tab="抖音" key="douyin" />
+                <TabPane tab="微信" key="wechat" />
+                <TabPane tab="新闻" key="news" />
+                <TabPane tab="预警" key="warning" />
+              </Tabs>
+              <div className="tabs-extra">
+                <Checkbox
+                  checked={allSelected}
+                  indeterminate={selectedEventIds.length > 0 && !allSelected}
+                  onChange={(e) => setSelectedEventIds(e.target.checked ? visibleEvents.map((event) => event.id) : [])}
+                >
+                  全选
+                </Checkbox>
+                <span className="total-count">共 {visibleEvents.length} 条</span>
               </div>
-            ) : (
-              <div className="issued-summary-bar">
-                <div className="issued-summary-item">
-                  <span>已下达</span>
-                  <strong>{issuedInstructions.length}</strong>
-                </div>
-                <div className="issued-summary-item">
-                  <span>处理中</span>
-                  <strong>1</strong>
-                </div>
-                <div className="issued-summary-item">
-                  <span>已完成</span>
-                  <strong>1</strong>
-                </div>
-                <div className="issued-summary-item">
-                  <span>链接失效</span>
-                  <strong>1</strong>
-                </div>
-              </div>
-            )}
-
+            </div>
             {/* 事件列表 */}
             <div className="event-list-container">
-              {workView === 'pending'
-                ? visibleEvents.map((event, index) => renderEventCard(event, index + 1))
-                : issuedInstructions.map((record) => renderIssuedCard(record))}
+              {visibleEvents.length > 0 ? (
+                visibleEvents.map((event, index) => renderEventCard(event, index + 1))
+              ) : (
+                <div style={{ padding: '40px 0', textAlign: 'center', color: '#999' }}>暂无符合条件的卡片数据</div>
+              )}
             </div>
 
-            {workView === 'pending' && selectedEventIds.length > 0 && (
+            {selectedEventIds.length > 0 && (
               <div className="batch-action-bar">
                 <div className="batch-left">
                   <Badge count={selectedEventIds.length} />
@@ -2372,7 +2467,116 @@ const TaskDetail: React.FC<TaskDetailProps> = ({ taskId, onBack }) => {
           </>
         }
       />
-      
+
+      {/* 新增：批量链接失效监测弹窗 */}
+      <Modal
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <SafetyOutlined style={{ color: '#1890ff' }} />
+            <span>批量链接失效监测</span>
+          </div>
+        }
+        width={750}
+        centered
+        open={isDetectModalOpen}
+        onCancel={() => !isDetecting && setIsDetectModalOpen(false)}
+        footer={
+          isDetecting ? null : [
+            <Button key="cancel" onClick={() => setIsDetectModalOpen(false)}>
+              关闭
+            </Button>,
+            <Button key="confirm" type="primary" onClick={handleBatchDetectConfirm}>
+              确认同步状态
+            </Button>
+          ]
+        }
+      >
+        {isDetecting ? (
+          <div style={{ padding: '40px 0', textAlign: 'center' }}>
+            <LoadingOutlined style={{ fontSize: 36, color: '#1890ff', marginBottom: 16 }} />
+            <div style={{ fontSize: '15px', fontWeight: 'bold', color: '#333', marginBottom: 8 }}>
+              正在执行批量链接失效监测...
+            </div>
+            <div style={{ width: '80%', margin: '0 auto', background: '#f5f5f5', borderRadius: 4, height: 8, overflow: 'hidden' }}>
+              <div style={{ width: `${detectProgress}%`, background: '#1890ff', height: '100%', transition: 'width 0.15s ease-out' }} />
+            </div>
+            <span style={{ fontSize: '12px', color: '#999', marginTop: 8, display: 'inline-block' }}>
+              检测进度：{detectProgress}%
+            </span>
+          </div>
+        ) : (
+          <div>
+            <div style={{
+              background: '#f6ffed',
+              border: '1px solid #b7eb8f',
+              padding: '10px 16px',
+              borderRadius: 4,
+              marginBottom: 16,
+              fontSize: '13px',
+              color: '#389e0d',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <span>
+                监测完成！共对 <strong>{detectResults.length}</strong> 条指令原帖链接进行了健康度筛查。
+              </span>
+              <span>
+                已失效：<strong>{detectResults.filter(r => r.linkStatus === '链接失效').length}</strong> 篇
+              </span>
+            </div>
+            <div style={{ maxHeight: '350px', overflowY: 'auto', border: '1px solid #f0f0f0', borderRadius: 6 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                <thead>
+                  <tr style={{ background: '#fafafa', borderBottom: '1px solid #f0f0f0', textAlign: 'left' }}>
+                    <th style={{ padding: '10px 16px', fontWeight: 600 }}>序号</th>
+                    <th style={{ padding: '10px 16px', fontWeight: 600, width: '40%' }}>帖文内容/标题</th>
+                    <th style={{ padding: '10px 16px', fontWeight: 600 }}>指派平台</th>
+                    <th style={{ padding: '10px 16px', fontWeight: 600 }}>指令类型</th>
+                    <th style={{ padding: '10px 16px', fontWeight: 600, textAlign: 'center' }}>链接状态</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {detectResults.map((item, index) => {
+                    const isInvalid = item.linkStatus === '链接失效';
+                    return (
+                      <tr key={item.id} style={{
+                        borderBottom: '1px solid #f0f0f0',
+                        background: isInvalid ? 'rgba(255, 77, 79, 0.02)' : 'transparent',
+                        transition: 'background 0.3s'
+                      }}>
+                        <td style={{ padding: '10px 16px', color: '#888' }}>{index + 1}</td>
+                        <td style={{ padding: '10px 16px', fontWeight: 'bold' }}>
+                          <div style={{
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            maxWidth: '240px'
+                          }} title={item.title}>
+                            {item.title}
+                          </div>
+                        </td>
+                        <td style={{ padding: '10px 16px' }}>
+                          <Tag style={{ margin: 0 }}>{item.platform}</Tag>
+                        </td>
+                        <td style={{ padding: '10px 16px' }}>
+                          {item.instructionNames.join('、')}
+                        </td>
+                        <td style={{ padding: '10px 16px', textAlign: 'center' }}>
+                          <Tag color={isInvalid ? 'red' : 'green'} style={{ margin: 0 }}>
+                            {isInvalid ? <CloseOutlined /> : <CheckCircleOutlined />} {item.linkStatus}
+                          </Tag>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </Modal>
+
       {/* 新增：AI 舆情处置报告双栏对比弹窗 */}
       <Modal
         title="AI 舆情处置报告"
