@@ -16,6 +16,8 @@ import {
   message,
   Tooltip,
   Modal,
+  Badge,
+  Empty,
 } from 'antd';
 import {
   SearchOutlined,
@@ -41,6 +43,7 @@ import {
   SettingOutlined,
   TrophyOutlined,
   ClockCircleOutlined,
+  CloseOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import * as echarts from 'echarts';
@@ -371,6 +374,139 @@ const PoliceOpinionJoint: React.FC = () => {
   const [expandedFramePosts, setExpandedFramePosts] = useState<string[]>([]);
   const [expandedContentPosts, setExpandedContentPosts] = useState<string[]>([]);
 
+  // ==================== Approval Center States ====================
+  const [approvalOpen, setApprovalOpen] = useState(false);
+  const [pendingCount, setPendingCount] = useState(1);
+  const [filesCollapsed, setFilesCollapsed] = useState(false);
+  const [aiAnalyzing, setAiAnalyzing] = useState(false);
+
+  // Single pending event data structure
+  const [pendingEvent, setPendingEvent] = useState({
+    title: '清理荒苑路占道群聚聚集',
+    reporter: '河下派出所-唐子期',
+    unit: '河下派出所',
+    time: '2026-07-06 19:00:11',
+    location: '清淮苑入口旁道路',
+    description: '现场显示示威棚处建筑入口旁道路，因流散集市的十余名群众站立，部分人员手持手机；一辆黑色轿车沿道路正常行驶，经过人数及遮蔽区域；现场人员查询车辆方向，未见肢体冲突。未见肢体冲突，整体秩序平稳。',
+    aiAnalyzed: false,
+    files: [
+      {
+        name: 'VID_20260706_190021.mp4',
+        size: '11.83 MB',
+        type: 'video',
+      }
+    ]
+  });
+
+  // Opinion Category selection and AI text result states
+  const [opinionCategory, setOpinionCategory] = useState<string>('违背公序良俗严重冲击道德底线');
+  const [aiTextResult, setAiTextResult] = useState('视频画面解析发现现场因流散集市的十余名群众站立，且有车辆正常经过，人车混行遮蔽视线，现场秩序存在聚集发酵风险。');
+
+  // Checkbox states to select which descriptions to submit
+  const [userDescChecked, setUserDescChecked] = useState(true);
+  const [aiDescChecked, setAiDescChecked] = useState(true);
+
+  // ==================== Approval Center Handlers ====================
+  const handleApprove = () => {
+    let finalDesc = pendingEvent.description;
+    if (pendingEvent.aiAnalyzed) {
+      const parts = [];
+      if (userDescChecked) {
+        parts.push(`【现场提交】：${pendingEvent.description}`);
+      }
+      if (aiDescChecked) {
+        parts.push(`【AI分析】：${aiTextResult}`);
+      }
+      finalDesc = parts.join('\n');
+    }
+
+    message.success('审批已通过，已成功创建警舆同处布控任务');
+    setPendingCount(0);
+    setApprovalOpen(false);
+
+    // Data linkage: insert the newly approved event into the homepage events list
+    const newEvent: EventItem = {
+      id: 'ev-new-approved-single',
+      title: '清理荒苑路占道群聚聚集',
+      type: opinionCategory, // Saved opinion category
+      area: '淮安区',
+      risk: '黄色',
+      time: '2026-07-06 19:00:11',
+      volume: '0.14k',
+      volumeTrend: 'up',
+      originalCount: '3',
+      commentCount: '0',
+      hasAttachment: true,
+      attachmentType: 'video',
+      aiTrendText: '急速扩散',
+      aiTrendRate: '+25.0%/h',
+      aiTrendPredict: '0.17k',
+      trendData: [12, 24, 45, 68, 92, 115, 140],
+      hasAlertIcon: true,
+    };
+    setEvents(prev => [newEvent, ...prev]);
+  };
+
+  const handleReject = () => {
+    Modal.confirm({
+      title: '请输入驳回原因',
+      icon: <ExclamationCircleOutlined />,
+      content: (
+        <Input 
+          id="reject-reason-input" 
+          placeholder="请输入驳回意见（例如：上报材料不全，请重新上传现场照片）" 
+          style={{ marginTop: 12 }} 
+        />
+      ),
+      okText: '确认驳回',
+      cancelText: '取消',
+      okType: 'danger',
+      onOk() {
+        message.warning('已驳回该上报事件');
+        setPendingCount(0);
+        setApprovalOpen(false);
+      }
+    });
+  };
+
+  const handleAiReanalyze = () => {
+    setAiAnalyzing(true);
+    setTimeout(() => {
+      setAiAnalyzing(false);
+      setUserDescChecked(true);
+      setAiDescChecked(true);
+      setPendingEvent(prev => ({
+        ...prev,
+        aiAnalyzed: true,
+        files: [
+          ...prev.files,
+          {
+            name: 'keyframe_883fbdf04a842dd8a4.png',
+            size: '288.02 KB',
+            type: 'image',
+            title: '现场人员聚集',
+            src: './assets/field_gathering.png'
+          },
+          {
+            name: 'keyframe_8835a92d0ff40990b6.png',
+            size: '364.83 KB',
+            type: 'image',
+            title: '车辆行驶经过',
+            src: './assets/vehicle_passing.png'
+          },
+          {
+            name: 'keyframe_94954fa3c458147d9ae.png',
+            size: '328.02 KB',
+            type: 'image',
+            title: '遮蔽现场拍摄',
+            src: './assets/obscured_shooting.png'
+          }
+        ]
+      }));
+      message.success('AI重新分析完成，已强制提交 3 张现场关键帧，并生成分析结果！');
+    }, 1500);
+  };
+
   // Find currently selected event data
   const currentEvent = events.find((ev) => ev.id === selectedEventId) || events[0];
 
@@ -656,7 +792,15 @@ const PoliceOpinionJoint: React.FC = () => {
                 </Button>
                 <Button type="primary" icon={<SearchOutlined />} className="action-solid-btn">查询</Button>
                 <Button icon={<RadarChartOutlined />} className="action-green-btn">防控指令</Button>
-                <Button icon={<CheckOutlined />} className="action-purple-btn">审批中心</Button>
+                <Badge count={pendingCount} offset={[-8, 8]} style={{ boxShadow: '0 0 0 1px #fff' }}>
+                  <Button 
+                    icon={<CheckOutlined />} 
+                    className="action-purple-btn"
+                    onClick={() => setApprovalOpen(true)}
+                  >
+                    审批中心
+                  </Button>
+                </Badge>
                 <Button type="primary" danger icon={<EditOutlined />} className="action-red-btn">新建事件</Button>
               </div>
             </div>
@@ -1138,6 +1282,203 @@ const PoliceOpinionJoint: React.FC = () => {
           )}
         </div>
       )}
+      {/* 审批中心 Modal */}
+      <Modal
+        open={approvalOpen}
+        onCancel={() => setApprovalOpen(false)}
+        width={800}
+        title={
+          <div className="approval-modal-title">
+            <span className="approval-modal-title-text">审批中心</span>
+            {pendingCount > 0 && <span className="approval-modal-title-badge">{pendingCount}件审批</span>}
+          </div>
+        }
+        footer={
+          <div style={{ textAlign: 'right' }}>
+            <button className="btn-close-modal" onClick={() => setApprovalOpen(false)}>关闭</button>
+          </div>
+        }
+        centered
+        destroyOnClose
+      >
+        {pendingCount > 0 ? (
+          aiAnalyzing ? (
+            <div className="ai-loading-placeholder" style={{ marginTop: '20px', padding: '60px 0' }}>
+              <div className="ai-spinner" />
+              <div className="ai-loading-text">AI 现场视频内容智能理解与分析中...</div>
+              <div style={{ color: '#9ca3af', fontSize: '12px' }}>预计还需 1.5 秒</div>
+            </div>
+          ) : (
+            <div className="approval-event-card" style={{ boxShadow: 'none', border: 'none', padding: '8px 0 0 0', marginBottom: 0 }}>
+              <div className="approval-card-header">
+                <div className="approval-card-title-group">
+                  <span className="approval-card-title">{pendingEvent.title}</span>
+                  <Tag className="tag-app-mobile">APP机动</Tag>
+                  <Tag className="tag-pending-review">待审批</Tag>
+                </div>
+              </div>
+
+              <div className="approval-card-meta">
+                <div className="approval-card-meta-item">
+                  <span className="approval-card-meta-label">上报人: </span>
+                  <span className="approval-card-meta-value">{pendingEvent.reporter}</span>
+                </div>
+                <div className="approval-card-meta-item">
+                  <span className="approval-card-meta-label">上报单位: </span>
+                  <span className="approval-card-meta-value">{pendingEvent.unit}</span>
+                </div>
+                <div className="approval-card-meta-item">
+                  <span className="approval-card-meta-label">上报时间: </span>
+                  <span className="approval-card-meta-value">{pendingEvent.time}</span>
+                </div>
+              </div>
+
+              <div className="approval-card-address" onClick={() => message.info(`已在地图定位：${pendingEvent.location}`)} style={{ marginBottom: '16px' }}>
+                <EnvironmentOutlined style={{ color: '#2563eb' }} />
+                <span style={{ textDecoration: 'underline' }}>{pendingEvent.location}</span>
+              </div>
+
+              {/* 舆情类型选择框 */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', fontSize: '13px' }}>
+                <span style={{ color: '#6b7280', fontWeight: 600 }}>舆情类型: </span>
+                <Select 
+                  value={opinionCategory} 
+                  onChange={setOpinionCategory} 
+                  style={{ width: '280px' }}
+                  options={[
+                    { value: '违背公序良俗严重冲击道德底线', label: '违背公序良俗严重冲击道德底线' },
+                    { value: '涉黄赌毒线索', label: '涉黄赌毒线索' },
+                    { value: '生态环保', label: '生态环保' },
+                    { value: '食药安全', label: '食药安全' },
+                    { value: '个人极端行为', label: '个人极端行为' },
+                  ]}
+                />
+              </div>
+
+              {/* 编辑与比对区域（当AI解析完毕后展现） */}
+              {pendingEvent.aiAnalyzed ? (
+                <div className="ai-analysis-container">
+                  <div className="ai-analysis-header">
+                    <span style={{ background: '#7c3aed', color: '#fff', padding: '1px 5px', borderRadius: '3px', fontSize: '10px' }}>AI</span>
+                    <span>AI 现场解析结果编辑区</span>
+                  </div>
+                  
+                  <div className="ai-analysis-inputs">
+                    <div className="ai-input-item">
+                      <span className="ai-input-label" style={{ color: '#2563eb', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Checkbox 
+                          checked={userDescChecked} 
+                          onChange={(e) => setUserDescChecked(e.target.checked)} 
+                        />
+                        现场提交事件概述：
+                      </span>
+                      <textarea 
+                        className="ai-textarea"
+                        rows={2}
+                        value={pendingEvent.description}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setPendingEvent(prev => ({ ...prev, description: val }));
+                        }}
+                      />
+                    </div>
+                    
+                    <div className="ai-input-item">
+                      <span className="ai-input-label" style={{ color: '#7c3aed', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Checkbox 
+                          checked={aiDescChecked} 
+                          onChange={(e) => setAiDescChecked(e.target.checked)} 
+                        />
+                        AI分析事件概述：
+                      </span>
+                      <textarea 
+                        className="ai-textarea"
+                        rows={3}
+                        value={aiTextResult}
+                        onChange={(e) => setAiTextResult(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="approval-card-description" style={{ marginBottom: '16px' }}>
+                  <strong>事件概述：</strong>{pendingEvent.description}
+                </div>
+              )}
+
+              {/* 现场情况文件列表 */}
+              <div className="approval-files-section">
+                <div className="approval-files-header" onClick={() => setFilesCollapsed(!filesCollapsed)}>
+                  <div className="approval-files-header-left">
+                    <FileTextOutlined style={{ color: '#3b82f6', marginRight: '4px' }} />
+                    <span>现场情况 共 {pendingEvent.files.length} 个文件</span>
+                  </div>
+                  <div className="approval-files-header-toggle">
+                    {filesCollapsed ? '展开 ﹀' : '收起 ︿'}
+                  </div>
+                </div>
+
+                {!filesCollapsed && (
+                  <div className="approval-files-list">
+                    {pendingEvent.files.map((file: any, fIdx: number) => {
+                      if (file.type === 'video') {
+                        return (
+                          <div className="approval-file-card" key={fIdx}>
+                            <div className="approval-file-preview video-preview">
+                              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="12" cy="12" r="10" stroke="white" strokeWidth="1.5" />
+                                <path d="M10 8L16 12L10 16V8Z" fill="white" />
+                                <line x1="4" y1="20" x2="20" y2="4" stroke="white" strokeWidth="1.5" />
+                              </svg>
+                            </div>
+                            <div className="approval-file-info">
+                              <div className="approval-file-name" title={file.name}>{file.name}</div>
+                              <div className="approval-file-size">{file.size}</div>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="approval-file-card" key={fIdx}>
+                          <div className="approval-file-preview">
+                            <img src={file.src} alt={file.title} />
+                            <div className="approval-file-preview-label">{file.title}</div>
+                          </div>
+                          <div className="approval-file-info">
+                            <div className="approval-file-name" title={file.name}>{file.name}</div>
+                            <div className="approval-file-size">{file.size}</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <div className="approval-card-actions">
+                {/* 如果未解析，显示AI重新分析按钮 */}
+                {!pendingEvent.aiAnalyzed && (
+                  <button className="btn-ai-analyze" onClick={handleAiReanalyze}>
+                    <RadarChartOutlined />
+                    <span>AI重新分析</span>
+                  </button>
+                )}
+                <button className="btn-reject" onClick={handleReject}>
+                  <CloseOutlined />
+                  <span>驳回</span>
+                </button>
+                <button className="btn-approve" onClick={handleApprove}>
+                  <CheckOutlined />
+                  <span>审批通过</span>
+                </button>
+              </div>
+            </div>
+          )
+        ) : (
+          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无待审批的事件" style={{ padding: '40px 0' }} />
+        )}
+      </Modal>
     </div>
   );
 };
