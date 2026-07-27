@@ -8121,3 +8121,262 @@
   0%, 100% { opacity: 0.6; }
   50% { opacity: 1; }
 }
+
+/* ---------------------------------------------------- */
+/* 事件详情步骤 1:1 复刻优化样式                        */
+/* ---------------------------------------------------- */
+.step-detail-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 16px;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+/* 手机App上报条 */
+.opinion-source-banner {
+  background: #f5f3ff; /* 极其淡雅的紫蓝色 */
+  border: 1px solid #e9e3ff;
+  border-radius: 6px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.source-banner-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #7c3aed; /* 紫色 */
+  color: #fff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 18px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(124, 58, 237, 0.15);
+}
+
+.source-banner-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.source-banner-title {
+  font-size: 14px;
+  color: #1f2937;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.source-banner-title strong {
+  font-weight: 600;
+  color: #111827;
+}
+
+.source-banner-reporter {
+  font-size: 12.5px;
+  color: #6b7280;
+}
+
+.source-banner-location {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+/* 两栏网格布局 */
+.detail-grid-layout {
+  display: flex;
+  gap: 16px;
+  width: 100%;
+}
+
+.detail-layout-left {
+  flex: 7;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.detail-layout-right {
+  flex: 3;
+  min-width: 330px;
+}
+
+/* 事件基本信息网格 */
+.info-grid-container {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-top: 1px solid #f0f0f0;
+  border-left: 1px solid #f0f0f0;
+  background-color: #fff;
+  margin-top: 12px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.info-grid-item {
+  border-right: 1px solid #f0f0f0;
+  border-bottom: 1px solid #f0f0f0;
+  padding: 12px 16px;
+  background-color: #fff;
+}
+
+.info-grid-item.span-2 {
+  grid-column: span 2;
+}
+
+.info-grid-label {
+  font-size: 12px;
+  color: #8c8c8c;
+  margin-bottom: 6px;
+}
+
+.info-grid-value {
+  font-size: 13.5px;
+  color: #262626;
+  font-weight: 500;
+}
+
+/* 现场图片浮层 */
+.image-item-container {
+  transition: transform 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.image-item-container:hover {
+  transform: scale(1.02);
+}
+
+.img-seq-badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: bold;
+  backdrop-filter: blur(2px);
+  z-index: 10;
+}
+
+.img-recognition-tag {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: rgba(22, 119, 255, 0.85); /* 蓝色半透明 */
+  color: #fff;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 2px;
+  backdrop-filter: blur(2px);
+  z-index: 10;
+}
+
+.img-filename-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: rgba(0, 0, 0, 0.55);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 9.5px;
+  padding: 4px 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: monospace;
+  z-index: 10;
+}
+
+.media-filename-tag {
+  font-size: 11px;
+  color: #bfbfbf;
+}
+
+/* AI 视频解读报告 */
+.ai-report-card {
+  height: 100%;
+  background: #fff;
+}
+
+.ai-report-icon-tag {
+  background: linear-gradient(135deg, #7c3aed 0%, #3366ff 100%);
+  color: #fff;
+  font-size: 10px;
+  font-weight: bold;
+  padding: 1px 5px;
+  border-radius: 3px;
+  display: inline-block;
+  letter-spacing: 0.5px;
+}
+
+.ai-report-scroll-body {
+  scrollbar-width: thin;
+}
+
+.ai-report-scroll-body::-webkit-scrollbar {
+  width: 5px;
+}
+
+.ai-report-scroll-body::-webkit-scrollbar-thumb {
+  background: #e8e8e8;
+  border-radius: 3px;
+}
+
+.section-subtitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: #8c8c8c;
+  margin: 0 0 8px 0;
+}
+
+.section-subtitle.risk-title {
+  color: #ff4d4f; /* 红色 */
+}
+
+/* 全红字风险评估 */
+.risk-assessment-section {
+  border-top: 1px solid #f0f0f0;
+  border-bottom: 1px solid #f0f0f0;
+  padding: 12px 0;
+  margin: 16px 0;
+}
+
+.risk-item {
+  color: #ff4d4f !important; /* 强制全部红色 */
+  font-size: 12px;
+}
+
+.risk-label {
+  font-weight: bold;
+}
+
+.risk-value {
+  color: #ff4d4f !important;
+}
+
+/* 关键观察 */
+.obs-num-badge {
+  background: #ff4d4f !important;
+  box-shadow: 0 1px 3px rgba(255, 77, 79, 0.3);
+}
+
+.obs-text strong {
+  color: #111827;
+  font-weight: 600;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}

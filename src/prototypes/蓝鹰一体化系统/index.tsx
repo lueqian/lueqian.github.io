@@ -12,6 +12,9 @@ import PeopleDatabase from './pages/PeopleDatabase';
 import StabilityMaintenance from './pages/StabilityMaintenance';
 import PublicationsManagement from './pages/PublicationsManagement';
 import './style.css';
+import './screen-style.css';
+import InternetDataScreen from './pages/InternetDataScreen';
+import IntranetDataScreen from './pages/IntranetDataScreen';
 
 export type PageKey =
   | 'police-opinion-joint'
@@ -22,7 +25,9 @@ export type PageKey =
   | 'toolbox'
   | 'people-database'
   | 'stability-maintenance'
-  | 'publications-management';
+  | 'publications-management'
+  | 'internet-data-screen'
+  | 'intranet-data-screen';
 
 export interface AxureProps {
   onEvent?: (eventName: string, data?: string) => void;
@@ -70,6 +75,10 @@ const BlueEagleIntegratedSystem = forwardRef<AxureHandle, AxureProps>(function B
         return <StabilityMaintenance />;
       case 'publications-management':
         return <PublicationsManagement />;
+      case 'internet-data-screen':
+        return <InternetDataScreen onNavigate={handleMenuSelect} onSwitch={handleMenuSelect} />;
+      case 'intranet-data-screen':
+        return <IntranetDataScreen onNavigate={handleMenuSelect} onSwitch={handleMenuSelect} />;
       default:
         return <PoliceOpinionJoint />;
     }
@@ -110,7 +119,7 @@ const BlueEagleIntegratedSystem = forwardRef<AxureHandle, AxureProps>(function B
         },
       }}
     >
-      <div className="blue-eagle-system">
+      <div className={`blue-eagle-system ${activePage.endsWith('data-screen') ? 'screen-mode' : ''}`}>
         <Header />
         <div className="main-container">
           <Navigation
@@ -119,7 +128,7 @@ const BlueEagleIntegratedSystem = forwardRef<AxureHandle, AxureProps>(function B
             collapsed={sidebarCollapsed}
             onCollapse={setSidebarCollapsed}
           />
-          <div className={`content-area ${sidebarCollapsed ? 'collapsed' : ''}`}>
+          <div className={`content-area ${sidebarCollapsed ? 'collapsed' : ''} ${activePage.endsWith('data-screen') ? 'screen-content' : ''}`}>
             {renderPage()}
           </div>
         </div>

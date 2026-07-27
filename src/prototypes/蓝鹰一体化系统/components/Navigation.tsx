@@ -12,6 +12,8 @@ import {
   UsergroupAddOutlined,
   MessageOutlined,
   BookOutlined,
+  GlobalOutlined,
+  ApartmentOutlined,
 } from '@ant-design/icons';
 
 export interface NavigationProps {
@@ -37,6 +39,8 @@ const menuItems: MenuItem[] = [
   { key: 'people-database', label: '人员库', icon: <UsergroupAddOutlined /> },
   { key: 'stability-maintenance', label: '稳情库', icon: <MessageOutlined /> },
   { key: 'publications-management', label: '刊物管理', icon: <BookOutlined /> },
+  { key: 'internet-data-screen', label: '互联网大屏', icon: <GlobalOutlined /> },
+  { key: 'intranet-data-screen', label: '内网大屏', icon: <ApartmentOutlined /> },
 ];
 
 const Navigation: React.FC<NavigationProps> = ({

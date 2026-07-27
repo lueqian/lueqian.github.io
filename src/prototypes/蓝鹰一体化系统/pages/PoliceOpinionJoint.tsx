@@ -49,6 +49,9 @@ import dayjs from 'dayjs';
 import * as echarts from 'echarts';
 import UnifiedOpinionCard from '../components/UnifiedOpinionCard';
 import AddToPublicationModal from '../components/AddToPublicationModal';
+import crowdOnlookersImg from '../assets/crowd_onlookers.png';
+import vehiclePassingImg from '../assets/vehicle_passing.png';
+import obscuredShootingImg from '../assets/obscured_shooting.png';
 
 const { RangePicker } = DatePicker;
 
@@ -160,6 +163,24 @@ interface PostItem {
 
 // ==================== Mock Data ====================
 const mockEvents: EventItem[] = [
+  {
+    id: 'ev-8',
+    title: '清雅苑入口道路群众聚集',
+    type: '业主物业纠纷',
+    area: '河下派出所',
+    risk: '黄色',
+    time: '2026-07-16 16:40:38',
+    volume: '12.5k',
+    volumeTrend: 'up',
+    originalCount: '8.2k',
+    commentCount: '4.3k',
+    hasAttachment: true,
+    attachmentType: 'video',
+    aiTrendText: '平稳',
+    aiTrendRate: '0.0%/h',
+    aiTrendPredict: '12.5k',
+    trendData: [10, 20, 15, 30, 45, 40, 50],
+  },
   {
     id: 'ev-1',
     title: '苏HP9516车辆拉"冤"字横幅',
@@ -366,6 +387,7 @@ const PoliceOpinionJoint: React.FC = () => {
   const [searchText, setSearchText] = useState('');
 
   // ==================== Event Details States ====================
+  const [currentStep, setCurrentStep] = useState<'detail' | 'control' | 'handle' | 'report' | 'review'>('detail');
   const [currentDetailTab, setCurrentDetailTab] = useState<'warn' | 'control' | 'person'>('warn');
   const [sentimentFilter, setSentimentFilter] = useState({ positive: true, neutral: true, negative: true });
   const [activePlatform, setActivePlatform] = useState('全部');
@@ -828,7 +850,10 @@ const PoliceOpinionJoint: React.FC = () => {
               pagination={false}
               className="police-opinion-table"
               onRow={(record) => ({
-                onClick: () => setSelectedEventId(record.id),
+                onClick: () => {
+                  setSelectedEventId(record.id);
+                  setCurrentStep('detail');
+                },
               })}
             />
             <div className="table-pagination-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px' }}>
@@ -872,63 +897,394 @@ const PoliceOpinionJoint: React.FC = () => {
 
           {/* Workflow Stepper */}
           <div className="detail-stepper-card">
-            <div className="step-item step-completed">
-              <div className="step-indicator">
-                <FileTextOutlined className="step-icon" />
-              </div>
-              <div className="step-info">
-                <div className="step-title">事件详情</div>
-                <div className="step-desc">上报与审批信息</div>
-              </div>
-              <div className="step-line" />
-            </div>
-
-            <div className="step-item step-active">
-              <div className="step-indicator">
-                <RadarChartOutlined className="step-icon" />
-              </div>
-              <div className="step-info">
-                <div className="step-title">布控</div>
-                <div className="step-desc">现场及网上布控</div>
-              </div>
-              <div className="step-line" />
-            </div>
-
-            <div className="step-item">
-              <div className="step-indicator">
-                <SettingOutlined className="step-icon" />
-              </div>
-              <div className="step-info">
-                <div className="step-title">处置</div>
-                <div className="step-desc">网上及网群处置</div>
-              </div>
-              <div className="step-line" />
-            </div>
-
-            <div className="step-item">
-              <div className="step-indicator">
-                <FileTextOutlined className="step-icon" />
-              </div>
-              <div className="step-info">
-                <div className="step-title">报告</div>
-                <div className="step-desc">形成阶段性报告</div>
-              </div>
-              <div className="step-line" />
-            </div>
-
-            <div className="step-item step-last">
-              <div className="step-indicator">
-                <TrophyOutlined className="step-icon" />
-              </div>
-              <div className="step-info">
-                <div className="step-title">复盘</div>
-                <div className="step-desc">复盘评价总结</div>
-              </div>
-            </div>
+            {[
+              { id: 'detail', title: '事件详情', desc: '上报与审批信息', icon: <FileTextOutlined /> },
+              { id: 'control', title: '布控', desc: '现场及网上布控', icon: <RadarChartOutlined /> },
+              { id: 'handle', title: '处置', desc: '网上及两群处置', icon: <SettingOutlined /> },
+              { id: 'report', title: '报告', desc: '形成阶段性报告', icon: <FileTextOutlined /> },
+              { id: 'review', title: '复盘', desc: '复盘评估总结', icon: <TrophyOutlined /> },
+            ].map((step, idx, arr) => {
+              const activeIndex = arr.findIndex(s => s.id === currentStep);
+              let statusClass = '';
+              if (idx === activeIndex) {
+                statusClass = 'step-active';
+              } else if (idx < activeIndex) {
+                statusClass = 'step-completed';
+              }
+              const isLast = idx === arr.length - 1;
+              return (
+                <div 
+                  key={step.id} 
+                  className={`step-item ${statusClass} ${isLast ? 'step-last' : ''}`}
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => {
+                    setCurrentStep(step.id as any);
+                    if (step.id === 'control') {
+                      setCurrentDetailTab('warn');
+                    }
+                  }}
+                >
+                  <div className="step-indicator">
+                    {React.cloneElement(step.icon, { className: 'step-icon' })}
+                  </div>
+                  <div className="step-info">
+                    <div className="step-title">{step.title}</div>
+                    <div className="step-desc">{step.desc}</div>
+                  </div>
+                  {!isLast && <div className="step-line" />}
+                </div>
+              );
+            })}
           </div>
 
-          {/* Tab Navigation Row */}
-          <div className="detail-tab-row">
+          {/* ================================================================ */}
+          {/* STEP 1: EVENT DETAILS (事件详情大步 1:1 复刻)                    */}
+          {/* ================================================================ */}
+          {currentStep === 'detail' && (
+            <div className="step-detail-content">
+              {/* 手机App上报紫色通知条 */}
+              <div className="opinion-source-banner">
+                <div className="source-banner-icon">
+                  <PhoneOutlined />
+                </div>
+                <div className="source-banner-content">
+                  <div className="source-banner-title">
+                    <strong>手机App上报</strong>
+                    <span className="source-banner-reporter">{currentEvent.title === '清雅苑入口道路群众聚集' ? '河下派出所-唐子阳' : '河下派出所-唐子期'}</span>
+                  </div>
+                  <div className="source-banner-location">
+                    {currentEvent.title === '清雅苑入口道路群众聚集' ? '清雅苑入口旁道路' : currentEvent.area}
+                  </div>
+                </div>
+              </div>
+
+              {/* 两栏网格布局 */}
+              <div className="detail-grid-layout">
+                {/* 左边栏 */}
+                <div className="detail-layout-left">
+                  {/* 卡片1：事件基本信息 */}
+                  <div className="detail-info-card card-container">
+                    <div className="card-header">
+                      <div className="card-header-left">
+                        <FileTextOutlined className="header-icon" />
+                        <span className="card-header-title">事件基本信息</span>
+                      </div>
+                      <Button icon={<EditOutlined />} size="small" className="action-outline-btn">编辑</Button>
+                    </div>
+                    <div className="info-grid-container">
+                      {/* Row 1 */}
+                      <div className="info-grid-item span-2">
+                        <div className="info-grid-label">事件标题</div>
+                        <div className="info-grid-value">{currentEvent.title}</div>
+                      </div>
+                      <div className="info-grid-item">
+                        <div className="info-grid-label">舆情类型</div>
+                        <div className="info-grid-value">{currentEvent.type}</div>
+                      </div>
+                      <div className="info-grid-item">
+                        <div className="info-grid-label">责任属地</div>
+                        <div className="info-grid-value">{currentEvent.area}</div>
+                      </div>
+
+                      {/* Row 2 */}
+                      <div className="info-grid-item">
+                        <div className="info-grid-label">风险等级</div>
+                        <div className="info-grid-value">
+                          <span className={`risk-pill risk-inline-tag ${
+                            currentEvent.risk === '红色' ? 'risk-red' :
+                            currentEvent.risk === '橙色' ? 'risk-orange' :
+                            currentEvent.risk === '黄色' ? 'risk-yellow' : 'risk-blue'
+                          }`}>
+                            {currentEvent.risk}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="info-grid-item">
+                        <div className="info-grid-label">上报人</div>
+                        <div className="info-grid-value">
+                          {currentEvent.title === '清雅苑入口道路群众聚集' ? '河下派出所-唐子阳' : '河下派出所-唐子期'}
+                        </div>
+                      </div>
+                      <div className="info-grid-item span-2">
+                        <div className="info-grid-label">上报时间</div>
+                        <div className="info-grid-value">
+                          {currentEvent.title === '清雅苑入口道路群众聚集' ? '2026-07-16 16:40:38' : currentEvent.time}
+                        </div>
+                      </div>
+
+                      {/* Row 3 */}
+                      <div className="info-grid-item span-2">
+                        <div className="info-grid-label">发生时间</div>
+                        <div className="info-grid-value">
+                          {currentEvent.title === '清雅苑入口道路群众聚集' ? '2026-07-06 19:00:11' : currentEvent.time}
+                        </div>
+                      </div>
+                      <div className="info-grid-item span-2">
+                        <div className="info-grid-label">发生地址</div>
+                        <div className="info-grid-value">
+                          {currentEvent.title === '清雅苑入口道路群众聚集' ? '清雅苑入口旁道路' : currentEvent.area}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 卡片2：事件概述 */}
+                  <div className="detail-info-card card-container">
+                    <div className="card-header">
+                      <div className="card-header-left">
+                        <FileTextOutlined className="header-icon" />
+                        <span className="card-header-title">事件概述</span>
+                      </div>
+                    </div>
+                    <div className="event-description-text" style={{ padding: '16px', fontSize: '13.5px', lineHeight: '1.6', color: '#262626' }}>
+                      {currentEvent.title === '清雅苑入口道路群众聚集' 
+                        ? '视频显示清雅苑建筑入口旁道路，路边聚集约十余名群众站立，部分人员手持手机；一辆黑色轿车沿道路正常行驶，经过人群及罩阁区域；现场人员面向车辆方向，未见肢体冲突，道路未受阻塞，整体秩序平稳。'
+                        : `该事件发生于${currentEvent.area}，现场监测到事件信息。目前该事件处于${currentEvent.risk}风险监控级别，已安排人员启动线上与线下布控研判流程。`}
+                    </div>
+                  </div>
+
+                  {/* 卡片3：现场视频与现场图片 */}
+                  <div className="media-resources-row" style={{ display: 'flex', gap: '16px' }}>
+                    {/* 现场视频 */}
+                    <div className="media-card card-container" style={{ flex: 1 }}>
+                      <div className="card-header">
+                        <div className="card-header-left">
+                          <PlayCircleOutlined className="header-icon" style={{ color: '#3366FF' }} />
+                          <span className="card-header-title">现场视频</span>
+                        </div>
+                        <span className="media-filename-tag">VID_20260706_190021.mp4 &nbsp;&nbsp; 11.8 MB</span>
+                      </div>
+                      <div className="video-player-wrapper" style={{ padding: '12px', display: 'flex', justifyContent: 'center' }}>
+                        {/* 1:1 仿真视频播放器占位容器，避免外网视频源加载失败 */}
+                        <div className="simulated-video-player" style={{ 
+                          position: 'relative', 
+                          width: '100%', 
+                          height: '235px', 
+                          borderRadius: '4px', 
+                          backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0.35)), url(${vehiclePassingImg})`,
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center',
+                          backgroundColor: '#000',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'center',
+                          alignItems: 'center'
+                        }}>
+                          {/* 居中大播放按钮 */}
+                          <PlayCircleOutlined style={{ fontSize: '48px', color: '#fff', cursor: 'pointer', opacity: 0.9, transition: 'all 0.2s' }} className="video-play-btn" />
+                          
+                          {/* 底部模拟控制条 */}
+                          <div className="video-mock-controls" style={{
+                            position: 'absolute',
+                            bottom: 0,
+                            left: 0,
+                            width: '100%',
+                            background: 'rgba(0, 0, 0, 0.65)',
+                            padding: '6px 12px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 10,
+                            borderBottomLeftRadius: '4px',
+                            borderBottomRightRadius: '4px'
+                          }}>
+                            <PlayCircleOutlined style={{ color: '#fff', fontSize: '12px' }} />
+                            <span style={{ color: '#fff', fontSize: '10px' }}>00:00 / 00:05</span>
+                            {/* 进度条 */}
+                            <div style={{ flex: 1, height: '3px', background: 'rgba(255,255,255,0.3)', borderRadius: '1.5px', position: 'relative' }}>
+                              <div style={{ width: '0%', height: '100%', background: '#3366FF', borderRadius: '1.5px' }} />
+                            </div>
+                            <span style={{ color: '#fff', fontSize: '10px' }}>高清 1080P</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 现场图片 */}
+                    <div className="media-card card-container" style={{ flex: 1 }}>
+                      <div className="card-header">
+                        <div className="card-header-left">
+                          <CopyOutlined className="header-icon" style={{ color: '#3366FF' }} />
+                          <span className="card-header-title">现场图片</span>
+                        </div>
+                        <span className="media-filename-tag">共 3 张</span>
+                      </div>
+                      <div className="image-grid-wrapper" style={{ padding: '12px', display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '115px 115px', gap: '8px' }}>
+                        {/* 图片1 */}
+                        <div className="image-item-container" style={{ position: 'relative', borderRadius: '4px', overflow: 'hidden', backgroundColor: '#f5f5f5' }}>
+                          <img 
+                            src={crowdOnlookersImg} 
+                            alt="围观人员聚集" 
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                            onError={(e) => {
+                              // 后备无图占位
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                          <span className="img-seq-badge">1</span>
+                          <span className="img-recognition-tag">围观人员聚集</span>
+                          <div className="img-filename-overlay">keyframe_583d3bdf04a842d8a40dd85d...</div>
+                        </div>
+
+                        {/* 图片3 */}
+                        <div className="image-item-container" style={{ position: 'relative', borderRadius: '4px', overflow: 'hidden', backgroundColor: '#f5f5f5' }}>
+                          <img 
+                            src={obscuredShootingImg} 
+                            alt="地点标识识别" 
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                          <span className="img-seq-badge">3</span>
+                          <span className="img-recognition-tag">地点标识识别</span>
+                          <div className="img-filename-overlay">keyframe_94654e3c458147e9aed214fb5...</div>
+                        </div>
+
+                        {/* 图片2 */}
+                        <div className="image-item-container" style={{ position: 'relative', borderRadius: '4px', overflow: 'hidden', gridColumn: '1 / 2', backgroundColor: '#f5f5f5' }}>
+                          <img 
+                            src={vehiclePassingImg} 
+                            alt="车辆行驶经过" 
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                          <span className="img-seq-badge">2</span>
+                          <span className="img-recognition-tag">车辆行驶经过</span>
+                          <div className="img-filename-overlay">keyframe_vehicle_passing_0706_190021...</div>
+                        </div>
+                        
+                        {/* 右下空位美化 */}
+                        <div className="image-item-placeholder" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', background: '#fafafa', border: '1px dashed #d9d9d9', borderRadius: '4px' }}>
+                          <span style={{ fontSize: '11px', color: '#bfbfbf' }}>关键帧分析已完成</span>
+                          <span style={{ fontSize: '9px', color: '#d9d9d9' }}>LAN YING AI</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 右边栏 */}
+                <div className="detail-layout-right">
+                  {/* AI 视频解读报告 */}
+                  <div className="ai-report-card card-container">
+                    <div className="card-header ai-report-header" style={{ borderBottom: '1px solid #f0f0f0', paddingBottom: '12px' }}>
+                      <div className="card-header-left">
+                        <span className="ai-report-icon-tag">AI</span>
+                        <span className="card-header-title" style={{ marginLeft: '8px' }}>AI 视频解读报告</span>
+                      </div>
+                    </div>
+                    
+                    <div className="ai-report-scroll-body" style={{ padding: '16px', overflowY: 'auto', maxHeight: '550px' }}>
+                      {/* 场景描述 */}
+                      <div className="ai-report-section" style={{ marginBottom: '16px' }}>
+                        <h5 className="section-subtitle">场景描述</h5>
+                        <p className="section-paragraph" style={{ margin: 0, fontSize: '12.5px', lineHeight: '1.6', color: '#595959' }}>
+                          {currentEvent.title === '清雅苑入口道路群众聚集' 
+                            ? '室外场景，位于标有*清雅苑*字样的建筑入口旁道路。天气晴朗，光线充足。路边聚集约十余名群众，呈站立姿态，部分人员手持手机疑似拍摄。一辆黑色轿车沿道路正常行驶，经过漆黑区域。道路通畅，未见拥堵或冲突迹象。'
+                            : `该视频记录了关于“${currentEvent.title}”的现场情况。画面光线及可见度正常，现场无剧烈言行冲突，人员正陆续聚集或流动，已生成初步评估结果。`}
+                        </p>
+                      </div>
+
+                      {/* 风险评估 */}
+                      <div className="ai-report-section risk-assessment-section" style={{ borderTop: '1px solid #f0f0f0', borderBottom: '1px solid #f0f0f0', padding: '12px 0', marginBottom: '16px' }}>
+                        <h5 className="section-subtitle risk-title" style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#f5222d', fontWeight: 'bold' }}>风险评估</h5>
+                        <div className="risk-content-list" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          <div className="risk-item" style={{ fontSize: '12px', color: '#f5222d' }}>
+                            <span className="risk-label" style={{ fontWeight: 'bold' }}>事件性质：</span>
+                            <span className="risk-value">{currentEvent.title === '清雅苑入口道路群众聚集' ? '和平表达/围观' : '现场聚集'}</span>
+                          </div>
+                          <div className="risk-item" style={{ fontSize: '12px', color: '#f5222d' }}>
+                            <span className="risk-label" style={{ fontWeight: 'bold' }}>人群规模：</span>
+                            <span className="risk-value">{currentEvent.title === '清雅苑入口道路群众聚集' ? '小规模（<20 人）' : '中等规模'}</span>
+                          </div>
+                          <div className="risk-item" style={{ fontSize: '12px', color: '#f5222d' }}>
+                            <span className="risk-label" style={{ fontWeight: 'bold' }}>升级风险：</span>
+                            <span className="risk-value">{currentEvent.risk === '红色' ? '高' : (currentEvent.risk === '橙色' ? '中' : '低')}</span>
+                          </div>
+                          <div className="risk-item" style={{ fontSize: '12px', color: '#f5222d', lineHeight: '1.5' }}>
+                            <span className="risk-label" style={{ fontWeight: 'bold' }}>判断依据：</span>
+                            <span className="risk-value">
+                              {currentEvent.title === '清雅苑入口道路群众聚集' 
+                                ? '现场秩序平稳，道路未受阻，人员仅站立围观未发生肢体冲突或拦截行为，车辆正常通行。'
+                                : '根据现场聚集人员的状态、秩序及交通状况综合评定。'}
+                            </span>
+                          </div>
+                          <div className="risk-item" style={{ fontSize: '12px', color: '#f5222d' }}>
+                            <span className="risk-label" style={{ fontWeight: 'bold' }}>是否涉警：</span>
+                            <span className="risk-value">否</span>
+                          </div>
+                          <div className="risk-item" style={{ fontSize: '12px', color: '#f5222d', lineHeight: '1.5' }}>
+                            <span className="risk-label" style={{ fontWeight: 'bold' }}>涉警风险：</span>
+                            <span className="risk-value">
+                              {currentEvent.title === '清雅苑入口道路群众聚集' 
+                                ? '现场未见警务人员或警用车辆，暂未涉及执法行为或警民冲突。但需关注事态升级是否需警力介入。'
+                                : '当前未见实质涉警冲突，需要持续观测现场是否发生阻碍交通或过度维权表现。'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 关键观察 */}
+                      <div className="ai-report-section">
+                        <h5 className="section-subtitle" style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#8c8c8c' }}>关键观察</h5>
+                        <div className="observation-list" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                          {currentEvent.title === '清雅苑入口道路群众聚集' ? (
+                            <>
+                              {/* Item 1 */}
+                              <div className="observation-item" style={{ display: 'flex', gap: '8px' }}>
+                                <div className="obs-num-badge" style={{ width: '16px', height: '16px', borderRadius: '50%', background: '#f5222d', color: '#fff', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px' }}>1</div>
+                                <div className="obs-text" style={{ fontSize: '12px', color: '#595959', lineHeight: '1.5' }}>
+                                  <strong>部分群众手持手机</strong>对着车辆方向；<strong>风险关联</strong>：可能存在视频录制并上传网络的风险，易引发舆情发酵；<strong>建议</strong>：监测网络平台是否有相关视频传播
+                                </div>
+                              </div>
+                              {/* Item 2 */}
+                              <div className="observation-item" style={{ display: 'flex', gap: '8px' }}>
+                                <div className="obs-num-badge" style={{ width: '16px', height: '16px', borderRadius: '50%', background: '#f5222d', color: '#fff', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px' }}>2</div>
+                                <div className="obs-text" style={{ fontSize: '12px', color: '#595959', lineHeight: '1.5' }}>
+                                  <strong>人群聚集</strong>于小区/园区入口道路旁；<strong>风险关联</strong>：入口为关键通道，若人群情绪变化易造成交通阻断；<strong>建议</strong>：关注人群是否后续有拦截车辆行为
+                                </div>
+                              </div>
+                              {/* Item 3 */}
+                              <div className="observation-item" style={{ display: 'flex', gap: '8px' }}>
+                                <div className="obs-num-badge" style={{ width: '16px', height: '16px', borderRadius: '50%', background: '#f5222d', color: '#fff', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px' }}>3</div>
+                                <div className="obs-text" style={{ fontSize: '12px', color: '#595959', lineHeight: '1.5' }}>
+                                  <strong>黑色轿车正常通过人群</strong>；<strong>风险关联</strong>：目前车辆未受干扰，但作为关注焦点可能存在针对性；<strong>建议</strong>：核实车辆归属及人群聚集原因
+                                </div>
+                              </div>
+                              {/* Item 4 */}
+                              <div className="observation-item" style={{ display: 'flex', gap: '8px' }}>
+                                <div className="obs-num-badge" style={{ width: '16px', height: '16px', borderRadius: '50%', background: '#f5222d', color: '#fff', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px' }}>4</div>
+                                <div className="obs-text" style={{ fontSize: '12px', color: '#595959', lineHeight: '1.5' }}>
+                                  建筑标识<strong>“清雅苑”清晰可见</strong>；<strong>风险关联</strong>：地点明确，便于网络定位和线下溯源，易形成特定地点的舆情标签；<strong>建议</strong>：关注该地点历史舆情记录及物业/管理方回应
+                                </div>
+                              </div>
+                            </>
+                          ) : (
+                            <div className="observation-item" style={{ display: 'flex', gap: '8px' }}>
+                              <div className="obs-num-badge" style={{ width: '16px', height: '16px', borderRadius: '50%', background: '#f5222d', color: '#fff', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>1</div>
+                              <div className="obs-text" style={{ fontSize: '12px', color: '#595959' }}>
+                                <strong>已启动研判程序</strong>；根据警舆一体化原则，布控及处置详情已在布控步骤下上线，建议切换大步骤以执行处置联动。
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ================================================================ */}
+          {/* STEP 2: CONTROL & TAB CONTENT (布控大步渲染包裹)                  */}
+          {/* ================================================================ */}
+          {currentStep === 'control' && (
+            <>
+              {/* Tab Navigation Row */}
+              <div className="detail-tab-row">
             <div className="detail-tabs">
               <div 
                 className={`detail-tab ${currentDetailTab === 'warn' ? 'active' : ''}`}
@@ -1277,6 +1633,30 @@ const PoliceOpinionJoint: React.FC = () => {
                     <div>管控状态: 已被现场民警劝离</div>
                   </div>
                 </div>
+              </div>
+            </div>
+          )}
+          </>)}
+
+          {/* 其他步骤的简单占位展示 */}
+          {['handle', 'report', 'review'].includes(currentStep) && (
+            <div className="view-card premium-placeholder-view" style={{ minHeight: '350px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 20px', textAlign: 'center' }}>
+              <div className="placeholder-icon" style={{ fontSize: '48px', marginBottom: '16px' }}>
+                {currentStep === 'handle' ? '⚙️' : (currentStep === 'report' ? '📄' : '🏆')}
+              </div>
+              <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#262626', marginBottom: '8px' }}>
+                {currentStep === 'handle' && '网上及两群处置流转中'}
+                {currentStep === 'report' && '形成阶段性报告与呈批'}
+                {currentStep === 'review' && '警舆同处复盘评估总结'}
+              </h3>
+              <p style={{ fontSize: '13px', color: '#8c8c8c', maxWidth: '500px', lineHeight: '1.6', margin: '0 0 24px 0' }}>
+                {currentStep === 'handle' && '当前步骤由网警支队承接执行。正对多渠道敏感帖文执行劝删、限流与回应处置，建议您切换步骤以查看详细现场布控。'}
+                {currentStep === 'report' && '正在基于处置与舆情趋势半自动生成专项报告与呈批公文。您可以在“刊物管理”模块查看更多排版底稿。'}
+                {currentStep === 'review' && '该事件已进入后期复盘阶段，可查看最终质效评分统计。详情指标也已录入“复盘总结”大屏。'}
+              </p>
+              <div className="dispatch-buttons">
+                <Button type="primary" onClick={() => setCurrentStep('detail')}>返回事件详情</Button>
+                <Button style={{ marginLeft: '12px' }} onClick={() => setCurrentStep('control')}>查看现场布控</Button>
               </div>
             </div>
           )}
