@@ -18,6 +18,7 @@ import {
   Modal,
   Badge,
   Empty,
+  Radio,
 } from 'antd';
 import {
   SearchOutlined,
@@ -141,6 +142,22 @@ interface EventItem {
   aiTrendPredict: string;
   trendData: number[];
   hasAlertIcon?: boolean;
+  videoStatus?: 'no_video' | 'dispatched' | 'returned' | 'overtime';
+  dispatchedTo?: string;
+  deadlineText?: string;
+  videoVersions?: {
+    filename: string;
+    filesize: string;
+    videoThumbnail: string;
+    keyframes: { name: string; thumbnail: string; seq: number; hash: string }[];
+    aiReport: {
+      scene: string;
+      riskNature: string;
+      riskScale: string;
+      observations: string[];
+    };
+    description: string;
+  }[];
 }
 
 interface PostItem {
@@ -180,6 +197,31 @@ const mockEvents: EventItem[] = [
     aiTrendRate: '0.0%/h',
     aiTrendPredict: '12.5k',
     trendData: [10, 20, 15, 30, 45, 40, 50],
+    videoStatus: 'returned',
+    videoVersions: [
+      {
+        filename: 'VID_20260716_164010.mp4',
+        filesize: '9.45 MB',
+        videoThumbnail: vehiclePassingImg,
+        keyframes: [
+          { name: '现场人员聚集', thumbnail: crowdOnlookersImg, seq: 1, hash: 'keyframe_ev8_001...' },
+          { name: '劝导警力就位', thumbnail: vehiclePassingImg, seq: 2, hash: 'keyframe_ev8_002...' },
+          { name: '聚集商讨对话', thumbnail: obscuredShootingImg, seq: 3, hash: 'keyframe_ev8_003...' }
+        ],
+        aiReport: {
+          scene: '小区入口通道，约有十余名业主聚集在清雅苑门前通道。现场停有一辆黑色轿车，周边有部分群众围观，人员情绪平稳，未见肢体冲突。',
+          riskNature: '物业矛盾/聚集',
+          riskScale: '小规模 (15人左右)',
+          observations: [
+            '业主代表正在现场与物业负责人进行面对面交涉沟通。',
+            '通道未被封死，非涉事车辆仍能缓慢进出。',
+            '现场有民警在场开展秩序维护，防范矛盾升级。',
+            '舆情声量呈上升趋势，主要讨论点集中在物业服务收费合理性。'
+          ]
+        },
+        description: '视频显示清雅苑入口旁道路聚集了约十余名群众站立协商，部分人员持手机记录，现场秩序平稳，未见拥堵和冲突。'
+      }
+    ]
   },
   {
     id: 'ev-1',
@@ -197,6 +239,8 @@ const mockEvents: EventItem[] = [
     aiTrendRate: '+2.0%/h',
     aiTrendPredict: '0.96k',
     trendData: [10, 15, 12, 18, 22, 28, 35],
+    videoStatus: 'no_video',
+    videoVersions: []
   },
   {
     id: 'ev-2',
@@ -214,6 +258,8 @@ const mockEvents: EventItem[] = [
     aiTrendRate: '-3.0%/h',
     aiTrendPredict: '24.06w',
     trendData: [85, 76, 68, 62, 55, 48, 40],
+    videoStatus: 'no_video',
+    videoVersions: []
   },
   {
     id: 'ev-3',
@@ -231,6 +277,8 @@ const mockEvents: EventItem[] = [
     aiTrendRate: '-25.0%/h',
     aiTrendPredict: '3',
     trendData: [100, 80, 50, 30, 10, 5, 3],
+    videoStatus: 'no_video',
+    videoVersions: []
   },
   {
     id: 'ev-4',
@@ -248,6 +296,8 @@ const mockEvents: EventItem[] = [
     aiTrendRate: '0.0%/h',
     aiTrendPredict: '1.22k',
     trendData: [20, 20, 21, 20, 20, 20, 20],
+    videoStatus: 'no_video',
+    videoVersions: []
   },
   {
     id: 'ev-5',
@@ -267,6 +317,27 @@ const mockEvents: EventItem[] = [
     aiTrendPredict: '5',
     trendData: [15, 10, 8, 5, 5, 5, 5],
     hasAlertIcon: true,
+    videoStatus: 'returned',
+    videoVersions: [
+      {
+        filename: 'VID_20260618_101618.mp4',
+        filesize: '4.88 MB',
+        videoThumbnail: vehiclePassingImg,
+        keyframes: [
+          { name: '摩托车避让不及', thumbnail: vehiclePassingImg, seq: 1, hash: 'keyframe_ev5_001...' }
+        ],
+        aiReport: {
+          scene: '十字路口，摩托车发生碰擦倾倒，周边行人上前围观。',
+          riskNature: '交通事故/围观舆情',
+          riskScale: '极微规模',
+          observations: [
+            '事故发生瞬间被路人行车记录仪录下并上传网络。',
+            '现场交警已快速到场清障，未造成大范围道路拥堵。'
+          ]
+        },
+        description: '十字路口摩托车刮擦交通事故现场，无人员严重受伤，事故已处理完毕，现场秩序正常。'
+      }
+    ]
   },
   {
     id: 'ev-6',
@@ -286,6 +357,26 @@ const mockEvents: EventItem[] = [
     aiTrendPredict: '1356.64w',
     trendData: [90, 88, 86, 85, 84, 83, 81],
     hasAlertIcon: true,
+    videoStatus: 'returned',
+    videoVersions: [
+      {
+        filename: 'VID_20260617_110737.mp4',
+        filesize: '14.50 MB',
+        videoThumbnail: vehiclePassingImg,
+        keyframes: [
+          { name: '违规设备录像', thumbnail: vehiclePassingImg, seq: 1, hash: 'keyframe_ev6_001...' }
+        ],
+        aiReport: {
+          scene: '室内某机房或电子设备操作柜台前。',
+          riskNature: '违规操作曝光',
+          riskScale: '线上大声量传播',
+          observations: [
+            '该曝光引起极高声量关注，线上情绪较为对立，急需官方发声澄清。'
+          ]
+        },
+        description: '网民上传的某电子设备违规运行画面，传播量极大，已开启线上紧急管控。'
+      }
+    ]
   },
   {
     id: 'ev-7',
@@ -304,6 +395,70 @@ const mockEvents: EventItem[] = [
     aiTrendRate: '+2.0%/h',
     aiTrendPredict: '38',
     trendData: [12, 16, 20, 24, 28, 32, 38],
+    videoStatus: 'returned',
+    videoVersions: [
+      {
+        filename: 'VID_20260609_144411.mp4',
+        filesize: '3.12 MB',
+        videoThumbnail: vehiclePassingImg,
+        keyframes: [
+          { name: '人货混装行驶', thumbnail: vehiclePassingImg, seq: 1, hash: 'keyframe_ev7_001...' }
+        ],
+        aiReport: {
+          scene: '淮安区马路上，一辆电动三轮车严重超载货人混装行驶。',
+          riskNature: '交通违规/安全隐患',
+          riskScale: '微小规模',
+          observations: [
+            '有网民随手拍上传至本地网络论坛，引发小规模交通安全讨论。'
+          ]
+        },
+        description: '淮安区马路三轮车人货混装行驶画面，涉嫌违规载人载物，已通知辖区交警中队实施路面布控纠违。'
+      }
+    ]
+  },
+  {
+    id: 'ev-fire',
+    title: '江苏淮安城南街道塑料管道堆场突发火灾',
+    type: '自然灾害',
+    area: '淮安区',
+    risk: '红色',
+    time: '2026-05-26 14:33:40',
+    volume: '244.23w',
+    volumeTrend: 'down',
+    originalCount: '132.56w',
+    commentCount: '104.58w',
+    hasAttachment: true,
+    attachmentType: 'video',
+    aiTrendText: '平稳',
+    aiTrendRate: '-2.0%/h',
+    aiTrendPredict: '244.23w',
+    trendData: [85, 78, 62, 50, 42, 35, 30],
+    hasAlertIcon: true,
+    videoStatus: 'returned',
+    videoVersions: [
+      {
+        filename: 'VID_20260706_190021.mp4',
+        filesize: '11.8 MB',
+        videoThumbnail: vehiclePassingImg,
+        keyframes: [
+          { name: '围观人员聚集', thumbnail: crowdOnlookersImg, seq: 1, hash: 'keyframe_583d3bdf04a842d8a40dd85d...' },
+          { name: '车辆行驶经过', thumbnail: vehiclePassingImg, seq: 2, hash: 'keyframe_vehicle_passing_0706_190021...' },
+          { name: '地点标识识别', thumbnail: obscuredShootingImg, seq: 3, hash: 'keyframe_94654e3c458147e9aed214fb5...' }
+        ],
+        aiReport: {
+          scene: '室外场景，位于标有*清雅苑*字样的建筑入口旁道路。天气晴朗，光线充足。路边聚集约十余名群众，呈站立姿态，部分人员手持手机疑似拍摄。一辆黑色轿车沿道路正常行驶，经过漆黑区域。道路通畅，未见拥堵或冲突迹象。',
+          riskNature: '和平表达/围观',
+          riskScale: '小规模（<20 人）',
+          observations: [
+            '现场聚集十余人，行为相对克制，未见横幅或扩音设备。',
+            '视频中有一辆黑色轿车沿正常轨迹驶过，无阻碍交通行为。',
+            '有三名关键人员手持手机进行拍摄，可能是信息传播节点。',
+            '属地派出所巡逻车辆已在周边视线范围内，具备快速干预能力。'
+          ]
+        },
+        description: '视频显示清雅苑建筑入口旁道路，路边聚集约十余名群众站立，部分人员手持手机；一辆黑色轿车沿道路正常行驶，经过人群及罩阁区域；现场人员面向车辆方向，未见肢体冲突，道路未受阻塞，整体秩序平稳。'
+      }
+    ]
   },
 ];
 
@@ -402,6 +557,128 @@ const PoliceOpinionJoint: React.FC = () => {
   const [filesCollapsed, setFilesCollapsed] = useState(false);
   const [aiAnalyzing, setAiAnalyzing] = useState(false);
 
+  // ==================== Control Instructions States ====================
+  const [templatesModalOpen, setTemplatesModalOpen] = useState(false);
+  const [createTemplateModalOpen, setCreateTemplateModalOpen] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<any>(null);
+  
+  // Default templates in the Control Instruction Library (1:1 with Screenshot 1 + 2 extra to make it 5)
+  const [instructionTemplates, setInstructionTemplates] = useState<any[]>([
+    {
+      id: 't-1',
+      name: '突发重大火灾/灾害应急抢险指令',
+      type: '现场指令',
+      time: '2026-05-18 18:37:30',
+      request: '迅速启动应急预案，实施周边道路清障与交通管制，全力配合消防与卫健部门开展救援。',
+      list: [
+        '组织交警对火灾/灾害现场周边500米道路实施临时交通管制。',
+        '清理打通“生命通道”，确保消防车、救护车无障碍通行。',
+        '协助疏散火灾/灾害现场核心区受灾群众至安全地带。',
+        '安排便衣与巡逻警力，加强周边商铺及住宅夜间值守，严防发生盗窃或哄抢。'
+      ]
+    },
+    {
+      id: 't-2',
+      name: '群体性聚集/非法维稳处置指令',
+      type: '现场指令',
+      time: '2026-05-18 18:36:51',
+      request: '立即奔赴现场，拉设警戒线控制核心区域，对聚集人群进行法制宣讲与疏散劝导，严防主干道交通中断。',
+      list: [
+        '部署警力封锁现场出入口',
+        '开辟外围警戒线，隔离无关围观群众',
+        '对现场核心诉求表达人进行身份信息登记',
+        '配合属地政府有关部门开展现场劝解与疏导',
+        '依法对现场挑头煽动、恶意拍摄并随意上传网络的人员进行口头警告或强制带离'
+      ]
+    },
+    {
+      id: 't-3',
+      name: '现场人员疏散',
+      type: '现场指令',
+      time: '2026-05-17 09:53:30',
+      request: '有序引导现场人员疏散，避免大规模交通堵塞出现，规避踩踏风险，确保无人员伤亡，及时反馈。',
+      list: [
+        '人员疏散',
+        '交通恢复',
+        '现场伤亡情况确认',
+        '反馈现场执行情况'
+      ]
+    },
+    {
+      id: 't-4',
+      name: '道路交通事故应急处置指令',
+      type: '现场指令',
+      time: '2026-05-16 10:12:00',
+      request: '迅速派警前往事故现场，开展交通疏导、现场勘查与秩序维护，防止二次事故发生。',
+      list: [
+        '抢救受伤人员并联络医疗救助',
+        '开展事故现场勘查与证据固定',
+        '指引周边车辆绕行，疏导拥堵'
+      ]
+    },
+    {
+      id: 't-5',
+      name: '涉黄赌毒线索核查指令',
+      type: '现场指令',
+      time: '2026-05-15 15:40:00',
+      request: '对网民举报的涉黄赌毒可疑线索进行线上分析与线下摸排，核实具体场所与涉案人员情况。',
+      list: [
+        '调取周边天网视频查明可疑人员进出规律',
+        '组织便衣警力对涉案场所实施暗访摸排',
+        '依法传唤可疑人员并制作询问笔录'
+      ]
+    }
+  ]);
+
+  // Form states for creating/editing template
+  const [formName, setFormName] = useState('');
+  const [formRequest, setFormRequest] = useState('');
+  const [formList, setFormList] = useState('');
+
+  // Active instructions dispatched to events (default data 1:1 with Screenshot 3)
+  const [eventInstructions, setEventInstructions] = useState<any[]>([
+    {
+      id: 'inst-1',
+      eventId: 'ev-fire',
+      name: '现场人员疏散',
+      type: '现场指令',
+      time: '2026-05-18 18:13:31',
+      sender: 'cs02市局（支队）',
+      status: '已反馈',
+      request: '有序引导现场人员疏散，避免大规模交通堵塞出现，规避踩踏风险，确保无人员伤亡，及时反馈。',
+      signTime: '2026-05-18 18:29:48',
+      list: [
+        { name: '人员疏散', dept: 'cs03区县' },
+        { name: '交通恢复', dept: 'cs03区县' },
+        { name: '现场伤亡情况确认', dept: 'cs03区县' },
+        { name: '反馈现场执行情况', dept: 'cs03区县' }
+      ],
+      feedbackSender: 'cs03区县',
+      feedbackTime: '2026-05-18 18:29:56',
+      feedbackText: '问题不大',
+      isExpanded: true
+    }
+  ]);
+
+  // Dispatch fields
+  const [dispatchModalOpen, setDispatchModalOpen] = useState(false);
+  const [dispatchTemplateId, setDispatchTemplateId] = useState('');
+  const [dispatchReceiver, setDispatchReceiver] = useState('cs03区县');
+  const [dispatchRequest, setDispatchRequest] = useState('');
+  const [dispatchListText, setDispatchListText] = useState('');
+
+  // Video backfill states
+  const [dispatchCaptureModalOpen, setDispatchCaptureModalOpen] = useState(false);
+  const [dispatchCaptureEventId, setDispatchCaptureEventId] = useState<string | null>(null);
+  const [dispatchCaptureType, setDispatchCaptureType] = useState<'DEPARTMENT' | 'POLICE'>('DEPARTMENT');
+  const [dispatchCaptureDept, setDispatchCaptureDept] = useState('河下派出所');
+  const [dispatchCapturePolice, setDispatchCapturePolice] = useState('张警官 [在线/网格02]');
+  const [dispatchCaptureText, setDispatchCaptureText] = useState('请重点拍摄现场涉事人员聚集情况及周边交通疏导状态，时长不少于15秒。');
+  const [dispatchCaptureDeadline, setDispatchCaptureDeadline] = useState('30分钟内');
+
+  // Video version viewer control state
+  const [activeVideoVersionIndex, setActiveVideoVersionIndex] = useState(0);
+
   // Single pending event data structure
   const [pendingEvent, setPendingEvent] = useState({
     title: '清理荒苑路占道群聚聚集',
@@ -427,6 +704,321 @@ const PoliceOpinionJoint: React.FC = () => {
   // Checkbox states to select which descriptions to submit
   const [userDescChecked, setUserDescChecked] = useState(true);
   const [aiDescChecked, setAiDescChecked] = useState(true);
+
+  // ==================== Control Instruction Handlers ====================
+  const handleOpenCreateTemplate = () => {
+    setFormName('');
+    setFormRequest('');
+    setFormList('');
+    setEditingTemplate(null);
+    setCreateTemplateModalOpen(true);
+  };
+
+  const handleOpenEditTemplate = (template: any) => {
+    setFormName(template.name);
+    setFormRequest(template.request);
+    setFormList(template.list.join('\n'));
+    setEditingTemplate(template);
+    setCreateTemplateModalOpen(true);
+  };
+
+  const handleCreateOrEditTemplate = () => {
+    if (!formName.trim()) {
+      message.error('请输入指令名称');
+      return;
+    }
+    if (!formRequest.trim()) {
+      message.error('请输入指令要求');
+      return;
+    }
+    if (!formList.trim()) {
+      message.error('请输入指令清单');
+      return;
+    }
+
+    const listArray = formList.split('\n').filter(item => item.trim() !== '');
+
+    if (editingTemplate) {
+      // Editing Mode
+      setInstructionTemplates(prev => prev.map(item => 
+        item.id === editingTemplate.id 
+          ? { ...item, name: formName, request: formRequest, list: listArray }
+          : item
+      ));
+      message.success('指令模板修改成功');
+    } else {
+      // Creation Mode
+      const newTemplate = {
+        id: `t-${Date.now()}`,
+        name: formName,
+        type: '现场指令',
+        time: dayjs().format('YYYY-MM-DD HH:mm:ss'),
+        request: formRequest,
+        list: listArray
+      };
+      setInstructionTemplates(prev => [newTemplate, ...prev]);
+      message.success('新现场指令模板创建成功');
+    }
+
+    setCreateTemplateModalOpen(false);
+  };
+
+  const handleDeleteTemplate = (id: string, name: string) => {
+    Modal.confirm({
+      title: '确认删除该指令模板？',
+      content: `删除后，将无法从指令库中快速选择并下达「${name}」模板。`,
+      okText: '确认删除',
+      cancelText: '取消',
+      okType: 'danger',
+      onOk() {
+        setInstructionTemplates(prev => prev.filter(item => item.id !== id));
+        message.success('指令模板已成功删除');
+      }
+    });
+  };
+
+  // Dispatch fields setup based on template selected
+  const handleSelectTemplateForDispatch = (tempId: string) => {
+    setDispatchTemplateId(tempId);
+    const template = instructionTemplates.find(t => t.id === tempId);
+    if (template) {
+      setDispatchRequest(template.request);
+      setDispatchListText(template.list.join('\n'));
+    }
+  };
+
+  const handleDispatchInstruction = (eventId: string) => {
+    if (!dispatchRequest.trim() || !dispatchListText.trim()) {
+      message.error('请确保指令内容与清单不为空');
+      return;
+    }
+
+    const listArray = dispatchListText.split('\n')
+      .filter(item => item.trim() !== '')
+      .map(item => ({
+        name: item.replace(/^\d+[\.\、\s]*/, '').trim(), // Strip numbers from list if any
+        dept: dispatchReceiver
+      }));
+
+    const instName = instructionTemplates.find(t => t.id === dispatchTemplateId)?.name || '未命名指令';
+    const newInstId = `inst-${Date.now()}`;
+    const newInstruction = {
+      id: newInstId,
+      eventId: eventId,
+      name: instName,
+      type: '现场指令',
+      time: dayjs().format('YYYY-MM-DD HH:mm:ss'),
+      sender: 'cs02市局（支队）',
+      status: '待签收',
+      request: dispatchRequest,
+      list: listArray,
+      isExpanded: true
+    };
+
+    setEventInstructions(prev => [newInstruction, ...prev]);
+    message.success('现场指令下达成功，正在派发至区县指挥中心！');
+    setDispatchModalOpen(false);
+
+    // Auto-progress simulation: change status to "已反馈" after 4 seconds
+    setTimeout(() => {
+      setEventInstructions(prev => prev.map(inst => {
+        if (inst.id === newInstId && inst.status === '待签收') {
+          message.info(`区县「${dispatchReceiver}」已完成对「${inst.name}」指令的处置反馈`);
+          return {
+            ...inst,
+            status: '已反馈',
+            signTime: dayjs().add(2, 'minute').format('YYYY-MM-DD HH:mm:ss'),
+            feedbackSender: dispatchReceiver,
+            feedbackTime: dayjs().add(3, 'minute').format('YYYY-MM-DD HH:mm:ss'),
+            feedbackText: '收到，正在处置中，目前主要聚集区域人员已疏导，秩序正常。'
+          };
+        }
+        return inst;
+      }));
+    }, 4000);
+  };
+
+  const handleManualFeedbackSimulate = (instId: string) => {
+    setEventInstructions(prev => prev.map(inst => {
+      if (inst.id === instId) {
+        return {
+          ...inst,
+          status: '已反馈',
+          signTime: dayjs().add(1, 'minute').format('YYYY-MM-DD HH:mm:ss'),
+          feedbackSender: inst.list[0]?.dept || 'cs03区县',
+          feedbackTime: dayjs().add(2, 'minute').format('YYYY-MM-DD HH:mm:ss'),
+          feedbackText: '已签收，相关小组已赶赴现场处理，生命通道已打通，现场围观群众已全部疏散。'
+        };
+      }
+      return inst;
+    }));
+    message.success('已模拟签收与反馈流程成功！');
+  };
+
+  // ==================== Video Backfill Handlers ====================
+  const handleOpenDispatchCapture = (eventId: string) => {
+    const event = events.find(e => e.id === eventId);
+    if (!event) return;
+    setDispatchCaptureEventId(eventId);
+    setDispatchCaptureType('DEPARTMENT');
+    // Default to the event's area/responsibility
+    setDispatchCaptureDept(event.area.includes('派出所') ? event.area : `${event.area}分局/派出所`);
+    setDispatchCaptureText('请重点拍摄现场涉事人员聚集情况及周边交通疏导状态，时长不少于15秒。');
+    setDispatchCaptureDeadline('30分钟内');
+    setDispatchCaptureModalOpen(true);
+  };
+
+  const handleDispatchCaptureSubmit = () => {
+    if (!dispatchCaptureEventId) return;
+    const target = dispatchCaptureType === 'DEPARTMENT' ? dispatchCaptureDept : dispatchCapturePolice;
+    
+    setEvents(prev => prev.map(ev => {
+      if (ev.id === dispatchCaptureEventId) {
+        return {
+          ...ev,
+          videoStatus: 'dispatched',
+          dispatchedTo: target,
+          deadlineText: dispatchCaptureDeadline
+        };
+      }
+      return ev;
+    }));
+
+    // Linkage: Auto-inject a "现场视频拍摄" instruction card to this event's field instructions list
+    const newInstId = `inst-capture-${Date.now()}`;
+    const newInstruction = {
+      id: newInstId,
+      eventId: dispatchCaptureEventId,
+      name: '现场视频补拍上传',
+      type: '现场指令',
+      time: dayjs().format('YYYY-MM-DD HH:mm:ss'),
+      sender: 'cs02市局（支队）',
+      status: '回传中',
+      request: dispatchCaptureText,
+      list: [
+        { name: '使用警务通拍摄现场高清视频 (不低于15s)', dept: target },
+        { name: '上传视频并回传关键帧画面进行 AI 分析', dept: target },
+        { name: '反馈现场实时事件处置概述', dept: target }
+      ],
+      isExpanded: true
+    };
+    setEventInstructions(prev => [newInstruction, ...prev]);
+
+    message.success(`视频补拍指令已成功下发至 [${target}]，正在等待回传...`);
+    setDispatchCaptureModalOpen(false);
+  };
+
+  const handleSimulateReturn = (eventId: string) => {
+    const event = events.find(e => e.id === eventId);
+    if (!event) return;
+
+    // Generate simulated video versions based on different events
+    let newVersion: any;
+    if (eventId === 'ev-1') {
+      // HP9516 Banner Event
+      newVersion = {
+        filename: 'VID_20260729_补拍_苏HP9516_横幅特写.mp4',
+        filesize: '12.2 MB',
+        videoThumbnail: vehiclePassingImg,
+        keyframes: [
+          { name: '现场横幅特写', thumbnail: obscuredShootingImg, seq: 1, hash: 'keyframe_ev1_001_banner' },
+          { name: '车牌号码识别', thumbnail: vehiclePassingImg, seq: 2, hash: 'keyframe_ev1_002_plate' },
+          { name: '现场秩序维持', thumbnail: crowdOnlookersImg, seq: 3, hash: 'keyframe_ev1_003_police' }
+        ],
+        aiReport: {
+          scene: '新城区街道旁，一辆银色面包车（车牌：苏HP9516）车顶张贴白色“冤”字横幅，低速慢行。马路两侧有十余名行人在驻足围观及拿手机拍照。现场警力已到场将车辆拦截靠边，未发生肢体摩擦冲突，道路整体通畅。',
+          riskNature: '拉挂横幅/和平表达',
+          riskScale: '小规模 (单车/约10人围观)',
+          observations: [
+            '现场核心起因为车主使用横幅进行利益诉求表达。',
+            '路人随手拍可能在社交平台引来一定舆论声量，需注意平台传播速度。',
+            '属地执勤警力已安全纠离车辆，并正在对车主开展法制宣传与情绪疏解。',
+            '周边交通正在分流疏导，没有引发严重交通妨碍。'
+          ]
+        },
+        description: '基层民警回传补拍视频：新城区路段苏HP9516车辆车顶张贴“冤”字横幅慢行，引发路人围观拍照。民警已当场将车辆劝停靠边，车主积极配合，交通秩序已完全恢复。'
+      };
+    } else if (eventId === 'ev-2') {
+      // Gambling Event
+      newVersion = {
+        filename: 'VID_20260729_补拍_聚众赌博查处.mp4',
+        filesize: '8.5 MB',
+        videoThumbnail: obscuredShootingImg,
+        keyframes: [
+          { name: '涉案民居外围', thumbnail: obscuredShootingImg, seq: 1, hash: 'keyframe_ev2_001_house' },
+          { name: '赌博人员控制', thumbnail: crowdOnlookersImg, seq: 2, hash: 'keyframe_ev2_002_arrest' },
+          { name: '涉案赌具取证', thumbnail: vehiclePassingImg, seq: 3, hash: 'keyframe_ev2_003_evidence' }
+        ],
+        aiReport: {
+          scene: '开发区某居民住宅一楼。民警正突击入室盘查，现场控制涉案赌博人员数名，并在现场起获并扣押赌资、扑克牌及麻将等赌具。小区外围未见异常聚集，整体安静。',
+          riskNature: '聚众赌博/治安案件',
+          riskScale: '涉案人员 6 名',
+          observations: [
+            '开发区派出所联合网安支队，根据网民举报线索实施突击核查。',
+            '现场涉嫌聚众赌博事实清楚，赌资赌具已当场封存。',
+            '所有涉案人员已被依法带回派出所作进一步审查处理。',
+            '周边邻里反应平稳，治安管控秩序良好。'
+          ]
+        },
+        description: '回传视频显示：开发区民宅内确有数人聚集赌博，派出所警力快速到场盘查，控制所有涉案人员并收缴赌具，现场已安全处置完毕。'
+      };
+    } else {
+      // Generic Fallback
+      newVersion = {
+        filename: 'VID_20260729_补拍_现场情况回传.mp4',
+        filesize: '6.4 MB',
+        videoThumbnail: vehiclePassingImg,
+        keyframes: [
+          { name: '现场周边环境', thumbnail: crowdOnlookersImg, seq: 1, hash: 'keyframe_common_001' },
+          { name: '执勤警力警戒', thumbnail: vehiclePassingImg, seq: 2, hash: 'keyframe_common_002' },
+          { name: '人员劝离散去', thumbnail: obscuredShootingImg, seq: 3, hash: 'keyframe_common_003' }
+        ],
+        aiReport: {
+          scene: '马路开阔地带，聚集人群已被全部劝退，交通基本恢复。两组警力在现场做后续的警戒与值守。',
+          riskNature: '秩序恢复/平稳警戒',
+          riskScale: '无明显聚集人群',
+          observations: [
+            '聚集群众已被属地警力合规劝离解散。',
+            '路段交通已经恢复，未再产生新的声量发酵。',
+            '现场商铺经营正常，治安局势整体平稳受控。'
+          ]
+        },
+        description: '民警已现场补拍回传：聚集群众已被悉数疏导劝离，现场治安秩序恢复正常，巡逻警力正开展后续值守防范。'
+      };
+    }
+
+    setEvents(prev => prev.map(ev => {
+      if (ev.id === eventId) {
+        const currentVersions = ev.videoVersions || [];
+        return {
+          ...ev,
+          videoStatus: 'returned',
+          hasAttachment: true,
+          attachmentType: 'video',
+          videoVersions: [newVersion, ...currentVersions] // Prepend new version (latest first)
+        };
+      }
+      return ev;
+    }));
+
+    // Linkage: Auto-update the "现场视频拍摄" instruction status to "已反馈/已办结" in the details Tab
+    setEventInstructions(prev => prev.map(inst => {
+      if (inst.eventId === eventId && inst.name === '现场视频补拍上传') {
+        const target = inst.list[0]?.dept || '基层民警';
+        return {
+          ...inst,
+          status: '已反馈',
+          signTime: dayjs().add(2, 'minute').format('YYYY-MM-DD HH:mm:ss'),
+          feedbackSender: target,
+          feedbackTime: dayjs().format('YYYY-MM-DD HH:mm:ss'),
+          feedbackText: `[指令已办结] 补拍视频和现场关键帧图片已成功通过警务终端上传录入。视频文件名：${newVersion.filename}。现场人群已被安全疏散，周边交通已畅通。`
+        };
+      }
+      return inst;
+    }));
+
+    message.success(`民警端视频 [${newVersion.filename}] 已成功回传！AI 自动分析完成，数据已刷新入库。`);
+  };
 
   // ==================== Approval Center Handlers ====================
   const handleApprove = () => {
@@ -577,7 +1169,7 @@ const PoliceOpinionJoint: React.FC = () => {
       title: '事件标题',
       dataIndex: 'title',
       key: 'title',
-      width: '24%',
+      width: '20%',
       render: (text: string, record: EventItem) => (
         <span 
           className="clickable-title" 
@@ -595,7 +1187,7 @@ const PoliceOpinionJoint: React.FC = () => {
       title: '舆情类型',
       dataIndex: 'type',
       key: 'type',
-      width: '18%',
+      width: '14%',
       render: (text: string) => <span style={{ color: '#555' }}>{text}</span>,
     },
     {
@@ -625,6 +1217,90 @@ const PoliceOpinionJoint: React.FC = () => {
       render: (time: string) => <span style={{ color: '#666', fontSize: '12px' }}>{time}</span>,
     },
     {
+      title: '视频状态',
+      dataIndex: 'videoStatus',
+      key: 'videoStatus',
+      width: '10%',
+      render: (status: string, record: EventItem) => {
+        if (!status || status === 'no_video') {
+          return (
+            <span 
+              className="risk-pill" 
+              style={{ 
+                color: '#8c8c8c', 
+                background: '#f5f5f5', 
+                border: '1px solid #d9d9d9', 
+                fontSize: '11px', 
+                padding: '2px 8px', 
+                borderRadius: '4px',
+                display: 'inline-block'
+              }}
+            >
+              待补拍
+            </span>
+          );
+        }
+        if (status === 'dispatched') {
+          return (
+            <Tooltip title={`已指派: ${record.dispatchedTo || '未指派'} | 截止时间: ${record.deadlineText || '30分钟内'}`}>
+              <span 
+                className="risk-pill" 
+                style={{ 
+                  color: '#096dd9', 
+                  background: '#e6f7ff', 
+                  border: '1px solid #91d5ff', 
+                  fontSize: '11px', 
+                  padding: '2px 8px', 
+                  borderRadius: '4px',
+                  display: 'inline-block',
+                  cursor: 'pointer'
+                }}
+              >
+                回传中
+              </span>
+            </Tooltip>
+          );
+        }
+        if (status === 'returned') {
+          return (
+            <span 
+              className="risk-pill" 
+              style={{ 
+                color: '#52c41a', 
+                background: '#f6ffed', 
+                border: '1px solid #b7eb8f', 
+                fontSize: '11px', 
+                padding: '2px 8px', 
+                borderRadius: '4px',
+                display: 'inline-block'
+              }}
+            >
+              视频已补充
+            </span>
+          );
+        }
+        if (status === 'overtime') {
+          return (
+            <span 
+              className="risk-pill" 
+              style={{ 
+                color: '#f5222d', 
+                background: '#fff1f0', 
+                border: '1px solid #ffa39e', 
+                fontSize: '11px', 
+                padding: '2px 8px', 
+                borderRadius: '4px',
+                display: 'inline-block'
+              }}
+            >
+              回传超时
+            </span>
+          );
+        }
+        return null;
+      }
+    },
+    {
       title: '全网传播量',
       dataIndex: 'volume',
       key: 'volume',
@@ -642,79 +1318,132 @@ const PoliceOpinionJoint: React.FC = () => {
       title: '原创条数',
       dataIndex: 'originalCount',
       key: 'originalCount',
-      width: '8%',
+      width: '6%',
     },
     {
       title: '评论条数',
       dataIndex: 'commentCount',
       key: 'commentCount',
-      width: '8%',
+      width: '6%',
     },
     {
       title: '现场情况',
       dataIndex: 'attachmentType',
       key: 'attachmentType',
       width: '8%',
-      render: (type?: string) => {
-        if (type === 'video') {
+      render: (type?: string, record?: EventItem) => {
+        // If the video has been returned, we show a micro video player thumbnail
+        const hasVideo = type === 'video' || (record && record.videoStatus === 'returned');
+        if (hasVideo) {
           return (
-            <div className="table-video-thumbnail">
+            <div className="table-video-thumbnail" style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '42px',
+              height: '24px',
+              background: '#000',
+              borderRadius: '2px',
+              color: '#fff',
+              fontSize: '12px',
+              cursor: 'pointer'
+            }} onClick={(e) => {
+              e.stopPropagation();
+              setSelectedEventId(record!.id);
+              setCurrentStep('detail');
+            }}>
               <PlayCircleOutlined />
             </div>
           );
         }
-        return <span style={{ color: '#999' }}>暂无附件</span>;
-      },
-    },
-    {
-      title: 'AI传播预测',
-      key: 'aiPredict',
-      width: '12%',
-      render: (_: any, record: EventItem) => {
-        let trendColor = '#1677ff'; // blue
-        let trendBg = '#e6f7ff';
-        if (record.volumeTrend === 'up') {
-          trendColor = '#d46b08'; // orange
-          trendBg = '#fff7e6';
-        } else if (record.volumeTrend === 'down') {
-          trendColor = '#389e0d'; // green
-          trendBg = '#f6ffed';
-        }
-        return (
-          <div className="ai-predict-cell">
-            <div className="ai-predict-meta" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
-              <span className="ai-predict-trend-badge" style={{ color: trendColor, background: trendBg, padding: '1px 4px', borderRadius: '3px', fontSize: '10px' }}>
-                {record.aiTrendText}
-              </span>
-              <span className="ai-predict-rate" style={{ color: trendColor, fontWeight: 'bold', fontSize: '11px' }}>
-                {record.aiTrendRate}
-              </span>
-            </div>
-            <MiniTrendChart trend={record.volumeTrend} data={record.trendData} />
-            <div className="ai-predict-forecast" style={{ fontSize: '10px', color: '#999', marginTop: '2px' }}>
-              4h预测: <span style={{ color: '#1677ff', fontWeight: 'bold' }}>{record.aiTrendPredict}</span>
-            </div>
-          </div>
-        );
+        return <span style={{ color: '#999', fontSize: '12px' }}>暂无视频</span>;
       },
     },
     {
       title: '操作',
-      key: 'deleteAction',
-      width: '6%',
-      render: (_: any, record: EventItem) => (
-        <Button 
-          type="link" 
-          danger 
-          onClick={(e) => {
-            e.stopPropagation(); // Avoid opening details!
-            handleDeleteEvent(record.id);
-          }}
-          style={{ padding: 0 }}
-        >
-          删除
-        </Button>
-      ),
+      key: 'actions',
+      width: '18%',
+      render: (_: any, record: EventItem) => {
+        const status = record.videoStatus || 'no_video';
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }} onClick={(e) => e.stopPropagation()}>
+            {status === 'no_video' && (
+              <Button 
+                type="link" 
+                size="small" 
+                style={{ padding: 0, color: '#1890ff', fontSize: '12px' }}
+                onClick={() => handleOpenDispatchCapture(record.id)}
+              >
+                🎥 下达补拍
+              </Button>
+            )}
+            
+            {status === 'dispatched' && (
+              <>
+                <Button 
+                  type="link" 
+                  size="small" 
+                  style={{ padding: 0, color: '#fa8c16', fontSize: '12px' }}
+                  onClick={() => message.warning(`已向 [${record.dispatchedTo}] 移动端发送紧急催办！`)}
+                >
+                  ⚡ 催办
+                </Button>
+                <Button 
+                  type="link" 
+                  size="small" 
+                  style={{ padding: 0, color: '#7c3aed', fontSize: '12px' }}
+                  onClick={() => handleSimulateReturn(record.id)}
+                >
+                  ✓ 模拟回传
+                </Button>
+              </>
+            )}
+
+            {status === 'overtime' && (
+              <>
+                <Button 
+                  type="link" 
+                  size="small" 
+                  danger
+                  style={{ padding: 0, fontSize: '12px' }}
+                  onClick={() => message.error(`警告催办已下发至 [${record.dispatchedTo}]，终端提示置顶加急！`)}
+                >
+                  🚨 一键催办
+                </Button>
+                <Button 
+                  type="link" 
+                  size="small" 
+                  style={{ padding: 0, fontSize: '12px' }}
+                  onClick={() => handleOpenDispatchCapture(record.id)}
+                >
+                  重新指派
+                </Button>
+              </>
+            )}
+
+            {status === 'returned' && (
+              <Button 
+                type="link" 
+                size="small" 
+                style={{ padding: 0, color: '#8c8c8c', fontSize: '12px' }}
+                onClick={() => handleOpenDispatchCapture(record.id)}
+              >
+                重新补拍
+              </Button>
+            )}
+
+            <Button 
+              type="link" 
+              danger 
+              size="small"
+              onClick={() => handleDeleteEvent(record.id)}
+              style={{ padding: 0, fontSize: '12px' }}
+            >
+              删除
+            </Button>
+          </div>
+        );
+      },
     },
   ];
 
@@ -813,7 +1542,13 @@ const PoliceOpinionJoint: React.FC = () => {
                   重置
                 </Button>
                 <Button type="primary" icon={<SearchOutlined />} className="action-solid-btn">查询</Button>
-                <Button icon={<RadarChartOutlined />} className="action-green-btn">防控指令</Button>
+                <Button 
+                  icon={<RadarChartOutlined />} 
+                  className="action-green-btn"
+                  onClick={() => setTemplatesModalOpen(true)}
+                >
+                  防控指令
+                </Button>
                 <Badge count={pendingCount} offset={[-8, 8]} style={{ boxShadow: '0 0 0 1px #fff' }}>
                   <Button 
                     icon={<CheckOutlined />} 
@@ -853,6 +1588,7 @@ const PoliceOpinionJoint: React.FC = () => {
                 onClick: () => {
                   setSelectedEventId(record.id);
                   setCurrentStep('detail');
+                  setActiveVideoVersionIndex(0);
                 },
               })}
             />
@@ -881,6 +1617,7 @@ const PoliceOpinionJoint: React.FC = () => {
             <button className="breadcrumb-back-btn" onClick={() => {
               setSelectedEventId(null);
               setSelectedPosts([]);
+              setActiveVideoVersionIndex(0);
             }}>
               <LeftOutlined /> 返回列表
             </button>
@@ -940,343 +1677,385 @@ const PoliceOpinionJoint: React.FC = () => {
           {/* ================================================================ */}
           {/* STEP 1: EVENT DETAILS (事件详情大步 1:1 复刻)                    */}
           {/* ================================================================ */}
-          {currentStep === 'detail' && (
-            <div className="step-detail-content">
-              {/* 手机App上报紫色通知条 */}
-              <div className="opinion-source-banner">
-                <div className="source-banner-icon">
-                  <PhoneOutlined />
-                </div>
-                <div className="source-banner-content">
-                  <div className="source-banner-title">
-                    <strong>手机App上报</strong>
-                    <span className="source-banner-reporter">{currentEvent.title === '清雅苑入口道路群众聚集' ? '河下派出所-唐子阳' : '河下派出所-唐子期'}</span>
-                  </div>
-                  <div className="source-banner-location">
-                    {currentEvent.title === '清雅苑入口道路群众聚集' ? '清雅苑入口旁道路' : currentEvent.area}
-                  </div>
-                </div>
-              </div>
+          {currentStep === 'detail' && (() => {
+            const versions = currentEvent.videoVersions || [];
+            const hasVideoData = versions.length > 0;
+            const activeVersion = hasVideoData ? (versions[activeVideoVersionIndex] || versions[0]) : null;
 
-              {/* 两栏网格布局 */}
-              <div className="detail-grid-layout">
-                {/* 左边栏 */}
-                <div className="detail-layout-left">
-                  {/* 卡片1：事件基本信息 */}
-                  <div className="detail-info-card card-container">
-                    <div className="card-header">
-                      <div className="card-header-left">
-                        <FileTextOutlined className="header-icon" />
-                        <span className="card-header-title">事件基本信息</span>
-                      </div>
-                      <Button icon={<EditOutlined />} size="small" className="action-outline-btn">编辑</Button>
+            return (
+              <div className="step-detail-content">
+                {/* 手机App上报紫色通知条 */}
+                <div className="opinion-source-banner">
+                  <div className="source-banner-icon">
+                    <PhoneOutlined />
+                  </div>
+                  <div className="source-banner-content">
+                    <div className="source-banner-title">
+                      <strong>
+                        {currentEvent.videoStatus === 'no_video' ? '直建事件 (待补拍)' : 
+                         currentEvent.videoStatus === 'dispatched' ? '指令下发中 (等待回传)' : '手机App上报'}
+                      </strong>
+                      <span className="source-banner-reporter">
+                        {currentEvent.title === '清雅苑入口道路群众聚集' ? '河下派出所-唐子阳' : '指挥中心-直建指派'}
+                      </span>
                     </div>
-                    <div className="info-grid-container">
-                      {/* Row 1 */}
-                      <div className="info-grid-item span-2">
-                        <div className="info-grid-label">事件标题</div>
-                        <div className="info-grid-value">{currentEvent.title}</div>
-                      </div>
-                      <div className="info-grid-item">
-                        <div className="info-grid-label">舆情类型</div>
-                        <div className="info-grid-value">{currentEvent.type}</div>
-                      </div>
-                      <div className="info-grid-item">
-                        <div className="info-grid-label">责任属地</div>
-                        <div className="info-grid-value">{currentEvent.area}</div>
-                      </div>
+                    <div className="source-banner-location">
+                      {currentEvent.title === '清雅苑入口道路群众聚集' ? '清雅苑入口旁道路' : currentEvent.area}
+                    </div>
+                  </div>
+                  {currentEvent.videoStatus === 'dispatched' && (
+                    <Button 
+                      size="small" 
+                      type="primary"
+                      style={{ background: '#7c3aed', borderColor: '#7c3aed', marginLeft: 'auto' }}
+                      onClick={() => handleSimulateReturn(currentEvent.id)}
+                    >
+                      ⚡ 模拟民警视频回传
+                    </Button>
+                  )}
+                </div>
 
-                      {/* Row 2 */}
-                      <div className="info-grid-item">
-                        <div className="info-grid-label">风险等级</div>
-                        <div className="info-grid-value">
-                          <span className={`risk-pill risk-inline-tag ${
-                            currentEvent.risk === '红色' ? 'risk-red' :
-                            currentEvent.risk === '橙色' ? 'risk-orange' :
-                            currentEvent.risk === '黄色' ? 'risk-yellow' : 'risk-blue'
-                          }`}>
-                            {currentEvent.risk}
+                {/* 两栏网格布局 */}
+                <div className="detail-grid-layout">
+                  {/* 左边栏 */}
+                  <div className="detail-layout-left">
+                    {/* 卡片1：事件基本信息 */}
+                    <div className="detail-info-card card-container">
+                      <div className="card-header">
+                        <div className="card-header-left">
+                          <FileTextOutlined className="header-icon" />
+                          <span className="card-header-title">事件基本信息</span>
+                        </div>
+                        <Button icon={<EditOutlined />} size="small" className="action-outline-btn">编辑</Button>
+                      </div>
+                      <div className="info-grid-container">
+                        {/* Row 1 */}
+                        <div className="info-grid-item span-2">
+                          <div className="info-grid-label">事件标题</div>
+                          <div className="info-grid-value">{currentEvent.title}</div>
+                        </div>
+                        <div className="info-grid-item">
+                          <div className="info-grid-label">舆情类型</div>
+                          <div className="info-grid-value">{currentEvent.type}</div>
+                        </div>
+                        <div className="info-grid-item">
+                          <div className="info-grid-label">责任属地</div>
+                          <div className="info-grid-value">{currentEvent.area}</div>
+                        </div>
+
+                        {/* Row 2 */}
+                        <div className="info-grid-item">
+                          <div className="info-grid-label">风险等级</div>
+                          <div className="info-grid-value">
+                            <span className={`risk-pill risk-inline-tag ${
+                              currentEvent.risk === '红色' ? 'risk-red' :
+                              currentEvent.risk === '橙色' ? 'risk-orange' :
+                              currentEvent.risk === '黄色' ? 'risk-yellow' : 'risk-blue'
+                            }`}>
+                              {currentEvent.risk}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="info-grid-item">
+                          <div className="info-grid-label">上报人</div>
+                          <div className="info-grid-value">
+                            {currentEvent.title === '清雅苑入口道路群众聚集' ? '河下派出所-唐子阳' : '系统直建-指派民警'}
+                          </div>
+                        </div>
+                        <div className="info-grid-item span-2">
+                          <div className="info-grid-label">上报时间</div>
+                          <div className="info-grid-value">{currentEvent.time}</div>
+                        </div>
+
+                        {/* Row 3 */}
+                        <div className="info-grid-item span-2">
+                          <div className="info-grid-label">发生时间</div>
+                          <div className="info-grid-value">{currentEvent.time}</div>
+                        </div>
+                        <div className="info-grid-item span-2">
+                          <div className="info-grid-label">发生地址</div>
+                          <div className="info-grid-value">
+                            {currentEvent.title === '清雅苑入口道路群众聚集' ? '清雅苑入口旁道路' : currentEvent.area}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 卡片2：事件概述 */}
+                    <div className="detail-info-card card-container">
+                      <div className="card-header">
+                        <div className="card-header-left">
+                          <FileTextOutlined className="header-icon" />
+                          <span className="card-header-title">事件概述</span>
+                        </div>
+                      </div>
+                      <div className="event-description-text" style={{ padding: '16px', fontSize: '13.5px', lineHeight: '1.6', color: '#262626' }}>
+                        {hasVideoData && activeVersion ? (
+                          activeVersion.description
+                        ) : (
+                          currentEvent.title === '清雅苑入口道路群众聚集' 
+                            ? '视频显示清雅苑建筑入口旁道路，路边聚集约十余名群众站立，部分人员手持手机；一辆黑色轿车沿道路正常行驶，经过人群及罩阁区域；现场人员面向车辆方向，未见肢体冲突，道路未受阻塞，整体秩序平稳。'
+                            : `该事件处于指挥中心布控阶段，现场尚无视频及关键帧附件录入。目前已对责任属地 $[${currentEvent.area}] 下达现场补拍与实录核查指令，正在等待一线警力进行回传。`
+                        )}
+                      </div>
+                    </div>
+
+                    {/* 卡片3：现场视频与现场图片 */}
+                    <div className="media-resources-row" style={{ display: 'flex', gap: '16px' }}>
+                      {/* 现场视频 */}
+                      <div className="media-card card-container" style={{ flex: 1 }}>
+                        <div className="card-header" style={{ display: 'flex', alignItems: 'center' }}>
+                          <div className="card-header-left" style={{ display: 'flex', alignItems: 'center' }}>
+                            <PlayCircleOutlined className="header-icon" style={{ color: '#3366FF', marginRight: '6px' }} />
+                            <span className="card-header-title">现场视频</span>
+                          </div>
+                          {/* Versions dropdown */}
+                          {versions.length > 1 && (
+                            <Select
+                              size="small"
+                              value={activeVideoVersionIndex}
+                              onChange={setActiveVideoVersionIndex}
+                              style={{ width: '130px', marginLeft: 'auto', marginRight: '8px' }}
+                              options={versions.map((v, idx) => ({
+                                value: idx,
+                                label: idx === 0 ? `版本 ${versions.length - idx} (最新)` : `版本 ${versions.length - idx}`
+                              }))}
+                            />
+                          )}
+                          <span className={`media-filename-tag ${versions.length > 1 ? '' : 'ml-auto'}`} style={{ marginLeft: versions.length > 1 ? 0 : 'auto', fontSize: '11px', color: '#8c8c8c' }}>
+                            {hasVideoData && activeVersion ? (
+                              `${activeVersion.filename}  /  ${activeVersion.filesize}`
+                            ) : (
+                              '无视频附件'
+                            )}
                           </span>
                         </div>
-                      </div>
-                      <div className="info-grid-item">
-                        <div className="info-grid-label">上报人</div>
-                        <div className="info-grid-value">
-                          {currentEvent.title === '清雅苑入口道路群众聚集' ? '河下派出所-唐子阳' : '河下派出所-唐子期'}
-                        </div>
-                      </div>
-                      <div className="info-grid-item span-2">
-                        <div className="info-grid-label">上报时间</div>
-                        <div className="info-grid-value">
-                          {currentEvent.title === '清雅苑入口道路群众聚集' ? '2026-07-16 16:40:38' : currentEvent.time}
-                        </div>
-                      </div>
-
-                      {/* Row 3 */}
-                      <div className="info-grid-item span-2">
-                        <div className="info-grid-label">发生时间</div>
-                        <div className="info-grid-value">
-                          {currentEvent.title === '清雅苑入口道路群众聚集' ? '2026-07-06 19:00:11' : currentEvent.time}
-                        </div>
-                      </div>
-                      <div className="info-grid-item span-2">
-                        <div className="info-grid-label">发生地址</div>
-                        <div className="info-grid-value">
-                          {currentEvent.title === '清雅苑入口道路群众聚集' ? '清雅苑入口旁道路' : currentEvent.area}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 卡片2：事件概述 */}
-                  <div className="detail-info-card card-container">
-                    <div className="card-header">
-                      <div className="card-header-left">
-                        <FileTextOutlined className="header-icon" />
-                        <span className="card-header-title">事件概述</span>
-                      </div>
-                    </div>
-                    <div className="event-description-text" style={{ padding: '16px', fontSize: '13.5px', lineHeight: '1.6', color: '#262626' }}>
-                      {currentEvent.title === '清雅苑入口道路群众聚集' 
-                        ? '视频显示清雅苑建筑入口旁道路，路边聚集约十余名群众站立，部分人员手持手机；一辆黑色轿车沿道路正常行驶，经过人群及罩阁区域；现场人员面向车辆方向，未见肢体冲突，道路未受阻塞，整体秩序平稳。'
-                        : `该事件发生于${currentEvent.area}，现场监测到事件信息。目前该事件处于${currentEvent.risk}风险监控级别，已安排人员启动线上与线下布控研判流程。`}
-                    </div>
-                  </div>
-
-                  {/* 卡片3：现场视频与现场图片 */}
-                  <div className="media-resources-row" style={{ display: 'flex', gap: '16px' }}>
-                    {/* 现场视频 */}
-                    <div className="media-card card-container" style={{ flex: 1 }}>
-                      <div className="card-header">
-                        <div className="card-header-left">
-                          <PlayCircleOutlined className="header-icon" style={{ color: '#3366FF' }} />
-                          <span className="card-header-title">现场视频</span>
-                        </div>
-                        <span className="media-filename-tag">VID_20260706_190021.mp4 &nbsp;&nbsp; 11.8 MB</span>
-                      </div>
-                      <div className="video-player-wrapper" style={{ padding: '12px', display: 'flex', justifyContent: 'center' }}>
-                        {/* 1:1 仿真视频播放器占位容器，避免外网视频源加载失败 */}
-                        <div className="simulated-video-player" style={{ 
-                          position: 'relative', 
-                          width: '100%', 
-                          height: '235px', 
-                          borderRadius: '4px', 
-                          backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0.35)), url(${vehiclePassingImg})`,
-                          backgroundSize: 'cover',
-                          backgroundPosition: 'center',
-                          backgroundColor: '#000',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          justifyContent: 'center',
-                          alignItems: 'center'
-                        }}>
-                          {/* 居中大播放按钮 */}
-                          <PlayCircleOutlined style={{ fontSize: '48px', color: '#fff', cursor: 'pointer', opacity: 0.9, transition: 'all 0.2s' }} className="video-play-btn" />
-                          
-                          {/* 底部模拟控制条 */}
-                          <div className="video-mock-controls" style={{
-                            position: 'absolute',
-                            bottom: 0,
-                            left: 0,
-                            width: '100%',
-                            background: 'rgba(0, 0, 0, 0.65)',
-                            padding: '6px 12px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 10,
-                            borderBottomLeftRadius: '4px',
-                            borderBottomRightRadius: '4px'
-                          }}>
-                            <PlayCircleOutlined style={{ color: '#fff', fontSize: '12px' }} />
-                            <span style={{ color: '#fff', fontSize: '10px' }}>00:00 / 00:05</span>
-                            {/* 进度条 */}
-                            <div style={{ flex: 1, height: '3px', background: 'rgba(255,255,255,0.3)', borderRadius: '1.5px', position: 'relative' }}>
-                              <div style={{ width: '0%', height: '100%', background: '#3366FF', borderRadius: '1.5px' }} />
-                            </div>
-                            <span style={{ color: '#fff', fontSize: '10px' }}>高清 1080P</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 现场图片 */}
-                    <div className="media-card card-container" style={{ flex: 1 }}>
-                      <div className="card-header">
-                        <div className="card-header-left">
-                          <CopyOutlined className="header-icon" style={{ color: '#3366FF' }} />
-                          <span className="card-header-title">现场图片</span>
-                        </div>
-                        <span className="media-filename-tag">共 3 张</span>
-                      </div>
-                      <div className="image-grid-wrapper" style={{ padding: '12px', display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '115px 115px', gap: '8px' }}>
-                        {/* 图片1 */}
-                        <div className="image-item-container" style={{ position: 'relative', borderRadius: '4px', overflow: 'hidden', backgroundColor: '#f5f5f5' }}>
-                          <img 
-                            src={crowdOnlookersImg} 
-                            alt="围观人员聚集" 
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                            onError={(e) => {
-                              // 后备无图占位
-                              e.currentTarget.style.display = 'none';
-                            }}
-                          />
-                          <span className="img-seq-badge">1</span>
-                          <span className="img-recognition-tag">围观人员聚集</span>
-                          <div className="img-filename-overlay">keyframe_583d3bdf04a842d8a40dd85d...</div>
-                        </div>
-
-                        {/* 图片3 */}
-                        <div className="image-item-container" style={{ position: 'relative', borderRadius: '4px', overflow: 'hidden', backgroundColor: '#f5f5f5' }}>
-                          <img 
-                            src={obscuredShootingImg} 
-                            alt="地点标识识别" 
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none';
-                            }}
-                          />
-                          <span className="img-seq-badge">3</span>
-                          <span className="img-recognition-tag">地点标识识别</span>
-                          <div className="img-filename-overlay">keyframe_94654e3c458147e9aed214fb5...</div>
-                        </div>
-
-                        {/* 图片2 */}
-                        <div className="image-item-container" style={{ position: 'relative', borderRadius: '4px', overflow: 'hidden', gridColumn: '1 / 2', backgroundColor: '#f5f5f5' }}>
-                          <img 
-                            src={vehiclePassingImg} 
-                            alt="车辆行驶经过" 
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none';
-                            }}
-                          />
-                          <span className="img-seq-badge">2</span>
-                          <span className="img-recognition-tag">车辆行驶经过</span>
-                          <div className="img-filename-overlay">keyframe_vehicle_passing_0706_190021...</div>
-                        </div>
                         
-                        {/* 右下空位美化 */}
-                        <div className="image-item-placeholder" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', background: '#fafafa', border: '1px dashed #d9d9d9', borderRadius: '4px' }}>
-                          <span style={{ fontSize: '11px', color: '#bfbfbf' }}>关键帧分析已完成</span>
-                          <span style={{ fontSize: '9px', color: '#d9d9d9' }}>LAN YING AI</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 右边栏 */}
-                <div className="detail-layout-right">
-                  {/* AI 视频解读报告 */}
-                  <div className="ai-report-card card-container">
-                    <div className="card-header ai-report-header" style={{ borderBottom: '1px solid #f0f0f0', paddingBottom: '12px' }}>
-                      <div className="card-header-left">
-                        <span className="ai-report-icon-tag">AI</span>
-                        <span className="card-header-title" style={{ marginLeft: '8px' }}>AI 视频解读报告</span>
-                      </div>
-                    </div>
-                    
-                    <div className="ai-report-scroll-body" style={{ padding: '16px', overflowY: 'auto', maxHeight: '550px' }}>
-                      {/* 场景描述 */}
-                      <div className="ai-report-section" style={{ marginBottom: '16px' }}>
-                        <h5 className="section-subtitle">场景描述</h5>
-                        <p className="section-paragraph" style={{ margin: 0, fontSize: '12.5px', lineHeight: '1.6', color: '#595959' }}>
-                          {currentEvent.title === '清雅苑入口道路群众聚集' 
-                            ? '室外场景，位于标有*清雅苑*字样的建筑入口旁道路。天气晴朗，光线充足。路边聚集约十余名群众，呈站立姿态，部分人员手持手机疑似拍摄。一辆黑色轿车沿道路正常行驶，经过漆黑区域。道路通畅，未见拥堵或冲突迹象。'
-                            : `该视频记录了关于“${currentEvent.title}”的现场情况。画面光线及可见度正常，现场无剧烈言行冲突，人员正陆续聚集或流动，已生成初步评估结果。`}
-                        </p>
-                      </div>
-
-                      {/* 风险评估 */}
-                      <div className="ai-report-section risk-assessment-section" style={{ borderTop: '1px solid #f0f0f0', borderBottom: '1px solid #f0f0f0', padding: '12px 0', marginBottom: '16px' }}>
-                        <h5 className="section-subtitle risk-title" style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#f5222d', fontWeight: 'bold' }}>风险评估</h5>
-                        <div className="risk-content-list" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                          <div className="risk-item" style={{ fontSize: '12px', color: '#f5222d' }}>
-                            <span className="risk-label" style={{ fontWeight: 'bold' }}>事件性质：</span>
-                            <span className="risk-value">{currentEvent.title === '清雅苑入口道路群众聚集' ? '和平表达/围观' : '现场聚集'}</span>
-                          </div>
-                          <div className="risk-item" style={{ fontSize: '12px', color: '#f5222d' }}>
-                            <span className="risk-label" style={{ fontWeight: 'bold' }}>人群规模：</span>
-                            <span className="risk-value">{currentEvent.title === '清雅苑入口道路群众聚集' ? '小规模（<20 人）' : '中等规模'}</span>
-                          </div>
-                          <div className="risk-item" style={{ fontSize: '12px', color: '#f5222d' }}>
-                            <span className="risk-label" style={{ fontWeight: 'bold' }}>升级风险：</span>
-                            <span className="risk-value">{currentEvent.risk === '红色' ? '高' : (currentEvent.risk === '橙色' ? '中' : '低')}</span>
-                          </div>
-                          <div className="risk-item" style={{ fontSize: '12px', color: '#f5222d', lineHeight: '1.5' }}>
-                            <span className="risk-label" style={{ fontWeight: 'bold' }}>判断依据：</span>
-                            <span className="risk-value">
-                              {currentEvent.title === '清雅苑入口道路群众聚集' 
-                                ? '现场秩序平稳，道路未受阻，人员仅站立围观未发生肢体冲突或拦截行为，车辆正常通行。'
-                                : '根据现场聚集人员的状态、秩序及交通状况综合评定。'}
-                            </span>
-                          </div>
-                          <div className="risk-item" style={{ fontSize: '12px', color: '#f5222d' }}>
-                            <span className="risk-label" style={{ fontWeight: 'bold' }}>是否涉警：</span>
-                            <span className="risk-value">否</span>
-                          </div>
-                          <div className="risk-item" style={{ fontSize: '12px', color: '#f5222d', lineHeight: '1.5' }}>
-                            <span className="risk-label" style={{ fontWeight: 'bold' }}>涉警风险：</span>
-                            <span className="risk-value">
-                              {currentEvent.title === '清雅苑入口道路群众聚集' 
-                                ? '现场未见警务人员或警用车辆，暂未涉及执法行为或警民冲突。但需关注事态升级是否需警力介入。'
-                                : '当前未见实质涉警冲突，需要持续观测现场是否发生阻碍交通或过度维权表现。'}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* 关键观察 */}
-                      <div className="ai-report-section">
-                        <h5 className="section-subtitle" style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#8c8c8c' }}>关键观察</h5>
-                        <div className="observation-list" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                          {currentEvent.title === '清雅苑入口道路群众聚集' ? (
-                            <>
-                              {/* Item 1 */}
-                              <div className="observation-item" style={{ display: 'flex', gap: '8px' }}>
-                                <div className="obs-num-badge" style={{ width: '16px', height: '16px', borderRadius: '50%', background: '#f5222d', color: '#fff', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px' }}>1</div>
-                                <div className="obs-text" style={{ fontSize: '12px', color: '#595959', lineHeight: '1.5' }}>
-                                  <strong>部分群众手持手机</strong>对着车辆方向；<strong>风险关联</strong>：可能存在视频录制并上传网络的风险，易引发舆情发酵；<strong>建议</strong>：监测网络平台是否有相关视频传播
+                        <div className="video-player-wrapper" style={{ padding: '12px', display: 'flex', justifyContent: 'center' }}>
+                          {hasVideoData && activeVersion ? (
+                            <div className="simulated-video-player" style={{ 
+                              position: 'relative', 
+                              width: '100%', 
+                              height: '235px', 
+                              borderRadius: '4px', 
+                              backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0.35)), url(${activeVersion.videoThumbnail})`,
+                              backgroundSize: 'cover',
+                              backgroundPosition: 'center',
+                              backgroundColor: '#000',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              justifyContent: 'center',
+                              alignItems: 'center'
+                            }}>
+                              <PlayCircleOutlined style={{ fontSize: '48px', color: '#fff', cursor: 'pointer', opacity: 0.9, transition: 'all 0.2s' }} className="video-play-btn" />
+                              <div className="video-mock-controls" style={{
+                                position: 'absolute',
+                                bottom: 0,
+                                left: 0,
+                                width: '100%',
+                                background: 'rgba(0, 0, 0, 0.65)',
+                                padding: '6px 12px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 10,
+                                borderBottomLeftRadius: '4px',
+                                borderBottomRightRadius: '4px'
+                              }}>
+                                <PlayCircleOutlined style={{ color: '#fff', fontSize: '12px' }} />
+                                <span style={{ color: '#fff', fontSize: '10px' }}>00:00 / 00:15</span>
+                                <div style={{ flex: 1, height: '3px', background: 'rgba(255,255,255,0.3)', borderRadius: '1.5px', position: 'relative' }}>
+                                  <div style={{ width: '0%', height: '100%', background: '#3366FF', borderRadius: '1.5px' }} />
                                 </div>
+                                <span style={{ color: '#fff', fontSize: '10px' }}>高清 1080P</span>
                               </div>
-                              {/* Item 2 */}
-                              <div className="observation-item" style={{ display: 'flex', gap: '8px' }}>
-                                <div className="obs-num-badge" style={{ width: '16px', height: '16px', borderRadius: '50%', background: '#f5222d', color: '#fff', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px' }}>2</div>
-                                <div className="obs-text" style={{ fontSize: '12px', color: '#595959', lineHeight: '1.5' }}>
-                                  <strong>人群聚集</strong>于小区/园区入口道路旁；<strong>风险关联</strong>：入口为关键通道，若人群情绪变化易造成交通阻断；<strong>建议</strong>：关注人群是否后续有拦截车辆行为
-                                </div>
-                              </div>
-                              {/* Item 3 */}
-                              <div className="observation-item" style={{ display: 'flex', gap: '8px' }}>
-                                <div className="obs-num-badge" style={{ width: '16px', height: '16px', borderRadius: '50%', background: '#f5222d', color: '#fff', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px' }}>3</div>
-                                <div className="obs-text" style={{ fontSize: '12px', color: '#595959', lineHeight: '1.5' }}>
-                                  <strong>黑色轿车正常通过人群</strong>；<strong>风险关联</strong>：目前车辆未受干扰，但作为关注焦点可能存在针对性；<strong>建议</strong>：核实车辆归属及人群聚集原因
-                                </div>
-                              </div>
-                              {/* Item 4 */}
-                              <div className="observation-item" style={{ display: 'flex', gap: '8px' }}>
-                                <div className="obs-num-badge" style={{ width: '16px', height: '16px', borderRadius: '50%', background: '#f5222d', color: '#fff', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px' }}>4</div>
-                                <div className="obs-text" style={{ fontSize: '12px', color: '#595959', lineHeight: '1.5' }}>
-                                  建筑标识<strong>“清雅苑”清晰可见</strong>；<strong>风险关联</strong>：地点明确，便于网络定位和线下溯源，易形成特定地点的舆情标签；<strong>建议</strong>：关注该地点历史舆情记录及物业/管理方回应
-                                </div>
-                              </div>
-                            </>
+                            </div>
                           ) : (
-                            <div className="observation-item" style={{ display: 'flex', gap: '8px' }}>
-                              <div className="obs-num-badge" style={{ width: '16px', height: '16px', borderRadius: '50%', background: '#f5222d', color: '#fff', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>1</div>
-                              <div className="obs-text" style={{ fontSize: '12px', color: '#595959' }}>
-                                <strong>已启动研判程序</strong>；根据警舆一体化原则，布控及处置详情已在布控步骤下上线，建议切换大步骤以执行处置联动。
-                              </div>
+                            <div className="simulated-video-placeholder" style={{
+                              width: '100%',
+                              height: '235px',
+                              borderRadius: '4px',
+                              border: '1px dashed #d9d9d9',
+                              background: '#fafafa',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              justifyContent: 'center',
+                              alignItems: 'center',
+                              padding: '24px',
+                              textAlign: 'center'
+                            }}>
+                              <span style={{ fontSize: '32px', marginBottom: '8px' }}>📷</span>
+                              <h4 style={{ margin: 0, fontSize: '13.5px', fontWeight: 'bold', color: '#595959' }}>
+                                {currentEvent.videoStatus === 'dispatched' ? '补拍指令执行中' : '缺发现场视频'}
+                              </h4>
+                              <p style={{ fontSize: '12px', color: '#8c8c8c', margin: '6px 0 16px 0', maxWidth: '280px', lineHeight: 1.5 }}>
+                                {currentEvent.videoStatus === 'dispatched' 
+                                  ? `补拍指令已成功下达至 [${currentEvent.dispatchedTo}]，截止时间: ${currentEvent.deadlineText}，正在等待民警回传现场视频。`
+                                  : '该事件由指挥中心直接检索直建启动，尚未采集录入现场真实的视频图像与关键帧附件。'}
+                              </p>
+                              {currentEvent.videoStatus === 'dispatched' ? (
+                                <Button 
+                                  type="primary" 
+                                  style={{ background: '#7c3aed', borderColor: '#7c3aed' }}
+                                  onClick={() => handleSimulateReturn(currentEvent.id)}
+                                >
+                                  模拟民警回传视频
+                                </Button>
+                              ) : (
+                                <Button 
+                                  type="primary" 
+                                  icon={<PlayCircleOutlined />} 
+                                  onClick={() => handleOpenDispatchCapture(currentEvent.id)}
+                                >
+                                  下达现场补拍指令
+                                </Button>
+                              )}
                             </div>
                           )}
                         </div>
                       </div>
+
+                      {/* 现场图片 */}
+                      <div className="media-card card-container" style={{ flex: 1 }}>
+                        <div className="card-header">
+                          <div className="card-header-left">
+                            <CopyOutlined className="header-icon" style={{ color: '#3366FF' }} />
+                            <span className="card-header-title">现场图片</span>
+                          </div>
+                          <span className="media-filename-tag" style={{ fontSize: '11px', color: '#8c8c8c' }}>
+                            {hasVideoData && activeVersion ? `共 ${activeVersion.keyframes.length} 张` : '暂无图片'}
+                          </span>
+                        </div>
+                        
+                        {hasVideoData && activeVersion ? (
+                          <div className="image-grid-wrapper" style={{ padding: '12px', display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '115px 115px', gap: '8px' }}>
+                            {activeVersion.keyframes.map((kf, index) => (
+                              <div key={index} className="image-item-container" style={{ 
+                                position: 'relative', 
+                                borderRadius: '4px', 
+                                overflow: 'hidden', 
+                                backgroundColor: '#f5f5f5',
+                                gridColumn: activeVersion.keyframes.length === 1 ? '1 / 3' : (index === 1 && activeVersion.keyframes.length === 3 ? '1 / 2' : 'auto'),
+                                gridRow: activeVersion.keyframes.length === 1 ? '1 / 3' : 'auto'
+                              }}>
+                                <img 
+                                  src={kf.thumbnail} 
+                                  alt={kf.name} 
+                                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                                />
+                                <span className="img-seq-badge">{kf.seq}</span>
+                                <span className="img-recognition-tag">{kf.name}</span>
+                                <div className="img-filename-overlay" title={kf.hash}>{kf.hash}</div>
+                              </div>
+                            ))}
+                            {activeVersion.keyframes.length < 3 && (
+                              <div className="image-item-placeholder" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', background: '#fafafa', border: '1px dashed #d9d9d9', borderRadius: '4px' }}>
+                                <span style={{ fontSize: '11px', color: '#bfbfbf' }}>分析提取完毕</span>
+                                <span style={{ fontSize: '9px', color: '#d9d9d9' }}>LAN YING AI</span>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="image-grid-wrapper" style={{ padding: '12px', display: 'flex', justifyContent: 'center', alignItems: 'center', height: '259px' }}>
+                            <div style={{ textAlign: 'center', color: '#bfbfbf', padding: '20px' }}>
+                              <CopyOutlined style={{ fontSize: '28px', marginBottom: '8px', color: '#d9d9d9' }} />
+                              <div style={{ fontSize: '12px' }}>暂无关键帧图像</div>
+                              <div style={{ fontSize: '10px', marginTop: '4px' }}>等待现场视频回传后 AI 自动提取解析</div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 右边栏 (AI解读报告) */}
+                  <div className="detail-layout-right">
+                    <div className="ai-report-card card-container">
+                      <div className="card-header ai-report-header" style={{ borderBottom: '1px solid #f0f0f0', paddingBottom: '12px' }}>
+                        <div className="card-header-left">
+                          <span className="ai-report-icon-tag">AI</span>
+                          <span className="card-header-title" style={{ marginLeft: '8px' }}>AI 视频解读报告</span>
+                        </div>
+                      </div>
+                      
+                      <div className="ai-report-scroll-body" style={{ padding: '16px', overflowY: 'auto', maxHeight: '550px' }}>
+                        {hasVideoData && activeVersion ? (
+                          <>
+                            {/* 1. 场景描述 */}
+                            <div className="ai-report-section" style={{ marginBottom: '16px' }}>
+                              <h5 className="section-subtitle">场景描述</h5>
+                              <p className="section-paragraph" style={{ margin: 0, fontSize: '12.5px', lineHeight: '1.6', color: '#595959' }}>
+                                {activeVersion.aiReport.scene}
+                              </p>
+                            </div>
+
+                            {/* 2. 风险评估 */}
+                            <div className="ai-report-section risk-assessment-section" style={{ borderTop: '1px solid #f0f0f0', borderBottom: '1px solid #f0f0f0', padding: '12px 0', marginBottom: '16px' }}>
+                              <h5 className="section-subtitle risk-title" style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#f5222d', fontWeight: 'bold' }}>风险评估</h5>
+                              <div className="risk-content-list" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                <div className="risk-item" style={{ fontSize: '12px', color: '#f5222d' }}>
+                                  <span className="risk-label" style={{ fontWeight: 'bold' }}>事件性质：</span>
+                                  <span className="risk-value">{activeVersion.aiReport.riskNature}</span>
+                                </div>
+                                <div className="risk-item" style={{ fontSize: '12px', color: '#f5222d' }}>
+                                  <span className="risk-label" style={{ fontWeight: 'bold' }}>人群规模：</span>
+                                  <span className="risk-value">{activeVersion.aiReport.riskScale}</span>
+                                </div>
+                                <div className="risk-item" style={{ fontSize: '12px', color: '#f5222d' }}>
+                                  <span className="risk-label" style={{ fontWeight: 'bold' }}>升级风险：</span>
+                                  <span className="risk-value">{currentEvent.risk === '红色' ? '高' : (currentEvent.risk === '橙色' ? '中' : '低')}</span>
+                                </div>
+                                <div className="risk-item" style={{ fontSize: '12px', color: '#f5222d', lineHeight: '1.5' }}>
+                                  <span className="risk-label" style={{ fontWeight: 'bold' }}>判断依据：</span>
+                                  <span className="risk-value">现场秩序相对平稳，民警已介入引导，暂无明显警民冲突或二次发酵表现。</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* 3. 关键观察 */}
+                            <div className="ai-report-section">
+                              <h5 className="section-subtitle" style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#8c8c8c' }}>关键观察</h5>
+                              <div className="observation-list" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                {activeVersion.aiReport.observations.map((obs, oIdx) => (
+                                  <div key={oIdx} className="observation-item" style={{ display: 'flex', gap: '8px' }}>
+                                    <div className="obs-num-badge" style={{ 
+                                      width: '16px', 
+                                      height: '16px', 
+                                      borderRadius: '50%', 
+                                      background: '#f5222d', 
+                                      color: '#fff', 
+                                      fontSize: '10px', 
+                                      display: 'flex', 
+                                      alignItems: 'center', 
+                                      justifyContent: 'center', 
+                                      flexShrink: 0, 
+                                      marginTop: '2px' 
+                                    }}>
+                                      {oIdx + 1}
+                                    </div>
+                                    <div className="obs-text" style={{ fontSize: '12px', color: '#595959', lineHeight: '1.5' }}>
+                                      {obs}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          <div style={{ padding: '40px 0', textAlign: 'center', color: '#bfbfbf' }}>
+                            <RadarChartOutlined style={{ fontSize: '32px', color: '#d9d9d9', marginBottom: '12px' }} />
+                            <div style={{ fontSize: '13px', fontWeight: 600 }}>暂无智能解读报告</div>
+                            <p style={{ fontSize: '12px', color: '#8c8c8c', margin: '8px 0 0 0', lineHeight: 1.5 }}>
+                              正在等待现场补拍视频上传。视频回传后，AI 理解引擎将对场景、人员行为、涉警标志及风险隐患等进行深度提取研判。
+                            </p>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* ================================================================ */}
           {/* STEP 2: CONTROL & TAB CONTENT (布控大步渲染包裹)                  */}
@@ -1558,26 +2337,227 @@ const PoliceOpinionJoint: React.FC = () => {
             </div>
           )}
 
-          {/* ==================== TAB 2: 现场防控 ==================== */}
           {currentDetailTab === 'control' && (
-            <div className="view-card premium-placeholder-view">
-              <div className="placeholder-icon">🗺️</div>
-              <h3>现场精准防控与警情调度</h3>
-              <p>允许对线下重点区域、路段实施现场维稳，调度周围警力并绑定现场采集音视频设备。</p>
-              <div className="control-map-mock">
-                <div className="map-point active-point" style={{ top: '35%', left: '42%' }}>
-                  <PushpinOutlined /> <span>警力1组 - 淮安南路口</span>
+            <div className="field-control-instructions-view" style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
+              {/* Header Row */}
+              <div className="control-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <div>
+                  <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 'bold', color: '#262626', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <FileTextOutlined style={{ color: '#1890ff' }} />
+                    区县指挥中心指令
+                  </h4>
+                  <div style={{ fontSize: '12px', color: '#8c8c8c', marginTop: '2px' }}>
+                    共 {eventInstructions.filter(inst => inst.eventId === selectedEventId).length} 条指令
+                  </div>
                 </div>
-                <div className="map-point active-point" style={{ top: '60%', left: '70%' }}>
-                  <PushpinOutlined /> <span>警力2组 - 群众聚集点</span>
-                </div>
-                <div className="map-point device-point" style={{ top: '48%', left: '55%' }}>
-                  <EnvironmentOutlined /> <span>应急执法车(移动天网)</span>
-                </div>
+                <Button 
+                  type="primary"
+                  icon={<span>+ </span>}
+                  style={{ background: '#5950ec', borderColor: '#5950ec', color: '#fff' }}
+                  onClick={() => {
+                    setDispatchTemplateId('');
+                    setDispatchRequest('');
+                    setDispatchListText('');
+                    setDispatchReceiver('cs03区县');
+                    setDispatchModalOpen(true);
+                  }}
+                >
+                  新建指令
+                </Button>
               </div>
-              <div className="dispatch-buttons" style={{ marginTop: '24px' }}>
-                <Button type="primary" icon={<RadarChartOutlined />}>一键呼叫现场对讲</Button>
-                <Button style={{ marginLeft: '12px' }} icon={<PhoneOutlined />}>联络属地派出所</Button>
+
+              {/* Instructions List */}
+              <div className="instructions-list-container" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {eventInstructions.filter(inst => inst.eventId === selectedEventId).length === 0 ? (
+                  <div className="view-card premium-placeholder-view" style={{ minHeight: '260px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                    <div className="placeholder-icon">📋</div>
+                    <h3>当前事件暂无下达现场指令</h3>
+                    <p>您可以点击右上角的“新建指令”按钮，从指令模板库中选择并下达第一条现场处置指令。</p>
+                  </div>
+                ) : (
+                  eventInstructions
+                    .filter(inst => inst.eventId === selectedEventId)
+                    .map((inst) => (
+                      <div 
+                        key={inst.id} 
+                        className="instruction-dispatch-card" 
+                        style={{
+                          border: '1px solid #e8e8e8',
+                          borderRadius: '8px',
+                          backgroundColor: '#fff',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+                          overflow: 'hidden'
+                        }}
+                      >
+                        {/* Card Header (Click to toggle collapse) */}
+                        <div 
+                          className="card-header-toggle"
+                          style={{
+                            padding: '16px 20px',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            cursor: 'pointer',
+                            borderBottom: inst.isExpanded ? '1px solid #f0f0f0' : 'none',
+                            backgroundColor: '#fafafa'
+                          }}
+                          onClick={() => {
+                            setEventInstructions(prev => prev.map(i => 
+                              i.id === inst.id ? { ...i, isExpanded: !i.isExpanded } : i
+                            ));
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            {/* Blue document icon */}
+                            <div style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              width: '32px',
+                              height: '32px',
+                              borderRadius: '4px',
+                              background: '#e6f7ff',
+                              border: '1px solid #bae7ff',
+                              color: '#1890ff'
+                            }}>
+                              <FileTextOutlined style={{ fontSize: '16px' }} />
+                            </div>
+                            <div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#262626' }}>{inst.name}</span>
+                                <span style={{
+                                  fontSize: '11px',
+                                  color: inst.status === '已反馈' ? '#52c41a' : '#faad14',
+                                  background: inst.status === '已反馈' ? '#f6ffed' : '#fffbe6',
+                                  border: inst.status === '已反馈' ? '1px solid #b7eb8f' : '1px solid #ffe58f',
+                                  padding: '1px 6px',
+                                  borderRadius: '2px'
+                                }}>
+                                  {inst.status}
+                                </span>
+                              </div>
+                              <div style={{ fontSize: '12px', color: '#8c8c8c', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <span>🕒 {inst.time}</span>
+                                <span>👤 {inst.sender}</span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Toggle Arrow */}
+                          <div style={{ fontSize: '14px', color: '#8c8c8c' }}>
+                            {inst.isExpanded ? '▲' : '▼'}
+                          </div>
+                        </div>
+
+                        {/* Card Body */}
+                        {inst.isExpanded && (
+                          <div className="card-body-content" style={{ padding: '20px' }}>
+                            {/* 1. 指令要求 (Blue box) */}
+                            <div style={{ marginBottom: '16px' }}>
+                              <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#595959', marginBottom: '8px' }}>指令要求</div>
+                              <div style={{
+                                background: '#f0f5ff',
+                                border: '1px solid #adc6ff',
+                                borderRadius: '4px',
+                                padding: '12px 16px',
+                                fontSize: '13px',
+                                color: '#1d39c4',
+                                lineHeight: '1.6'
+                              }}>
+                                {inst.request}
+                              </div>
+                            </div>
+
+                            {/* 2. 签收时间 */}
+                            <div style={{ 
+                              display: 'flex', 
+                              justifyContent: 'space-between', 
+                              alignItems: 'center',
+                              fontSize: '13px', 
+                              color: '#595959', 
+                              marginBottom: '16px',
+                              borderBottom: '1px solid #f0f0f0',
+                              paddingBottom: '12px'
+                            }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span style={{ color: '#faad14' }}>🕒</span>
+                                <span>
+                                  签收时间：{inst.signTime ? inst.signTime : '区县尚未签收'}
+                                </span>
+                              </div>
+                              {inst.status === '待签收' && (
+                                <Button 
+                                  size="small" 
+                                  type="link" 
+                                  style={{ color: '#1890ff', padding: 0 }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleManualFeedbackSimulate(inst.id);
+                                  }}
+                                >
+                                  [ 点击模拟签收与反馈 ]
+                                </Button>
+                              )}
+                            </div>
+
+                            {/* 3. 指令清单 */}
+                            <div style={{ marginBottom: '20px' }}>
+                              <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#595959', marginBottom: '10px' }}>指令清单</div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                {inst.list.map((item: any, idx: number) => (
+                                  <div 
+                                    key={idx} 
+                                    style={{
+                                      background: '#f5f5f5',
+                                      border: '1px solid #e8e8e8',
+                                      borderRadius: '4px',
+                                      padding: '10px 16px',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'space-between',
+                                      fontSize: '13px'
+                                    }}
+                                  >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                      <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#bfbfbf' }} />
+                                      <span style={{ color: '#262626' }}>{item.name}</span>
+                                    </div>
+                                    <div style={{ color: '#8c8c8c' }}>{item.dept}</div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* 4. 反馈记录 (Green box) */}
+                            {inst.feedbackText && (
+                              <div>
+                                <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#595959', marginBottom: '8px' }}>反馈记录</div>
+                                <div style={{
+                                  background: '#f6ffed',
+                                  border: '1px solid #b7eb8f',
+                                  borderRadius: '4px',
+                                  padding: '16px'
+                                }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#52c41a', marginBottom: '8px', fontWeight: 600 }}>
+                                    <span>{inst.feedbackSender}</span>
+                                    <span>{inst.feedbackTime}</span>
+                                  </div>
+                                  <div style={{ fontSize: '13px', color: '#272727', lineHeight: 1.5 }}>
+                                    {inst.feedbackText}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))
+                )}
+              </div>
+
+              {/* Footer text */}
+              <div className="control-footer" style={{ textAlign: 'center', padding: '16px 0', color: '#bfbfbf', fontSize: '12px' }}>
+                到底部了
               </div>
             </div>
           )}
@@ -1858,6 +2838,491 @@ const PoliceOpinionJoint: React.FC = () => {
         ) : (
           <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无待审批的事件" style={{ padding: '40px 0' }} />
         )}
+      </Modal>
+
+      {/* ================================================================ */}
+      {/* MODAL 1: 防控指令库 (1:1 截图 1)                                   */}
+      {/* ================================================================ */}
+      <Modal
+        open={templatesModalOpen}
+        onCancel={() => setTemplatesModalOpen(false)}
+        footer={null}
+        width={760}
+        centered
+        className="control-templates-library-modal"
+        destroyOnClose
+      >
+        <div className="library-modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #f0f0f0', paddingBottom: '12px' }}>
+          <div className="header-left" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span className="library-check-icon" style={{ 
+              display: 'inline-flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              width: '24px', 
+              height: '24px', 
+              borderRadius: '50%', 
+              background: '#00b074', 
+              color: '#fff', 
+              fontSize: '14px' 
+            }}>
+              ✓
+            </span>
+            <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#262626' }}>防控指令库</span>
+            <span style={{ fontSize: '12px', color: '#8c8c8c', marginLeft: '6px' }}>已配置 {instructionTemplates.length} 条指令</span>
+          </div>
+          <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Button 
+              type="primary" 
+              icon={<span style={{ fontWeight: 'bold', marginRight: '2px' }}>+</span>} 
+              style={{ background: '#00b074', borderColor: '#00b074' }}
+              onClick={handleOpenCreateTemplate}
+            >
+              创建指令
+            </Button>
+            <span 
+              onClick={() => setTemplatesModalOpen(false)} 
+              style={{ cursor: 'pointer', fontSize: '16px', color: '#bfbfbf', marginLeft: '12px' }}
+              className="close-x-btn"
+            >
+              ✕
+            </span>
+          </div>
+        </div>
+
+        {/* Scrollable list content */}
+        <div className="library-scroll-body" style={{ maxHeight: '480px', overflowY: 'auto', paddingRight: '4px' }}>
+          {instructionTemplates.length === 0 ? (
+            <Empty description="暂无指令模板，请点击右上角创建" />
+          ) : (
+            instructionTemplates.map((template) => (
+              <div 
+                key={template.id} 
+                className="template-library-card" 
+                style={{
+                  border: '1px solid #d9e4ff',
+                  borderRadius: '4px',
+                  padding: '16px',
+                  marginBottom: '16px',
+                  backgroundColor: '#fff',
+                  position: 'relative'
+                }}
+              >
+                {/* Card Top */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 'bold', color: '#262626' }}>{template.name}</h4>
+                    <span style={{ 
+                      fontSize: '11px', 
+                      color: '#00b074', 
+                      background: '#e6fbf4', 
+                      border: '1px solid #b3f4db', 
+                      padding: '1px 6px', 
+                      borderRadius: '2px' 
+                    }}>
+                      {template.type}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ fontSize: '12px', color: '#8c8c8c' }}>{template.time}</span>
+                    <EditOutlined 
+                      style={{ color: '#00b074', cursor: 'pointer', fontSize: '13px' }} 
+                      onClick={() => handleOpenEditTemplate(template)} 
+                    />
+                    <CloseOutlined 
+                      style={{ color: '#ff4d4f', cursor: 'pointer', fontSize: '13px' }} 
+                      onClick={() => handleDeleteTemplate(template.id, template.name)} 
+                    />
+                  </div>
+                </div>
+
+                {/* Card Request */}
+                <div style={{ marginBottom: '12px' }}>
+                  <div style={{ fontSize: '12px', color: '#8c8c8c', marginBottom: '4px' }}>指令要求</div>
+                  <div style={{ fontSize: '13px', color: '#262626', lineHeight: 1.5 }}>{template.request}</div>
+                </div>
+
+                {/* Card Items */}
+                <div>
+                  <div style={{ fontSize: '12px', color: '#8c8c8c', marginBottom: '6px' }}>指令清单</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {template.list.map((item: string, idx: number) => (
+                      <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', fontSize: '13px', color: '#262626' }}>
+                        <span className="list-seq-dot" style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '16px',
+                          height: '16px',
+                          borderRadius: '50%',
+                          background: '#00b074',
+                          color: '#fff',
+                          fontSize: '10px',
+                          marginRight: '8px',
+                          flexShrink: 0,
+                          marginTop: '2px'
+                        }}>
+                          {idx + 1}
+                        </span>
+                        <span>{item}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Card Footer */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px', borderTop: '1px solid #f0f0f0', paddingTop: '12px' }}>
+          <Button onClick={() => setTemplatesModalOpen(false)}>关闭</Button>
+        </div>
+      </Modal>
+
+      {/* ================================================================ */}
+      {/* MODAL 2: 创建/编辑防控指令 (1:1 截图 2)                             */}
+      {/* ================================================================ */}
+      <Modal
+        open={createTemplateModalOpen}
+        onCancel={() => setCreateTemplateModalOpen(false)}
+        footer={null}
+        width={560}
+        centered
+        className="create-control-template-modal"
+        destroyOnClose
+      >
+        <div className="form-modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #f0f0f0', paddingBottom: '12px' }}>
+          <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#262626' }}>
+            {editingTemplate ? '编辑防控指令' : '创建防控指令'}
+          </span>
+          <span 
+            onClick={() => setCreateTemplateModalOpen(false)} 
+            style={{ cursor: 'pointer', fontSize: '16px', color: '#bfbfbf' }}
+          >
+            ✕
+          </span>
+        </div>
+
+        <div className="form-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {/* 1. 指令名称 */}
+          <div>
+            <div style={{ marginBottom: '8px', fontSize: '13px', fontWeight: 600 }}>
+              <span style={{ color: '#ff4d4f', marginRight: '4px' }}>*</span>指令名称
+            </div>
+            <Input 
+              placeholder="请输入指令名称" 
+              value={formName}
+              onChange={(e) => setFormName(e.target.value)}
+            />
+          </div>
+
+          {/* 2. 指令类型 */}
+          <div>
+            <div style={{ marginBottom: '8px', fontSize: '13px', fontWeight: 600 }}>指令类型</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                background: '#e6fbf4',
+                color: '#00b074',
+                border: '1px solid #00b074',
+                padding: '4px 12px',
+                borderRadius: '4px',
+                fontSize: '13px',
+                cursor: 'default'
+              }}>
+                ✓ 现场指令
+              </div>
+              <span style={{ fontSize: '12px', color: '#8c8c8c' }}>(当前仅支持现场指令类型)</span>
+            </div>
+          </div>
+
+          {/* 3. 指令要求 */}
+          <div>
+            <div style={{ marginBottom: '8px', fontSize: '13px', fontWeight: 600 }}>
+              <span style={{ color: '#ff4d4f', marginRight: '4px' }}>*</span>指令要求
+            </div>
+            <div style={{ position: 'relative' }}>
+              <Input.TextArea 
+                placeholder="请输入指令要求内容" 
+                rows={3}
+                maxLength={200}
+                value={formRequest}
+                onChange={(e) => setFormRequest(e.target.value)}
+              />
+              <span style={{
+                position: 'absolute',
+                right: '10px',
+                bottom: '5px',
+                fontSize: '11px',
+                color: '#bfbfbf'
+              }}>
+                {formRequest.length}/200
+              </span>
+            </div>
+          </div>
+
+          {/* 4. 指令清单 */}
+          <div>
+            <div style={{ marginBottom: '4px', fontSize: '13px', fontWeight: 600 }}>
+              <span style={{ color: '#ff4d4f', marginRight: '4px' }}>*</span>指令清单
+            </div>
+            <div style={{ fontSize: '12px', color: '#8c8c8c', marginBottom: '8px' }}>每行一条，支持多条清单内容</div>
+            <Input.TextArea 
+              placeholder={"1. 部署警力在各出入口把守\n2. 开设警戒线隔离主要区域\n3. 引导群众有序疏散"} 
+              rows={4}
+              value={formList}
+              onChange={(e) => setFormList(e.target.value)}
+            />
+          </div>
+        </div>
+
+        {/* Buttons */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '24px', borderTop: '1px solid #f0f0f0', paddingTop: '16px' }}>
+          <Button onClick={() => setCreateTemplateModalOpen(false)}>取消</Button>
+          <Button type="primary" onClick={handleCreateOrEditTemplate}>
+            {editingTemplate ? '确认修改' : '确认创建'}
+          </Button>
+        </div>
+      </Modal>
+
+      {/* ================================================================ */}
+      {/* MODAL 3: 下达现场指令 (详情页现场防控新建)                        */}
+      {/* ================================================================ */}
+      <Modal
+        open={dispatchModalOpen}
+        onCancel={() => setDispatchModalOpen(false)}
+        footer={null}
+        width={560}
+        centered
+        className="dispatch-instruction-modal"
+        destroyOnClose
+      >
+        <div className="form-modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #f0f0f0', paddingBottom: '12px' }}>
+          <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#262626' }}>下达现场处置指令</span>
+          <span 
+            onClick={() => setDispatchModalOpen(false)} 
+            style={{ cursor: 'pointer', fontSize: '16px', color: '#bfbfbf' }}
+          >
+            ✕
+          </span>
+        </div>
+
+        <div className="form-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {/* 选择模板 */}
+          <div>
+            <div style={{ marginBottom: '8px', fontSize: '13px', fontWeight: 600 }}>选择指令库模板</div>
+            <Select
+              style={{ width: '100%' }}
+              placeholder="请选择已配置的指令模板"
+              value={dispatchTemplateId || undefined}
+              onChange={handleSelectTemplateForDispatch}
+              options={instructionTemplates.map(t => ({
+                value: t.id,
+                label: `${t.name} (${t.type})`
+              }))}
+            />
+          </div>
+
+          {/* 指令要求 */}
+          <div>
+            <div style={{ marginBottom: '8px', fontSize: '13px', fontWeight: 600 }}>指令要求</div>
+            <Input.TextArea 
+              rows={3}
+              value={dispatchRequest}
+              onChange={(e) => setDispatchRequest(e.target.value)}
+              placeholder="选择模板后自动加载，支持二次编辑"
+            />
+          </div>
+
+          {/* 指令清单 */}
+          <div>
+            <div style={{ marginBottom: '8px', fontSize: '13px', fontWeight: 600 }}>指令清单 (每行一条)</div>
+            <Input.TextArea 
+              rows={4}
+              value={dispatchListText}
+              onChange={(e) => setDispatchListText(e.target.value)}
+              placeholder="选择模板后自动加载，支持二次编辑"
+            />
+          </div>
+
+          {/* 指派接收单位 */}
+          <div>
+            <div style={{ marginBottom: '8px', fontSize: '13px', fontWeight: 600 }}>指派接收区县</div>
+            <Input 
+              value={dispatchReceiver}
+              onChange={(e) => setDispatchReceiver(e.target.value)}
+              placeholder="请输入接收指派的区县名称"
+            />
+          </div>
+        </div>
+
+        {/* Buttons */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '24px', borderTop: '1px solid #f0f0f0', paddingTop: '16px' }}>
+          <Button onClick={() => setDispatchModalOpen(false)}>取消</Button>
+          <Button type="primary" onClick={() => handleDispatchInstruction(selectedEventId!)}>
+            确认下达
+          </Button>
+        </div>
+      </Modal>
+
+      {/* ================================================================ */}
+      {/* MODAL 4: 下达现场视频补拍指令 (外层表格触发)                         */}
+      {/* ================================================================ */}
+      <Modal
+        open={dispatchCaptureModalOpen}
+        onCancel={() => setDispatchCaptureModalOpen(false)}
+        footer={null}
+        width={580}
+        centered
+        className="dispatch-capture-instruction-modal"
+        destroyOnClose
+      >
+        <div className="form-modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #f0f0f0', paddingBottom: '12px' }}>
+          <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#262626' }}>
+            下达现场视频补拍指令 - {events.find(e => e.id === dispatchCaptureEventId)?.title || '未选定事件'}
+          </span>
+          <span 
+            onClick={() => setDispatchCaptureModalOpen(false)} 
+            style={{ cursor: 'pointer', fontSize: '16px', color: '#bfbfbf' }}
+          >
+            ✕
+          </span>
+        </div>
+
+        <div className="form-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          
+          {/* 1. 指派模式切换 */}
+          <div>
+            <div style={{ marginBottom: '8px', fontSize: '13px', fontWeight: 600 }}>指派模式</div>
+            <Radio.Group 
+              value={dispatchCaptureType} 
+              onChange={(e: any) => setDispatchCaptureType(e.target.value)}
+              buttonStyle="solid"
+            >
+              <Radio.Button value="DEPARTMENT">按部门指派</Radio.Button>
+              <Radio.Button value="POLICE">按人员指派</Radio.Button>
+            </Radio.Group>
+          </div>
+
+          {/* 2. 接收对象选择 */}
+          <div>
+            <div style={{ marginBottom: '8px', fontSize: '13px', fontWeight: 600 }}>
+              <span style={{ color: '#ff4d4f', marginRight: '4px' }}>*</span>
+              {dispatchCaptureType === 'DEPARTMENT' ? '指派部门' : '指派民警'}
+            </div>
+            {dispatchCaptureType === 'DEPARTMENT' ? (
+              <Select
+                style={{ width: '100%' }}
+                placeholder="请选择接收补拍指令的单位/部门"
+                value={dispatchCaptureDept}
+                onChange={setDispatchCaptureDept}
+                options={[
+                  { value: '河下派出所', label: '淮安区分局 -> 河下派出所' },
+                  { value: '新城区分局治安大队', label: '新城区分局 -> 治安大队' },
+                  { value: '开发区交警大队', label: '开发区分局 -> 交警大队' },
+                  { value: '清江浦区文津路派出所', label: '清江浦区分局 -> 文津路派出所' }
+                ]}
+              />
+            ) : (
+              <Select
+                style={{ width: '100%' }}
+                placeholder="请选择接收补拍指令的执勤民警"
+                value={dispatchCapturePolice}
+                onChange={setDispatchCapturePolice}
+                options={[
+                  { value: '张警官 [在线/网格02]', label: '张警官 [在线 / 属地网格02]' },
+                  { value: '李警官 [执勤中/网格01]', label: '李警官 [执勤中 / 核心网格01]' },
+                  { value: '陈警官 [执勤中]', label: '陈警官 [执勤中 / 现场应急小队]' },
+                  { value: '唐民警 [在线]', label: '唐警官 [在线 / 派出所机动岗]' }
+                ]}
+              />
+            )}
+          </div>
+
+          {/* 3. 快捷 Tag 模板 */}
+          <div>
+            <div style={{ marginBottom: '6px', fontSize: '12px', color: '#8c8c8c' }}>快捷要求模板 (点击追加到内容框)：</div>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              {[
+                { label: '全景与周边环境', text: '#全景与周边环境#' },
+                { label: '涉事人面部/车牌特写', text: '#涉事人面部/车牌特写#' },
+                { label: '冲突发生过程', text: '#冲突发生过程#' }
+              ].map(tag => (
+                <span
+                  key={tag.label}
+                  className="quick-tag-item"
+                  style={{
+                    fontSize: '11px',
+                    color: '#1890ff',
+                    background: '#e6f7ff',
+                    border: '1px solid #91d5ff',
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    userSelect: 'none'
+                  }}
+                  onClick={() => {
+                    setDispatchCaptureText(prev => `${prev.trim()} ${tag.text}`);
+                  }}
+                >
+                  {tag.label}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* 4. 补充拍摄要求 */}
+          <div>
+            <div style={{ marginBottom: '8px', fontSize: '13px', fontWeight: 600 }}>拍摄指令描述</div>
+            <Input.TextArea 
+              rows={4}
+              maxLength={200}
+              value={dispatchCaptureText}
+              onChange={(e: any) => setDispatchCaptureText(e.target.value)}
+              placeholder="请输入补充拍摄指令内容描述"
+            />
+            <div style={{ textAlign: 'right', fontSize: '11px', color: '#bfbfbf', marginTop: '4px' }}>
+              {dispatchCaptureText.length}/200
+            </div>
+          </div>
+
+          {/* 5. 最晚回传时间 */}
+          <div>
+            <div style={{ marginBottom: '8px', fontSize: '13px', fontWeight: 600 }}>最晚回传时间</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <Radio.Group 
+                value={dispatchCaptureDeadline} 
+                onChange={(e: any) => setDispatchCaptureDeadline(e.target.value)}
+              >
+                <Radio.Button value="15分钟内">15分钟内 (加急)</Radio.Button>
+                <Radio.Button value="30分钟内">30分钟内 (默认)</Radio.Button>
+                <Radio.Button value="1小时内">1小时内</Radio.Button>
+              </Radio.Group>
+              
+              <DatePicker 
+                showTime 
+                placeholder="自定义截止时间"
+                style={{ width: '160px' }}
+                onChange={(val, dateString) => {
+                  if (dateString) {
+                    setDispatchCaptureDeadline(dateString as string);
+                  }
+                }}
+              />
+            </div>
+          </div>
+
+        </div>
+
+        {/* Buttons */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '24px', borderTop: '1px solid #f0f0f0', paddingTop: '16px' }}>
+          <Button onClick={() => setDispatchCaptureModalOpen(false)}>取消</Button>
+          <Button type="primary" onClick={handleDispatchCaptureSubmit}>
+            下达指令
+          </Button>
+        </div>
       </Modal>
     </div>
   );
