@@ -17,6 +17,7 @@ import {
   Popconfirm,
   Empty,
   Table,
+  Popover,
 } from 'antd';
 import {
   LeftOutlined,
@@ -549,6 +550,7 @@ const TaskDetailCQ: React.FC<TaskDetailCQProps> = ({ taskId, onBack }) => {
   const [detailInstruction, setDetailInstruction] = useState<IssuedInstruction | null>(null);
   const [linkStatusMap, setLinkStatusMap] = useState<Record<string, IssuedInstruction['linkStatus']>>({});
   const [onlyShowIssued, setOnlyShowIssued] = useState(false);
+  const [searchText, setSearchText] = useState('');
 
   // 批量失效监测相关状态
   const [isDetectModalOpen, setIsDetectModalOpen] = useState(false);
@@ -1668,6 +1670,13 @@ const TaskDetailCQ: React.FC<TaskDetailCQProps> = ({ taskId, onBack }) => {
       if (onlyShowIssued) {
         const hasInstruction = issuedInstructions.some(item => item.eventId === event.id);
         if (!hasInstruction) return false;
+      }
+      if (searchText) {
+        const keyword = searchText.trim().toLowerCase();
+        const contentMatch = event.content?.toLowerCase().includes(keyword);
+        const titleMatch = event.title?.toLowerCase().includes(keyword);
+        const authorMatch = event.author?.toLowerCase().includes(keyword);
+        if (!contentMatch && !titleMatch && !authorMatch) return false;
       }
       if (activeTab === 'all') return true;
       if (activeTab === 'weibo') return event.platform === '微博';
@@ -3144,52 +3153,88 @@ const TaskDetailCQ: React.FC<TaskDetailCQProps> = ({ taskId, onBack }) => {
         {/* ==================== 1. 文章列表视图 ==================== */}
         {firstLevelTab === 'articles' && (
           <>
-            {/* 搜索筛选栏 */}
-            <div className="detail-filter-bar">
-              <div className="filter-search" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                <Input
-                  prefix={<SearchOutlined />}
-                  placeholder="搜索事件内容"
-                  className="event-search-input"
-                />
-                <Checkbox 
-                  checked={onlyShowIssued} 
-                  onChange={(e) => setOnlyShowIssued(e.target.checked)}
-                  style={{ whiteSpace: 'nowrap', fontSize: '13px', marginLeft: 8 }}
-                >
-                  仅看已下达指令
-                </Checkbox>
+            {/* 平台切换与操作栏集成为一行 */}
+            <div className="detail-filter-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0', gap: '16px', flexWrap: 'wrap' }}>
+              <div className="filter-tabs-left" style={{ display: 'flex', alignItems: 'center', gap: '2px', background: '#f4f4f5', padding: '2px', borderRadius: '6px' }}>
+                {[
+                  { label: '全部', key: 'all' },
+                  { label: '微博', key: 'weibo' },
+                  { label: '抖音', key: 'douyin' },
+                  { label: '微信', key: 'wechat' },
+                  { label: '新闻', key: 'news' },
+                  { label: '预警', key: 'warning' },
+                ].map((item) => (
+                  <div
+                    key={item.key}
+                    onClick={() => setActiveTab(item.key)}
+                    style={{
+                      padding: '4px 12px',
+                      borderRadius: '4px',
+                      fontSize: '13px',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      background: activeTab === item.key ? '#fff' : 'transparent',
+                      color: activeTab === item.key ? 'var(--primary-color)' : '#71717a',
+                      fontWeight: activeTab === item.key ? '600' : 'normal',
+                      boxShadow: activeTab === item.key ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)' : 'none',
+                    }}
+                  >
+                    {item.label}
+                  </div>
+                ))}
               </div>
-              <div className="filter-actions-detail">
+              <div className="filter-actions-detail" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Button icon={<SafetyOutlined />} type="primary" onClick={openBatchDetectModal}>
                   批量失效监测
                 </Button>
-                <Button icon={<FilterOutlined />}>筛选</Button>
+                
+                <Popover
+                  placement="bottomRight"
+                  title="筛选条件"
+                  trigger="click"
+                  content={
+                    <div style={{ width: '260px', display: 'flex', flexDirection: 'column', gap: '12px', padding: '4px 0' }}>
+                      <div>
+                        <div style={{ marginBottom: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>搜索事件内容</div>
+                        <Input
+                          prefix={<SearchOutlined />}
+                          placeholder="请输入事件关键词"
+                          value={searchText}
+                          onChange={(e) => setSearchText(e.target.value)}
+                          allowClear
+                        />
+                      </div>
+                      <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '8px' }}>
+                        <Checkbox 
+                          checked={onlyShowIssued} 
+                          onChange={(e) => setOnlyShowIssued(e.target.checked)}
+                          style={{ fontSize: '13px' }}
+                        >
+                          仅看已下达指令
+                        </Checkbox>
+                      </div>
+                    </div>
+                  }
+                >
+                  <Button icon={<FilterOutlined />}>筛选</Button>
+                </Popover>
+
                 <Button>排序 <DownOutlined /></Button>
                 <Button>时间 <DownOutlined /></Button>
               </div>
             </div>
 
-            {/* 分类Tab */}
-            <div className="detail-tabs-bar">
-              <Tabs activeKey={activeTab} onChange={setActiveTab} className="detail-tabs">
-                <TabPane tab="全部" key="all" />
-                <TabPane tab="微博" key="weibo" />
-                <TabPane tab="抖音" key="douyin" />
-                <TabPane tab="微信" key="wechat" />
-                <TabPane tab="新闻" key="news" />
-                <TabPane tab="预警" key="warning" />
-              </Tabs>
-              <div className="tabs-extra">
-                <Checkbox
-                  checked={allSelected}
-                  indeterminate={selectedEventIds.length > 0 && !allSelected}
-                  onChange={(e) => setSelectedEventIds(e.target.checked ? visibleEvents.map((event) => event.id) : [])}
-                >
-                  全选
-                </Checkbox>
-                <span className="total-count">共 {visibleEvents.length} 条</span>
-              </div>
+            {/* 全选舆情帖文复选框排列在下一行左侧 */}
+            <div className="detail-selection-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', padding: '2px 0 8px 0', gap: '16px' }}>
+              <Checkbox
+                checked={allSelected}
+                indeterminate={selectedEventIds.length > 0 && !allSelected}
+                onChange={(e) => setSelectedEventIds(e.target.checked ? visibleEvents.map((event) => event.id) : [])}
+                style={{ fontSize: '13px' }}
+              >
+                全选舆情帖文
+              </Checkbox>
+              <span className="total-count" style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>共 {visibleEvents.length} 条</span>
             </div>
             {/* 事件列表 */}
             <div className="event-list-container">
