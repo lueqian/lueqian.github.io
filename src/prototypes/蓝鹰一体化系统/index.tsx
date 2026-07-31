@@ -3,6 +3,7 @@ import { ConfigProvider, theme } from 'antd';
 import Header from './components/Header';
 import Navigation from './components/Navigation';
 import SourceControl from './pages/SourceControl';
+import SourceControlCQ from './pages/SourceControlCQ';
 import MonitorWarning from './pages/MonitorWarning';
 import EmergencyResponse from './pages/EmergencyResponse';
 import ReviewSummary from './pages/ReviewSummary';
@@ -19,6 +20,7 @@ import IntranetDataScreen from './pages/IntranetDataScreen';
 export type PageKey =
   | 'police-opinion-joint'
   | 'source-control'
+  | 'source-control-cq'
   | 'monitor-warning'
   | 'emergency-response'
   | 'review-summary'
@@ -61,6 +63,8 @@ const BlueEagleIntegratedSystem = forwardRef<AxureHandle, AxureProps>(function B
         return <PoliceOpinionJoint />;
       case 'source-control':
         return <SourceControl />;
+      case 'source-control-cq':
+        return <SourceControlCQ />;
       case 'monitor-warning':
         return <MonitorWarning />;
       case 'emergency-response':
