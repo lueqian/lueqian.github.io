@@ -14,6 +14,7 @@ import {
   BookOutlined,
   GlobalOutlined,
   ApartmentOutlined,
+  EditOutlined,
 } from '@ant-design/icons';
 
 export interface NavigationProps {
@@ -31,6 +32,7 @@ interface MenuItem {
 
 const menuItems: MenuItem[] = [
   { key: 'police-opinion-joint', label: '警舆同处', icon: <SecurityScanOutlined /> },
+  { key: 'manual-report', label: '手工上报', icon: <EditOutlined /> },
   { key: 'source-control', label: '源头防控', icon: <SafetyOutlined /> },
   { key: 'source-control-cq', label: '源头防控（cq）', icon: <SafetyOutlined /> },
   { key: 'monitor-warning', label: '监测预警', icon: <RadarChartOutlined /> },

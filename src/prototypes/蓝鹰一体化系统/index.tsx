@@ -16,9 +16,12 @@ import './style.css';
 import './screen-style.css';
 import InternetDataScreen from './pages/InternetDataScreen';
 import IntranetDataScreen from './pages/IntranetDataScreen';
+import ManualReport from './pages/ManualReport';
+import DutyRosterModal from './components/DutyRosterModal';
 
 export type PageKey =
   | 'police-opinion-joint'
+  | 'manual-report'
   | 'source-control'
   | 'source-control-cq'
   | 'monitor-warning'
@@ -49,6 +52,7 @@ const BlueEagleIntegratedSystem = forwardRef<AxureHandle, AxureProps>(function B
 ) {
   const [activePage, setActivePage] = useState<PageKey>('police-opinion-joint');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [dutyRosterOpen, setDutyRosterOpen] = useState(false);
 
   const handleMenuSelect = useCallback((key: string) => {
     setActivePage(key as PageKey);
@@ -61,6 +65,8 @@ const BlueEagleIntegratedSystem = forwardRef<AxureHandle, AxureProps>(function B
     switch (activePage) {
       case 'police-opinion-joint':
         return <PoliceOpinionJoint />;
+      case 'manual-report':
+        return <ManualReport onBack={() => setActivePage('police-opinion-joint')} />;
       case 'source-control':
         return <SourceControl />;
       case 'source-control-cq':
@@ -124,7 +130,10 @@ const BlueEagleIntegratedSystem = forwardRef<AxureHandle, AxureProps>(function B
       }}
     >
       <div className={`blue-eagle-system ${activePage.endsWith('data-screen') ? 'screen-mode' : ''}`}>
-        <Header />
+        <Header
+          onManualReport={() => setActivePage('manual-report')}
+          onOpenDutyRoster={() => setDutyRosterOpen(true)}
+        />
         <div className="main-container">
           <Navigation
             activeKey={activePage}
@@ -137,6 +146,12 @@ const BlueEagleIntegratedSystem = forwardRef<AxureHandle, AxureProps>(function B
           </div>
         </div>
       </div>
+
+      {/* 今日值班表 (Duty Roster Modal) */}
+      <DutyRosterModal
+        open={dutyRosterOpen}
+        onClose={() => setDutyRosterOpen(false)}
+      />
     </ConfigProvider>
   );
 });

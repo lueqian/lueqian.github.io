@@ -18,9 +18,12 @@ import {
   Empty,
   Table,
   Popover,
+  TimePicker,
+  InputNumber,
 } from 'antd';
 import {
   LeftOutlined,
+  RightOutlined,
   SearchOutlined,
   FilterOutlined,
   DownOutlined,
@@ -48,6 +51,7 @@ import {
   DownloadOutlined,
   PieChartOutlined,
   CheckCircleOutlined,
+  CheckOutlined,
   FilePdfOutlined,
   FileWordOutlined,
   TableOutlined,
@@ -58,6 +62,7 @@ import {
   LineChartOutlined,
   DeleteOutlined,
   PlusOutlined,
+  PlusCircleOutlined,
   SafetyOutlined,
 } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
@@ -147,14 +152,52 @@ const currentTask: TaskInfo = {
   trend: 12,
 };
 
-// 侧边任务列表
-const sideTasks: SideTask[] = [
-  { id: '1', code: '0510', name: '淮安汛情', status: 'normal', eventCount: 156, isActive: true, isEffective: true, createTime: '2026-05-10 09:30:00' },
-  { id: '2', code: '0118', name: '高张花园', status: 'normal', eventCount: 89, isActive: false, isEffective: false, createTime: '2026-01-18 10:00:00' },
-  { id: '3', code: '0322', name: '交通事故', status: 'urgent', eventCount: 234, isActive: false, isEffective: true, createTime: '2026-03-22 14:20:00' },
-  { id: '4', code: '0405', name: '校园安全', status: 'normal', eventCount: 45, isActive: false, isEffective: false, createTime: '2026-04-05 16:45:00' },
-  { id: '5', code: '0512', name: '食品安全', status: 'normal', eventCount: 78, isActive: false, isEffective: true, createTime: '2026-05-12 11:15:00' },
+// 侧边任务树状结构数据（与主看板排班保持一致）
+const sideTaskGroups = [
+  {
+    type: '重大实体事件跟踪',
+    items: [
+      { id: 't1',  name: '渝中宝马撞人事件' },
+      { id: 't2',  name: '彭水山体滑坡' },
+      { id: 't3',  name: 'LGBT' },
+      { id: 't4',  name: '重庆火灾舆情' },
+      { id: 't5',  name: '大足一中' },
+      { id: 't6',  name: '大足矫正教育' },
+      { id: 't7',  name: '侵犯公民个人信息' },
+      { id: 't8',  name: '区域合并舆情监测' },
+      { id: 't9',  name: '区域规划舆情监测' },
+      { id: 't10', name: '李林偷越国边境' },
+      { id: 't11', name: '留查辅警招聘' },
+      { id: 't12', name: '渝中舆情巡查' },
+      { id: 't13', name: '重庆涉灾舆情' },
+      { id: 't14', name: '重庆区划' },
+      { id: 't15', name: '激光投射类人员设备摸排' },
+      { id: 't16', name: '合川重点学校巡查' },
+      { id: 't17', name: '涉日' },
+      { id: 't18', name: '重庆涉灾舆情（媒体）' },
+      { id: 't19', name: '活人墓' },
+    ],
+  },
+  {
+    type: '安保任务',
+    items: [
+      { id: 's1', name: '5月23日 淮安苏超' },
+      { id: 's2', name: '敏感节点安保值守' },
+      { id: 's3', name: '涉稳群体聚集风险排查' },
+    ],
+  },
+  {
+    type: '专项巡查任务',
+    items: [
+      { id: 'p1', name: '淮安汛情' },
+      { id: 'p2', name: '高张花园' },
+      { id: 'p3', name: '食品安全专项' },
+    ],
+  },
 ];
+// 平铺所有任务（用于总数统计）
+const allSideTasksFlat = sideTaskGroups.flatMap(g => g.items);
+
 
 const issuedInstructions: IssuedInstruction[] = [
   {
@@ -483,64 +526,102 @@ const getPlatformIcon = (platform: string) => {
   }
 };
 
+// 各个任务专属的可选值班责任单位限制
+const taskAllowedUnits: Record<string, string[]> = {
+  t1: ['渝中区'],   // 渝中宝马撞人事件
+  t5: ['大足区'],   // 大足一中
+  t6: ['大足区'],   // 大足矫正教育
+  t12: ['渝中区'],  // 渝中舆情巡查
+  t16: ['合川区']   // 合川重点学校巡查
+};
+
+const isUnitAllowedForTask = (taskId: string, unit: string) => {
+  const allowed = taskAllowedUnits[taskId];
+  if (!allowed) return true; // 默认全市统管
+  return allowed.includes(unit);
+};
+
+const getInitialSchedules = () => {
+  const initial: Record<string, Record<string, any>> = {};
+  
+  // 大足一中 (t5) - 全体大足区排班
+  initial['t5'] = {};
+  const start = dayjs('2026-07-15');
+  for (let i = 0; i < 60; i++) {
+    const dStr = start.add(i, 'day').format('YYYY-MM-DD');
+    initial['t5'][dStr] = {
+      dutyUnit: '大足区',
+      requirements: '重点配合做好校园大门以及外围路段的舆情巡视和网民言言论引导工作。',
+      timeRanges: [
+        { start: '09:00', end: '11:00' },
+        { start: '14:00', end: '16:00' },
+        { start: '20:00', end: '22:00' }
+      ]
+    };
+  }
+
+  // 模拟当前任务 (淮安汛情 ID '1') 的排班
+  initial['1'] = {};
+  for (let i = 0; i < 60; i++) {
+    const dStr = start.add(i, 'day').format('YYYY-MM-DD');
+    if (i % 3 === 0) {
+      initial['1'][dStr] = {
+        dutyUnit: '支队',
+        requirements: '加强汛情相关网民讨论的收集和负面情绪引导。',
+        timeRanges: [
+          { start: '08:30', end: '11:30' },
+          { start: '14:30', end: '17:30' }
+        ]
+      };
+    }
+  }
+  
+  return initial;
+};
+
 // ==================== 组件 ====================
+
 
 interface TaskDetailCQProps {
   taskId?: string;
   onBack?: () => void;
+  schedules?: Record<string, Record<string, any>>;
+  setSchedules?: React.Dispatch<React.SetStateAction<Record<string, Record<string, any>>>>;
 }
 
-const TaskDetailCQ: React.FC<TaskDetailCQProps> = ({ taskId, onBack }) => {
-  const [sideTaskList, setSideTaskList] = useState<SideTask[]>(sideTasks);
-  const [activeSideTask, setActiveSideTask] = useState(taskId || '1');
-  const currentActiveTask = sideTaskList.find(t => t.id === activeSideTask) || currentTask;
+const TaskDetailCQ: React.FC<TaskDetailCQProps> = ({ taskId, onBack, schedules: propSchedules, setSchedules: propSetSchedules }) => {
+  const [activeSideTask, setActiveSideTask] = useState(taskId || 't1');
+  const currentActiveTask = allSideTasksFlat.find(t => t.id === activeSideTask)
+    ? { ...currentTask, id: activeSideTask, name: allSideTasksFlat.find(t => t.id === activeSideTask)!.name }
+    : currentTask;
   const [searchValue, setSearchValue] = useState('');
+  // 各分组默认展开状态（所有分组默认展开）
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
-  // 任务编辑状态
-  const [editingTask, setEditingTask] = useState<SideTask | null>(null);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editForm] = Form.useForm();
+  // 挂载排班数据库（支持父组件透传与本地备份双轨机制）
+  const [localSchedules, setLocalSchedules] = useState<Record<string, Record<string, any>>>(() => getInitialSchedules());
+  const schedules = propSchedules || localSchedules;
+  const setSchedules = propSetSchedules || setLocalSchedules;
 
-  // 根据当前编辑任务自动填表
-  useEffect(() => {
-    if (editingTask) {
-      editForm.setFieldsValue({
-        name: editingTask.name,
-        status: editingTask.status,
-        isEffective: editingTask.isEffective,
-      });
-    }
-  }, [editingTask, editForm]);
+  // ==================== 排班管理专属状态与事件监听 ====================
+  const [currentDatePage, setCurrentDatePage] = useState<number>(0);
+  const [batchMode, setBatchMode] = useState<boolean>(false);
+  const [batchTemplate, setBatchTemplate] = useState<{ taskId: string; dateStr: string; config: any } | null>(null);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+  const [dragSelectedCells, setDragSelectedCells] = useState<Array<{ taskId: string; dateStr: string }>>([]);
+  const [schedulesSnapshot, setSchedulesSnapshot] = useState<Record<string, Record<string, any>> | null>(null);
+  const [selectedCell, setSelectedCell] = useState<{ taskId: string; dateStr: string } | null>(null);
+  const [tempDutyUnit, setTempDutyUnit] = useState<string>();
+  const [tempRequirements, setTempRequirements] = useState('');
+  const [tempTimeRanges, setTempTimeRanges] = useState<Array<{ start: string; end: string }>>([
+    { start: '09:00', end: '11:00' },
+    { start: '14:00', end: '16:00' },
+    { start: '20:00', end: '22:00' }
+  ]);
+  const [tempApplySubsequentDays, setTempApplySubsequentDays] = useState(false);
+  const [tempSubsequentDaysCount, setTempSubsequentDaysCount] = useState(30);
+  const [hoveredCellKey, setHoveredCellKey] = useState<string | null>(null);
 
-  // 处理删除任务
-  const handleDeleteTask = (targetTaskId: string) => {
-    const newList = sideTaskList.filter(t => t.id !== targetTaskId);
-    setSideTaskList(newList);
-    message.success('任务删除成功');
-    if (activeSideTask === targetTaskId) {
-      if (newList.length > 0) {
-        setActiveSideTask(newList[0].id);
-      } else {
-        setActiveSideTask('');
-      }
-    }
-  };
-
-  // 处理编辑保存
-  const handleSaveTask = (values: { name: string; status: string; isEffective: boolean }) => {
-    if (editingTask) {
-      setSideTaskList(prev =>
-        prev.map(t =>
-          t.id === editingTask.id
-            ? { ...t, name: values.name, status: values.status, isEffective: values.isEffective }
-            : t
-        )
-      );
-      message.success('任务修改成功');
-    }
-    setIsEditModalOpen(false);
-    setEditingTask(null);
-  };
   const [activeTab, setActiveTab] = useState('all');
   const [selectedEventIds, setSelectedEventIds] = useState<string[]>([]);
   const [batchPubOpen, setBatchPubOpen] = useState(false);
@@ -559,7 +640,7 @@ const TaskDetailCQ: React.FC<TaskDetailCQProps> = ({ taskId, onBack }) => {
   const [detectResults, setDetectResults] = useState<{ id: string; eventId: string; title: string; platform: string; instructionNames: string[]; linkStatus: string }[]>([]);
 
   // 新增：一级 Tab 状态（articles: 文章列表, analysis: 快速分析, statistics: 工作情况统计, summary: 舆情综述，以及定制的事件详情、定量分析、处置台账）
-  const [firstLevelTab, setFirstLevelTab] = useState<'articles' | 'analysis' | 'statistics' | 'summary' | 'event_detail' | 'quantitative_analysis' | 'disposal_ledger'>('articles');
+  const [firstLevelTab, setFirstLevelTab] = useState<'articles' | 'analysis' | 'statistics' | 'summary' | 'event_detail' | 'quantitative_analysis' | 'disposal_ledger' | 'schedule'>('articles');
   // 报道趋势图表切换维度（volume: 声量, interaction: 互动量, sentiment: 情感）
   const [trendDimension, setTrendDimension] = useState<'volume' | 'interaction' | 'sentiment'>('volume');
 
@@ -1142,7 +1223,9 @@ const TaskDetailCQ: React.FC<TaskDetailCQProps> = ({ taskId, onBack }) => {
     setConfigModalOpen(false);
     setGenerating(true);
     
-    const currentActiveTask = sideTaskList.find(t => t.id === activeSideTask) || currentTask;
+    const currentActiveTask = allSideTasksFlat.find(t => t.id === activeSideTask)
+      ? { ...currentTask, id: activeSideTask, name: allSideTasksFlat.find(t => t.id === activeSideTask)!.name }
+      : currentTask;
     const taskName = currentActiveTask.name;
     const newVersion = `V${reports.length + 1}`;
     const newTitle = `阶段性报告 ${newVersion} - ${taskName}专题`;
@@ -3048,6 +3131,510 @@ const TaskDetailCQ: React.FC<TaskDetailCQProps> = ({ taskId, onBack }) => {
     );
   };
 
+  // ==================== 排班管理专属逻辑方法 ====================
+  const getCellStatus = (dateStr: string, tId: string) => {
+    if (dateStr === '2026-07-31') {
+      return 'ongoing';
+    } else if (dateStr > '2026-07-31') {
+      return 'todo';
+    } else {
+      if (tId === 't12' && dateStr === '2026-07-30') {
+        return 'overdue';
+      }
+      return 'completed';
+    }
+  };
+
+  const handleCellClick = (tId: string, dateStr: string) => {
+    setSelectedCell({ taskId: tId, dateStr });
+    const existing = schedules[tId]?.[dateStr];
+    if (existing) {
+      setTempDutyUnit(existing.dutyUnit);
+      setTempRequirements(existing.requirements || '');
+      setTempTimeRanges(existing.timeRanges && existing.timeRanges.length > 0 
+        ? JSON.parse(JSON.stringify(existing.timeRanges))
+        : [
+            { start: '09:00', end: '11:00' },
+            { start: '14:00', end: '16:00' },
+            { start: '20:00', end: '22:00' }
+          ]
+      );
+    } else {
+      setTempDutyUnit(undefined);
+      setTempRequirements('');
+      setTempTimeRanges([
+        { start: '09:00', end: '11:00' },
+        { start: '14:00', end: '16:00' },
+        { start: '20:00', end: '22:00' }
+      ]);
+    }
+    setTempApplySubsequentDays(false);
+    setTempSubsequentDaysCount(tId === 't1' ? 6 : 30);
+  };
+
+  const handleTimeChange = (index: number, field: 'start' | 'end', val: any) => {
+    const timeStr = val ? val.format('HH:mm') : '00:00';
+    const newRanges = [...tempTimeRanges];
+    newRanges[index][field] = timeStr;
+    setTempTimeRanges(newRanges);
+  };
+
+  const handleSaveSchedule = () => {
+    if (!selectedCell) return;
+    if (!tempDutyUnit) {
+      message.error('请选择值班单位！');
+      return;
+    }
+    const { taskId: tId, dateStr } = selectedCell;
+    const newSchedules = { ...schedules };
+    if (!newSchedules[tId]) newSchedules[tId] = {};
+    const config = {
+      dutyUnit: tempDutyUnit,
+      requirements: tempRequirements,
+      timeRanges: tempTimeRanges
+    };
+    newSchedules[tId][dateStr] = config;
+    if (tempApplySubsequentDays && tempSubsequentDaysCount > 0) {
+      const baseDate = dayjs(dateStr);
+      for (let i = 1; i <= tempSubsequentDaysCount; i++) {
+        const targetDStr = baseDate.add(i, 'day').format('YYYY-MM-DD');
+        newSchedules[tId][targetDStr] = { ...config };
+      }
+    }
+    setSchedules(newSchedules);
+    message.success('值班单位排班设置成功！');
+    setSelectedCell(null);
+  };
+
+  const handleCellMouseDown = (tId: string, dateStr: string) => {
+    if (!batchMode) return;
+    const existing = schedules[tId]?.[dateStr];
+    if (!batchTemplate) {
+      if (existing) {
+        setBatchTemplate({ taskId: tId, dateStr, config: existing });
+        message.success(`成功选中「${currentActiveTask.name} (${dateStr})」的值班配置作为标准排班模板！`);
+      } else {
+        message.warning('该单元格尚未排班，请先点击一个已有排班的单元格作为标准模板！');
+      }
+    } else {
+      setIsDragging(true);
+      setDragSelectedCells([{ taskId: tId, dateStr }]);
+    }
+  };
+
+  const handleCellMouseEnter = (tId: string, dateStr: string) => {
+    if (!batchMode || !isDragging || !batchTemplate) return;
+    const exists = dragSelectedCells.some(cell => cell.taskId === tId && cell.dateStr === dateStr);
+    if (!exists) {
+      setDragSelectedCells([...dragSelectedCells, { taskId: tId, dateStr }]);
+    }
+  };
+
+  useEffect(() => {
+    const handleGlobalMouseUp = () => {
+      if (isDragging) {
+        setIsDragging(false);
+        if (batchTemplate && dragSelectedCells.length > 0) {
+          const newSchedules = { ...schedules };
+          const templateUnit = batchTemplate.config.dutyUnit;
+          const validFills: typeof dragSelectedCells = [];
+          const skippedTaskNames: string[] = [];
+          
+          dragSelectedCells.forEach(cell => {
+            const allowed = isUnitAllowedForTask(cell.taskId, templateUnit);
+            if (allowed) {
+              validFills.push(cell);
+            } else {
+              const taskName = currentActiveTask.name || cell.taskId;
+              if (!skippedTaskNames.includes(taskName)) {
+                skippedTaskNames.push(taskName);
+              }
+            }
+          });
+          
+          if (validFills.length > 0) {
+            validFills.forEach(cell => {
+              if (!newSchedules[cell.taskId]) newSchedules[cell.taskId] = {};
+              newSchedules[cell.taskId][cell.dateStr] = JSON.parse(JSON.stringify(batchTemplate.config));
+            });
+            setSchedules(newSchedules);
+            message.info(`已成功复制模板填充了 ${validFills.length} 个单元格`);
+          }
+          if (skippedTaskNames.length > 0) {
+            message.warning(`有任务由于部门限制，已自动忽略填充。`);
+          }
+        }
+        setDragSelectedCells([]);
+      }
+    };
+    window.addEventListener('mouseup', handleGlobalMouseUp);
+    return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
+  }, [isDragging, batchTemplate, dragSelectedCells, schedules]);
+
+  const renderScheduleTab = () => {
+    const targetTaskId = currentActiveTask.id || 't5';
+    const targetTaskName = currentActiveTask.name || '当前任务';
+    
+    const allowedList = taskAllowedUnits[targetTaskId];
+    const defaultOptions = [
+      { label: '大足区', value: '大足区' },
+      { label: '总2_舆情', value: '总2_舆情' },
+      { label: '总公司', value: '总公司' },
+      { label: '渝中区', value: '渝中区' },
+      { label: '支队', value: '支队' },
+      { label: '合川区', value: '合川区' }
+    ];
+    const selectOptions = allowedList 
+      ? defaultOptions.filter(opt => allowedList.includes(opt.value))
+      : defaultOptions;
+
+    const renderLocalPopoverForm = (cTaskId: string, cDateStr: string) => {
+      return (
+        <div className="schedule-popover-form" onClick={(e) => e.stopPropagation()}>
+          <div style={{ marginBottom: 12, borderBottom: '1px solid #f1f5f9', paddingBottom: 8 }}>
+            <div style={{ fontWeight: 'bold', fontSize: 13, color: '#1e293b' }}>
+              值班排班设置
+            </div>
+            <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
+              任务：{targetTaskName} <br />
+              日期：{cDateStr}
+            </div>
+          </div>
+          
+          {/* 值班单位 */}
+          <div style={{ marginBottom: 12 }}>
+            <div className="form-section-title">
+              <span className="required-star">*</span>值班单位
+            </div>
+            <Select
+              placeholder="请选择值班单位"
+              value={tempDutyUnit}
+              onChange={setTempDutyUnit}
+              style={{ width: '100%' }}
+              size="small"
+              options={selectOptions}
+            />
+          </div>
+          
+          {/* 任务要求 */}
+          <div style={{ marginBottom: 12 }}>
+            <div className="form-section-title">任务要求</div>
+            <Input.TextArea
+              placeholder="请输入工作要求（选填）"
+              rows={2}
+              value={tempRequirements}
+              onChange={(e) => setTempRequirements(e.target.value)}
+              style={{ fontSize: 12 }}
+            />
+          </div>
+          
+          {/* 反馈时段列表 */}
+          <div style={{ marginBottom: 12 }}>
+            <div className="form-section-title">
+              <span className="required-star">*</span>工作情况反馈时段
+            </div>
+            <div style={{ maxHeight: 150, overflowY: 'auto', paddingRight: 4 }}>
+              {tempTimeRanges.map((range, index) => (
+                <div key={index} className="schedule-time-row">
+                  <span className="time-label">开始</span>
+                  <TimePicker
+                    format="HH:mm"
+                    value={dayjs(range.start, 'HH:mm')}
+                    onChange={(val: any) => handleTimeChange(index, 'start', val)}
+                    className="time-picker-custom"
+                    allowClear={false}
+                    size="small"
+                    suffixIcon={null}
+                  />
+                  <span className="time-label">结束</span>
+                  <TimePicker
+                    format="HH:mm"
+                    value={dayjs(range.end, 'HH:mm')}
+                    onChange={(val: any) => handleTimeChange(index, 'end', val)}
+                    className="time-picker-custom"
+                    allowClear={false}
+                    size="small"
+                    suffixIcon={null}
+                  />
+                  <div className="time-row-actions">
+                    <DeleteOutlined 
+                      className="action-icon-btn delete" 
+                      onClick={() => {
+                        if (tempTimeRanges.length <= 1) {
+                          message.warning('至少需要保留一个反馈时段！');
+                          return;
+                        }
+                        const newRanges = tempTimeRanges.filter((_, i) => i !== index);
+                        setTempTimeRanges(newRanges);
+                      }} 
+                    />
+                    {index === tempTimeRanges.length - 1 && (
+                      <PlusCircleOutlined 
+                        className="action-icon-btn" 
+                        onClick={() => {
+                          setTempTimeRanges([...tempTimeRanges, { start: '09:00', end: '11:00' }]);
+                        }} 
+                      />
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          {/* 快捷天数复制 */}
+          <div style={{ marginBottom: 12, background: '#f8fafc', padding: '6px 10px', borderRadius: 4, border: '1px solid #f1f5f9' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <Checkbox
+                checked={tempApplySubsequentDays}
+                onChange={(e) => setTempApplySubsequentDays(e.target.checked)}
+                style={{ fontSize: 12 }}
+              >
+                后续
+              </Checkbox>
+              <InputNumber
+                min={1}
+                max={90}
+                value={tempSubsequentDaysCount}
+                onChange={(val: number | null) => setTempSubsequentDaysCount(val || 1)}
+                size="small"
+                disabled={!tempApplySubsequentDays}
+                style={{ width: 60, fontSize: 11 }}
+              />
+              <span style={{ fontSize: 12, color: '#475569' }}>天，采用同样排班</span>
+            </div>
+          </div>
+          
+          {/* 操作区 */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, borderTop: '1px solid #f1f5f9', paddingTop: 8 }}>
+            <Button size="small" onClick={() => setSelectedCell(null)}>关闭</Button>
+            <Button size="small" type="primary" onClick={handleSaveSchedule} style={{ background: 'var(--primary-color)' }}>确认选择</Button>
+          </div>
+        </div>
+      );
+    };
+
+    const getDatesForPage = (page: number) => {
+      const dates = [];
+      let start = dayjs('2026-07-31');
+      let length = 16;
+      if (page === 1) {
+        start = dayjs('2026-08-16');
+      } else if (page === 2) {
+        start = dayjs('2026-09-01');
+        length = 15;
+      }
+      for (let i = 0; i < length; i++) {
+        dates.push(start.add(i, 'day'));
+      }
+      return dates;
+    };
+    const localDatesToRender = getDatesForPage(currentDatePage);
+
+    return (
+      <div className="schedule-tab-content" style={{ marginTop: '16px' }}>
+        {/* 子表头 */}
+        <div className="schedule-sub-header" style={{ padding: '0 4px 12px 4px', borderBottom: '1px solid #f1f5f9' }}>
+          <div className="date-paginator">
+            <Button 
+              className="paginator-btn" 
+              icon={<LeftOutlined />} 
+              onClick={() => setCurrentDatePage(prev => Math.max(0, prev - 1))}
+              disabled={currentDatePage === 0}
+            />
+            <span className="paginator-title">
+              {currentDatePage === 0 ? (
+                '2026年07月下旬'
+              ) : currentDatePage === 1 ? (
+                '2026年08月下旬'
+              ) : (
+                '2026年09月上旬'
+              )}
+            </span>
+            <Button 
+              className="paginator-btn" 
+              icon={<RightOutlined />} 
+              onClick={() => setCurrentDatePage(prev => Math.min(2, prev + 1))}
+              disabled={currentDatePage === 2}
+            />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ color: '#64748b', fontSize: 12 }}>
+              {batchMode ? (
+                batchTemplate ? (
+                  <span style={{ color: 'var(--primary-color)', fontWeight: 600 }}>
+                    🎯 选定模板：{targetTaskName} ({batchTemplate.dateStr})，按住鼠标拖拽或单选目标单元格快速填充
+                    <Button 
+                      type="link" 
+                      size="small" 
+                      onClick={(e) => { e.stopPropagation(); setBatchTemplate(null); }}
+                      style={{ padding: '0 4px', fontSize: 11, color: '#fa8c16' }}
+                    >
+                      (更换模板)
+                    </Button>
+                  </span>
+                ) : (
+                  <span style={{ color: '#fa8c16', fontWeight: 600 }}>
+                    👉 请先点击一个【已有值班 of 单元格】作为标准模板
+                  </span>
+                )
+              ) : (
+                '💡 点击单元格即可排班，支持批量拖拽填充排班设置'
+              )}
+            </div>
+            {!batchMode ? (
+              <Button 
+                size="small" 
+                onClick={() => {
+                  setBatchMode(true);
+                  setSelectedCell(null);
+                  setSchedulesSnapshot(JSON.parse(JSON.stringify(schedules)));
+                  message.info('已进入批量排班模式，请选择一个已有排班作为模板');
+                }}
+              >
+                批量排班
+              </Button>
+            ) : (
+              <>
+                <Button
+                  size="small"
+                  type="primary"
+                  style={{ background: '#52c41a', borderColor: '#52c41a' }}
+                  icon={<CheckOutlined />}
+                  onClick={() => {
+                    message.success('排班保存并生效成功！');
+                    setBatchMode(false);
+                    setBatchTemplate(null);
+                    setSchedulesSnapshot(null);
+                  }}
+                >
+                  保存排班
+                </Button>
+                <Button
+                  size="small"
+                  onClick={() => {
+                    if (schedulesSnapshot) {
+                      setSchedules(schedulesSnapshot);
+                    }
+                    setBatchMode(false);
+                    setBatchTemplate(null);
+                    setSchedulesSnapshot(null);
+                    message.info('已取消并放弃本次批量排班调整');
+                  }}
+                >
+                  取消
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* 表格容器 */}
+        <div className="schedule-table-container" style={{ maxHeight: 'none', overflowY: 'visible' }}>
+          <table className="schedule-table">
+            <thead>
+              <tr>
+                <th className="task-col">任务名称</th>
+                {localDatesToRender.map(date => (
+                  <th key={date.format('YYYY-MM-DD')} className="date-col">
+                    <div className="date-header-cell">
+                      <span className="date-num">{date.format('D')}</span>
+                      <span className="date-week">周{['日', '一', '二', '三', '四', '五', '六'][date.day()]}</span>
+                    </div>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td className="task-col" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{targetTaskName}</td>
+                {localDatesToRender.map(date => {
+                  const dateStr = date.format('YYYY-MM-DD');
+                  const existing = schedules[targetTaskId]?.[dateStr];
+                  const isSelected = selectedCell?.taskId === targetTaskId && selectedCell?.dateStr === dateStr;
+                  
+                  let pillClass = 'unscheduled';
+                  let pillText = '未排班';
+                  
+                  if (existing) {
+                    const status = getCellStatus(dateStr, targetTaskId);
+                    pillClass = `status-${status}`;
+                    pillText = existing.dutyUnit;
+                  }
+                  
+                  const isHovered = hoveredCellKey === `${targetTaskId}_${dateStr}`;
+                  const displayPillText = batchMode && batchTemplate
+                    ? (isHovered ? '填充此格' : pillText)
+                    : ((!existing && isHovered) ? '点击排班' : pillText);
+                  
+                  const isTemplate = batchMode && batchTemplate?.taskId === targetTaskId && batchTemplate?.dateStr === dateStr;
+                  const isDragSelected = batchMode && dragSelectedCells.some(cell => cell.taskId === targetTaskId && cell.dateStr === dateStr);
+                  
+                  let cellClassName = 'date-col';
+                  if (batchMode) {
+                    if (isTemplate) cellClassName += ' schedule-cell-template';
+                    if (isDragSelected) cellClassName += ' schedule-cell-preview';
+                  } else if (isSelected) {
+                    cellClassName += ' schedule-cell-selected';
+                  }
+
+                  const cellContent = (
+                    <div 
+                      className={`schedule-cell-pill ${pillClass}`}
+                      onMouseEnter={() => setHoveredCellKey(`${targetTaskId}_${dateStr}`)}
+                      onMouseLeave={() => setHoveredCellKey(null)}
+                    >
+                      {displayPillText}
+                    </div>
+                  );
+                  
+                  return (
+                    <td 
+                      key={dateStr}
+                      className={cellClassName}
+                      onClick={() => {
+                        if (!batchMode) {
+                          handleCellClick(targetTaskId, dateStr);
+                        }
+                      }}
+                      onMouseDown={(e) => {
+                        if (batchMode) {
+                          e.preventDefault();
+                          handleCellMouseDown(targetTaskId, dateStr);
+                        }
+                      }}
+                      onMouseEnter={() => {
+                        if (batchMode) {
+                          handleCellMouseEnter(targetTaskId, dateStr);
+                        }
+                      }}
+                      style={{ padding: 8 }}
+                    >
+                      {!batchMode && isSelected ? (
+                        <Popover
+                          open={isSelected}
+                          content={renderLocalPopoverForm(targetTaskId, dateStr)}
+                          trigger="click"
+                          placement="bottom"
+                          overlayClassName="schedule-popover-overlay"
+                          destroyTooltipOnHide
+                        >
+                          {cellContent}
+                        </Popover>
+                      ) : (
+                        cellContent
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="task-detail-page">
       {/* 左侧内容区 */}
@@ -3094,13 +3681,20 @@ const TaskDetailCQ: React.FC<TaskDetailCQProps> = ({ taskId, onBack }) => {
           </div>
         </div>
 
-        {/* 新增：一级 Tab 切换栏（基于截图的1:1复刻样式设计） */}
+        {/* 新增：一级 Tab 切换栏（两行布局：上行为任务信息+刷新，下行为全宽 Tabs） */}
         <div className="detail-sub-header-bar">
-          <div className="sub-header-left">
-            <span className="task-check-icon">✓</span>
-            <span className="sub-task-name">{currentTask.name}</span>
-            <span className="sub-task-time">2026-06-21 15:09:3 至 2026-06-22 15:09:3</span>
+          {/* 上行：任务信息 + 刷新按钮 */}
+          <div className="sub-header-top-row">
+            <div className="sub-header-left">
+              <span className="task-check-icon">✓</span>
+              <span className="sub-task-name">{currentTask.name}</span>
+              <span className="sub-task-time">2026-06-21 15:09:3 至 2026-06-22 15:09:3</span>
+            </div>
+            <div className="sub-header-right">
+              <Button type="text" icon={<SyncOutlined />} className="refresh-btn" />
+            </div>
           </div>
+          {/* 下行：全宽 Tabs，8 个标签均匀分布 */}
           <div className="sub-header-tabs">
             <div
               className={`sub-tab-item ${firstLevelTab === 'articles' ? 'active' : ''}`}
@@ -3144,9 +3738,12 @@ const TaskDetailCQ: React.FC<TaskDetailCQProps> = ({ taskId, onBack }) => {
             >
               处置台账
             </div>
-          </div>
-          <div className="sub-header-right">
-            <Button type="text" icon={<SyncOutlined />} className="refresh-btn" />
+            <div
+              className={`sub-tab-item ${firstLevelTab === 'schedule' ? 'active' : ''}`}
+              onClick={() => setFirstLevelTab('schedule')}
+            >
+              排班管理
+            </div>
           </div>
         </div>
 
@@ -3740,13 +4337,16 @@ const TaskDetailCQ: React.FC<TaskDetailCQProps> = ({ taskId, onBack }) => {
 
         {/* ==================== 7. 处置台账高保真视图 ==================== */}
         {firstLevelTab === 'disposal_ledger' && renderDisposalLedgerTab()}
+
+        {/* ==================== 8. 排班管理视图 ==================== */}
+        {firstLevelTab === 'schedule' && renderScheduleTab()}
       </div>
 
       {/* 右侧任务列表 */}
       <div className="task-sidebar">
         <div className="sidebar-header">
           <h3 className="sidebar-title">任务列表</h3>
-          <Badge count={sideTaskList.length} className="task-count-badge" />
+          <Badge count={allSideTasksFlat.length} className="task-count-badge" />
         </div>
         <div className="sidebar-search">
           <Input
@@ -3758,47 +4358,50 @@ const TaskDetailCQ: React.FC<TaskDetailCQProps> = ({ taskId, onBack }) => {
           />
         </div>
         <div className="task-list">
-          {sideTaskList
-            .filter(task => task.name.includes(searchValue) || task.code.includes(searchValue))
-            .sort((a, b) => {
-              if (a.isEffective !== b.isEffective) {
-                return a.isEffective ? -1 : 1;
-              }
-              return new Date(b.createTime).getTime() - new Date(a.createTime).getTime();
-            })
-            .map((task) => (
-              <div
-                key={task.id}
-                className={`side-task-text-item ${task.id === activeSideTask ? 'active' : ''} ${!task.isEffective ? 'expired' : ''}`}
-                onClick={() => setActiveSideTask(task.id)}
-              >
-              <span className="side-task-text-name" title={task.name}>
-                {task.name}
-              </span>
-              <div className="side-task-actions">
-                <EditOutlined
-                  className="action-icon edit-icon"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setEditingTask(task);
-                    setIsEditModalOpen(true);
-                  }}
-                />
-                <Popconfirm
-                  title="确定要删除该任务吗？"
-                  okText="确定"
-                  cancelText="取消"
-                  onConfirm={() => handleDeleteTask(task.id)}
-                  onCancel={(e) => e?.stopPropagation()}
-                >
-                  <DeleteOutlined
-                    className="action-icon delete-icon"
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                </Popconfirm>
-              </div>
-            </div>
-          ))}
+          {(() => {
+            const query = searchValue.trim();
+            const toggleGroup = (type: string) => {
+              setCollapsedGroups(prev => {
+                const next = new Set(prev);
+                next.has(type) ? next.delete(type) : next.add(type);
+                return next;
+              });
+            };
+            return sideTaskGroups.map(group => {
+              const filtered = group.items.filter(
+                t => !query || t.name.includes(query) || t.id.includes(query)
+              );
+              if (query && filtered.length === 0) return null;
+              const isCollapsed = collapsedGroups.has(group.type);
+              return (
+                <div key={group.type} className="task-tree-group">
+                  <div
+                    className="task-tree-group-header"
+                    onClick={() => toggleGroup(group.type)}
+                  >
+                    <span className={`task-tree-arrow ${isCollapsed ? 'collapsed' : ''}`}>▾</span>
+                    <span className="task-tree-group-name">{group.type}</span>
+                    <span className="task-tree-group-count">{group.items.length}</span>
+                  </div>
+                  {!isCollapsed && (
+                    <div className="task-tree-children">
+                      {filtered.map(task => (
+                        <div
+                          key={task.id}
+                          className={`task-tree-item ${task.id === activeSideTask ? 'active' : ''}`}
+                          onClick={() => setActiveSideTask(task.id)}
+                          title={task.name}
+                        >
+                          <span className="task-tree-item-dot" />
+                          <span className="task-tree-item-name">{task.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            });
+          })()}
         </div>
       </div>
       <InstructionCommandModal
@@ -4313,60 +4916,6 @@ const TaskDetailCQ: React.FC<TaskDetailCQProps> = ({ taskId, onBack }) => {
  
       {renderDetailDrawer()}
 
-      {/* 新增：编辑任务弹窗 */}
-      <Modal
-        title="编辑任务"
-        open={isEditModalOpen}
-        onCancel={() => {
-          setIsEditModalOpen(false);
-          setEditingTask(null);
-        }}
-        onOk={() => {
-          editForm.validateFields().then(values => {
-            handleSaveTask(values as { name: string; status: string; isEffective: boolean });
-          });
-        }}
-        destroyOnClose
-        okText="保存"
-        cancelText="取消"
-      >
-        <Form
-          form={editForm}
-          layout="vertical"
-          style={{ marginTop: '16px' }}
-        >
-          <Form.Item
-            name="name"
-            label="任务名称"
-            rules={[
-              { required: true, message: '请输入任务名称' },
-              { whitespace: true, message: '任务名称不能为空白' }
-            ]}
-          >
-            <Input placeholder="请输入任务名称" maxLength={50} />
-          </Form.Item>
-          <Form.Item
-            name="status"
-            label="任务状态"
-            rules={[{ required: true, message: '请选择任务状态' }]}
-          >
-            <Select placeholder="请选择任务状态">
-              <Select.Option value="normal">常态</Select.Option>
-              <Select.Option value="urgent">紧急</Select.Option>
-            </Select>
-          </Form.Item>
-          <Form.Item
-            name="isEffective"
-            label="布控状态"
-            rules={[{ required: true, message: '请选择布控状态' }]}
-          >
-            <Select placeholder="请选择布控状态">
-              <Select.Option value={true}>生效中</Select.Option>
-              <Select.Option value={false}>已失效</Select.Option>
-            </Select>
-          </Form.Item>
-        </Form>
-      </Modal>
 
       {/* 定制：添加脉络弹窗 */}
       <Modal

@@ -13,8 +13,19 @@ import {
 import { Input, Badge, Dropdown, Button } from 'antd';
 import type { MenuProps } from 'antd';
 
-const Header: React.FC = () => {
+interface HeaderProps {
+  onManualReport?: () => void;
+  onOpenDutyRoster?: () => void;
+}
+
+const Header: React.FC<HeaderProps> = ({ onManualReport, onOpenDutyRoster }) => {
   const [searchValue, setSearchValue] = useState('');
+
+  const handleMenuClick: MenuProps['onClick'] = (e) => {
+    if (e.key === 'duty') {
+      onOpenDutyRoster?.();
+    }
+  };
 
   const userMenuItems: MenuProps['items'] = [
     { key: 'password', label: '修改密码', icon: <EditOutlined /> },
@@ -31,7 +42,12 @@ const Header: React.FC = () => {
           <span className="logo-text">智控平台</span>
         </div>
         <div className="header-actions">
-          <Button type="text" icon={<EditOutlined />} className="action-btn">
+          <Button
+            type="text"
+            icon={<EditOutlined />}
+            className="action-btn"
+            onClick={onManualReport}
+          >
             手工上报
           </Button>
           <Button type="text" icon={<SafetyCertificateOutlined />} className="action-btn">
@@ -52,8 +68,8 @@ const Header: React.FC = () => {
         <div className="header-divider" />
         <span className="welcome-text">欢迎 东莞公安局超管</span>
         <Button type="link" className="header-link">修改密码</Button>
-        <Button type="link" className="header-link">值班表</Button>
-        <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
+        <Button type="link" className="header-link" onClick={onOpenDutyRoster}>值班表</Button>
+        <Dropdown menu={{ items: userMenuItems, onClick: handleMenuClick }} placement="bottomRight">
           <Button type="link" className="header-link">
             岗位 <DownOutlined style={{ fontSize: 10 }} />
           </Button>
