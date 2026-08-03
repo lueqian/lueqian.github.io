@@ -50,59 +50,117 @@ const { TabPane } = Tabs;
 // 数据概览项
 const overviewItems = [
   { key: 'today', label: '今日任务', value: 3 },
-  { key: 'special', label: '专项任务', value: 2 },
+  { key: 'special', label: '重大事项跟踪', value: 6 },
   { key: 'account', label: '重点账号动态跟踪', value: 0 },
   { key: 'position', label: '重点阵地实时盯控', value: 0 },
   { key: 'sentiment', label: '舆情专项专班', value: 0 },
-  { key: 'security', label: '安保专项任务', value: 1 },
+  { key: 'security', label: '安保专项任务', value: 3 },
   { key: 'emergency', label: '应急处置任务', value: 0 },
-  { key: 'patrol', label: '专项巡查任务', value: 2 },
+  { key: 'patrol', label: '专项巡查任务', value: 3 },
 ];
 
 // 敏感时间/事件节点
 const sensitiveEvents: any[] = [];
 
-// 专项任务数据
+// 重大事项跟踪数据
 const specialTasks = [
   {
-    id: '1',
+    id: 't1',
+    code: 'YZ-0801',
+    name: '渝中宝马撞人事件',
+    status: 'normal',
+    department: '渝中大队',
+    trend: 245,
+    trendLabel: '+18% 增量',
+    rank: '热搜榜第1',
+  },
+  {
+    id: 't2',
+    code: 'PS-0728',
+    name: '彭水山体滑坡',
+    status: 'normal',
+    department: '彭水大队',
+    trend: 168,
+    trendLabel: '+8% 增量',
+    rank: '防汛榜第2',
+  },
+  {
+    id: 't4',
+    code: 'CQ-0715',
+    name: '重庆火灾舆情',
+    status: 'normal',
+    department: '支队',
+    trend: 310,
+    trendLabel: '+25% 增量',
+    rank: '热搜榜第3',
+  },
+  {
+    id: 't5',
+    code: 'DZ-0715',
+    name: '大足一中',
+    status: 'normal',
+    department: '大足区',
+    trend: 98,
+    trendLabel: '+3% 增量',
+    rank: '常态监控',
+  },
+  {
+    id: 'p1',
     code: '0510',
     name: '淮安汛情',
     status: 'normal',
     department: '支队',
-    trend: 0,
-    trendLabel: '暂无新增',
-    rank: '未上榜',
+    trend: 156,
+    trendLabel: '+12% 增量',
+    rank: '防汛榜第1',
   },
   {
-    id: '2',
+    id: 'p2',
     code: '0118',
     name: '高张花园',
     status: 'normal',
-    department: '支队',
-    trend: 0,
+    department: '清江浦大队',
+    trend: 86,
     trendLabel: '暂无新增',
-    rank: '未上榜',
+    rank: '维权榜第4',
   },
 ];
 
 // 安保任务数据
 const securityTasks = [
   {
-    id: '1',
+    id: 's1',
     name: '5月23日 淮安苏超',
     status: 'normal',
     department: '支队',
-    trend: 0,
-    trendLabel: '暂无新增',
-    rank: '未上榜',
+    trend: 132,
+    trendLabel: '+12% 增量',
+    rank: '赛事安保第1',
+  },
+  {
+    id: 's2',
+    name: '敏感节点安保值守',
+    status: 'normal',
+    department: '安保支队',
+    trend: 64,
+    trendLabel: '常态值守',
+    rank: '安保榜第2',
+  },
+  {
+    id: 's3',
+    name: '涉稳群体聚集风险排查',
+    status: 'normal',
+    department: '治安支队',
+    trend: 45,
+    trendLabel: '重点摸排',
+    rank: '排查榜第3',
   },
 ];
 
 // ==================== 排班专属模拟数据 ====================
 const scheduleTasks = [
   {
-    type: '重大实体事件跟踪',
+    type: '重大事项跟踪',
     items: [
       { id: 't1', name: '渝中宝马撞人事件' },
       { id: 't2', name: '彭水山体滑坡' },
@@ -820,7 +878,7 @@ const SourceControlCQ: React.FC = () => {
                 style={{ width: 140 }}
                 options={[
                   { label: '全部', value: 'all' },
-                  { label: '重大实体事件跟踪', value: '重大实体事件跟踪' },
+                  { label: '重大事项跟踪', value: '重大事项跟踪' },
                   { label: '安保任务', value: '安保任务' }
                 ]}
                 allowClear
@@ -1235,12 +1293,12 @@ const SourceControlCQ: React.FC = () => {
 
           {/* 第二行 */}
           <div className="grid-row">
-            {/* 专项任务 */}
+            {/* 重大事项跟踪 */}
             <Card className="dashboard-card tasks-card" bordered={false}>
               <div className="card-header">
                 <div className="card-title">
                   <TeamOutlined className="title-icon" />
-                  <span>专项任务</span>
+                  <span>重大事项跟踪</span>
                 </div>
                 <a className="more-link">更多</a>
               </div>

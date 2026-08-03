@@ -71,6 +71,7 @@ import * as echarts from 'echarts';
 import InstructionCommandModal from '../components/InstructionCommandModal';
 import UnifiedOpinionCard from '../components/UnifiedOpinionCard';
 import AddToPublicationModal from '../components/AddToPublicationModal';
+import { getTaskDataById, TaskDataset } from '../cq-task-data';
 
 const { TabPane } = Tabs;
 
@@ -155,7 +156,7 @@ const currentTask: TaskInfo = {
 // 侧边任务树状结构数据（与主看板排班保持一致）
 const sideTaskGroups = [
   {
-    type: '重大实体事件跟踪',
+    type: '重大事项跟踪',
     items: [
       { id: 't1',  name: '渝中宝马撞人事件' },
       { id: 't2',  name: '彭水山体滑坡' },
@@ -591,9 +592,27 @@ interface TaskDetailCQProps {
 
 const TaskDetailCQ: React.FC<TaskDetailCQProps> = ({ taskId, onBack, schedules: propSchedules, setSchedules: propSetSchedules }) => {
   const [activeSideTask, setActiveSideTask] = useState(taskId || 't1');
-  const currentActiveTask = allSideTasksFlat.find(t => t.id === activeSideTask)
-    ? { ...currentTask, id: activeSideTask, name: allSideTasksFlat.find(t => t.id === activeSideTask)!.name }
-    : currentTask;
+
+  // 当父组件透传的 taskId 发生变化时同步更新
+  useEffect(() => {
+    if (taskId) {
+      setActiveSideTask(taskId);
+    }
+  }, [taskId]);
+
+  // 动态获取当前选中任务的全套数据包
+  const activeTaskItem = allSideTasksFlat.find(t => t.id === activeSideTask);
+  const activeTaskName = activeTaskItem ? activeTaskItem.name : '淮安汛情';
+  const taskDataset = getTaskDataById(activeSideTask, activeTaskName);
+
+  const currentActiveTask = {
+    ...taskDataset.info,
+    id: activeSideTask,
+    name: activeTaskName,
+  };
+
+  const eventList = taskDataset.events;
+  const issuedInstructions = taskDataset.instructions;
   const [searchValue, setSearchValue] = useState('');
   // 各分组默认展开状态（所有分组默认展开）
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
@@ -1745,7 +1764,7 @@ const TaskDetailCQ: React.FC<TaskDetailCQProps> = ({ taskId, onBack, schedules: 
       sentimentIntensityChart?.dispose();
       window.removeEventListener('resize', handleResize);
     };
-  }, [firstLevelTab, trendDimension, diffusionTab]);
+  }, [firstLevelTab, trendDimension, diffusionTab, activeSideTask]);
 
   const visibleEvents = eventList
     .filter((event) => !ignoredEventIds.includes(event.id))
