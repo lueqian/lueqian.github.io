@@ -897,8 +897,14 @@ const CustomerConfig: React.FC<CustomerConfigProps> = ({ customerName, onBack })
           </div>
         </div>
 
-        {/* ═══════ 搜索配置 ═══════ */}
+        {/* ═══════ 任务数据配置 ═══════ */}
         <div className="form-section">
+          <div className="section-header">
+            <DatabaseOutlined className="section-flag-icon" />
+            <span className="section-title">任务数据配置</span>
+          </div>
+
+          {/* ── 搜索配置 ── */}
           <div className="form-subsection">
             <div className="subsection-bar" />
             <span className="subsection-title">搜索配置</span>
