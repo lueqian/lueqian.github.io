@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal, Select, Input, Button, Badge, Row, Col, Tag, Tooltip, message, Segmented } from 'antd';
 import {
   UserOutlined,
@@ -11,20 +11,12 @@ import {
   CheckCircleOutlined,
   TeamOutlined,
 } from '@ant-design/icons';
+import { leaderStore, LeaderItem } from '../leader-data';
 
 interface DutyRosterModalProps {
   open: boolean;
   onClose: () => void;
 }
-
-// 值班领导可选项
-const leaderOptions = [
-  { value: '李广正', label: '李广正 (副总队长 / 警务技术二级总监)', phone: '13908312345', unit: '总2_舆情' },
-  { value: '张建国', label: '张建国 (支队长 / 警务技术一级主管)', phone: '13802398877', unit: '总1_指挥' },
-  { value: '王强', label: '王强 (副支队长 / 警务技术二级主管)', phone: '13702387766', unit: '总2_研判' },
-  { value: '陈明', label: '陈明 (政委 / 警务高级教官)', phone: '13602376655', unit: '总3_政治' },
-  { value: '郑江', label: '郑江 (网安支队二大队队长)', phone: '15310399665', unit: '网安二大队' },
-];
 
 // 本部门 (总队) 岗位在岗数据
 const mainDeptPosts = [
@@ -194,13 +186,47 @@ const districtUnitsData = [
 const DutyRosterModal: React.FC<DutyRosterModalProps> = ({ open, onClose }) => {
   // 视图模式: 'dark' 深色科技看板 | 'light' 表格经典简版
   const [viewMode, setViewMode] = useState<'dark' | 'light'>('dark');
+  // 领导列表 state
+  const [leaders, setLeaders] = useState<LeaderItem[]>([]);
   // 当前值班领导
   const [currentLeader, setCurrentLeader] = useState<string>('李广正');
   const [isEditingLeader, setIsEditingLeader] = useState(false);
   // 区县搜索
   const [searchQuery, setSearchQuery] = useState('');
 
-  const leaderObj = leaderOptions.find((l) => l.value === currentLeader) || leaderOptions[0];
+  useEffect(() => {
+    setLeaders(leaderStore.getLeaders());
+    setCurrentLeader(leaderStore.getDutyLeader());
+
+    const unsubscribe = leaderStore.subscribe((newLeaders) => {
+      setLeaders(newLeaders);
+    });
+    const unsubDuty = leaderStore.subscribeDutyLeader((dutyName) => {
+      setCurrentLeader(dutyName);
+    });
+
+    return () => {
+      unsubscribe();
+      unsubDuty();
+    };
+  }, []);
+
+  // 映射领导选择项
+  const leaderOptions = leaders.map((l) => ({
+    value: l.name,
+    label: `${l.name} (${l.title || l.policeId})`,
+    phone: l.phone,
+    unit: l.unit || '总队',
+  }));
+
+  const fallbackLeader = leaderOptions[0] || {
+    value: '未指定领导',
+    label: '未指定领导',
+    phone: '13900000000',
+    unit: '总队',
+  };
+
+  const leaderObj = leaderOptions.find((l) => l.value === currentLeader) || fallbackLeader;
 
   // 快捷联系处理
   const handleContact = (name: string, phone: string) => {
@@ -285,6 +311,7 @@ const DutyRosterModal: React.FC<DutyRosterModalProps> = ({ open, onClose }) => {
                               value={currentLeader}
                               onChange={(val) => {
                                 setCurrentLeader(val);
+                                leaderStore.setDutyLeader(val);
                                 setIsEditingLeader(false);
                                 message.success(`今日值班领导已成功更新为：${val}`);
                               }}
