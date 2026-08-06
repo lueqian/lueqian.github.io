@@ -16,6 +16,7 @@ import {
   Tooltip,
   Form,
   message,
+  Modal,
 } from 'antd';
 import {
   SettingOutlined,
@@ -299,6 +300,11 @@ const SourceControlCQ: React.FC = () => {
   const [commandTask, setCommandTask] = useState<any | null>(null);
   const overviewRef = useRef<HTMLDivElement>(null);
 
+  // ==================== 新增：创建态势追踪任务状态 ====================
+  const [localSpecialTasks, setLocalSpecialTasks] = useState(specialTasks);
+  const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
+  const [createForm] = Form.useForm();
+
   // ==================== 排班系统状态 ====================
   const [schedules, setSchedules] = useState<Record<string, Record<string, any>>>(() => getInitialSchedules());
   const [currentDatePage, setCurrentDatePage] = useState<number>(0);
@@ -490,6 +496,37 @@ const SourceControlCQ: React.FC = () => {
     message.success('值班单位排班设置成功！');
     setSelectedCell(null);
   };
+
+  const handleCreateTaskSubmit = (values: any) => {
+    const range = values.timeRange;
+    if (range && range[0] && range[1]) {
+      const diffDays = range[1].diff(range[0], 'day');
+      if (diffDays > 30) {
+        message.error("创建失败：数据时间范围跨度不能超过 30 天限制！");
+        return;
+      }
+      
+      const newId = `t-user-${Date.now()}`;
+      const newTask = {
+        id: newId,
+        code: `SC-${newId.substring(newId.length - 4).toUpperCase()}`,
+        name: values.name,
+        status: 'normal',
+        department: '网安支队',
+        trend: 12, // 模拟初始声量
+        trendLabel: '正在初次取数...',
+        rank: '新布控',
+      };
+      
+      setLocalSpecialTasks(prev => [newTask, ...prev]);
+      allTasksMap[newId] = values.name;
+      
+      message.success("态势追踪项目创建成功，系统已自动排程获取数据！");
+      setIsCreateTaskOpen(false);
+      createForm.resetFields();
+    }
+  };
+
 
   // 获取分页的日期列表（Page 0: 7-31~8-15, Page 1: 8-16~8-31, Page 2: 9-01~9-15）
   const getDatesForPage = (page: number) => {
@@ -1300,10 +1337,21 @@ const SourceControlCQ: React.FC = () => {
                   <TeamOutlined className="title-icon" />
                   <span>重大事项跟踪</span>
                 </div>
-                <a className="more-link">更多</a>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Button 
+                    type="primary" 
+                    size="small" 
+                    icon={<PlusOutlined />} 
+                    onClick={() => setIsCreateTaskOpen(true)}
+                    style={{ background: '#3366FF', borderColor: '#3366FF', fontSize: '11px', height: '24px', display: 'inline-flex', alignItems: 'center' }}
+                  >
+                    创建任务
+                  </Button>
+                  <a className="more-link">更多</a>
+                </div>
               </div>
               <div className="tasks-list">
-                {specialTasks.map((task) => renderTaskCard(task, 'special'))}
+                {localSpecialTasks.map((task) => renderTaskCard(task, 'special'))}
               </div>
             </Card>
 
@@ -1336,6 +1384,81 @@ const SourceControlCQ: React.FC = () => {
           ) : null
         }
       />
+
+      {/* 新增：创建态势追踪任务模态框 */}
+      <Modal
+        title="创建态势追踪任务"
+        open={isCreateTaskOpen}
+        onCancel={() => {
+          setIsCreateTaskOpen(false);
+          createForm.resetFields();
+        }}
+        onOk={() => {
+          createForm.validateFields().then(values => {
+            handleCreateTaskSubmit(values);
+          });
+        }}
+        okText="确定"
+        cancelText="取消"
+        width={600}
+        destroyOnClose
+      >
+        <Form
+          form={createForm}
+          layout="vertical"
+          initialValues={{ frequency: '1_day' }}
+          style={{ marginTop: '16px' }}
+        >
+          <Form.Item
+            name="name"
+            label="任务名称"
+            rules={[{ required: true, message: '请输入任务名称' }]}
+          >
+            <Input placeholder="请输入任务名称，如：某路段舆情追踪" />
+          </Form.Item>
+          
+          <Form.Item
+            name="timeRange"
+            label="数据时间范围（最大跨度30天）"
+            rules={[{ required: true, message: '请选择数据时间范围' }]}
+          >
+            <DatePicker.RangePicker style={{ width: '100%' }} />
+          </Form.Item>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <Form.Item
+              name="keywords"
+              label="核心关键词"
+              rules={[{ required: true, message: '请输入核心关键词' }]}
+            >
+              <Input placeholder="用逗号分隔，如：中山路, 警方通报" />
+            </Form.Item>
+            <Form.Item
+              name="excludeWords"
+              label="排除词（选填）"
+            >
+              <Input placeholder="用逗号分隔，如：广告, 宣传" />
+            </Form.Item>
+          </div>
+
+          <Form.Item
+            name="frequency"
+            label="自动执行更新频次"
+            rules={[{ required: true }]}
+          >
+            <Select>
+              <Select.Option value="1_hour">1小时/次 (并发受限)</Select.Option>
+              <Select.Option value="3_hours">3小时/次</Select.Option>
+              <Select.Option value="6_hours">6小时/次</Select.Option>
+              <Select.Option value="12_hours">12小时/次</Select.Option>
+              <Select.Option value="1_day">1天/次 (默认推荐)</Select.Option>
+            </Select>
+          </Form.Item>
+          <div style={{ fontSize: '11px', color: '#94a3b8', lineHeight: '1.4' }}>
+            ℹ️ 系统级并发上限为 5 个任务同时运行。超出 5 个布控任务时，新创建的任务将自动进入排队队列等候调度。每次拉取数据时间跨度限 7 天内。
+          </div>
+        </Form>
+      </Modal>
     </div>
   );
 };

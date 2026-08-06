@@ -12,6 +12,7 @@ export interface TaskInfo {
   createTime: string;
   eventCount: number;
   trend: number;
+  sourceType?: 'SingleInstruction' | 'SpecialTask';
 }
 
 export interface EventItem {
@@ -92,6 +93,13 @@ export interface EventDetailData {
   disposalProgress: string;
 }
 
+export interface FourSegmentSummary {
+  start: string;     // 起始（起因）
+  trend: string;     // 走向（非官方）
+  official: string;  // 官方（媒体/机构）
+  develop: string;   // 发展（社交热点）
+}
+
 export interface TaskDataset {
   info: TaskInfo;
   events: EventItem[];
@@ -100,6 +108,7 @@ export interface TaskDataset {
   workStats: WorkStatisticsData;
   summary: OpinionSummaryData;
   detail: EventDetailData;
+  fourSegmentSummary?: FourSegmentSummary;
 }
 
 // 预设高保真任务数据集映射
@@ -117,6 +126,7 @@ const predefinedTaskDatasets: Record<string, TaskDataset> = {
       createTime: '2026-08-01 14:20:00',
       eventCount: 245,
       trend: 18,
+      sourceType: 'SingleInstruction',
     },
     events: [
       {
@@ -280,6 +290,12 @@ const predefinedTaskDatasets: Record<string, TaskDataset> = {
       ],
       disposalProgress: '驾驶员已被刑事拘留，伤者生命体征平稳，交通已全面恢复。',
     },
+    fourSegmentSummary: {
+      start: '事故起因于8月1日14时许，一辆宝马轿车在渝中区中山一路失控刮撞多名路人，引发舆论初始关注。',
+      trend: '事故发生后，网络上传播多段现场惨烈视频，个别自媒体借机炒作“肇事者酒驾逃逸”及“有背景”等阴谋论，热度迅速升温。',
+      official: '官方媒体及公安机关反应迅速，渝中警方在事故后1小时内发布警情通报，通报驾驶员已被控制，排除酒驾毒驾，起火及逃逸说法不属实，主流媒体纷纷转发定调。',
+      develop: '随着官方通报和违停拖移等处罚结果的公布，社交平台上理性网民言论逐渐占据主导，网民关注点转移到后续法律责任认定及交通安全整治。'
+    },
   },
 
   // 2. 彭水山体滑坡 (t2)
@@ -295,6 +311,7 @@ const predefinedTaskDatasets: Record<string, TaskDataset> = {
       createTime: '2026-07-28 08:30:00',
       eventCount: 168,
       trend: 8,
+      sourceType: 'SpecialTask',
     },
     events: [
       {
@@ -1132,6 +1149,7 @@ export function generateDefaultTaskDataset(taskId: string, name: string): TaskDa
       createTime: '2026-07-20 09:00:00',
       eventCount: 110,
       trend: 5,
+      sourceType: 'SpecialTask',
     },
     events: [
       {
@@ -1264,6 +1282,12 @@ export function generateDefaultTaskDataset(taskId: string, name: string): TaskDa
       ],
       disposalProgress: '处置进展平稳，各环节闭环扣紧。',
     },
+    fourSegmentSummary: {
+      start: `关于「${name}」相关突发线索或初始事件在网上传播，引发初步关注。`,
+      trend: '舆情发生后，各类网络自媒体与社群平台出现转发与议论，声量开始逐步攀升。',
+      official: '相关单位与属地公安机关快速介入落查，并通过媒体进行官方信息发布，舆论态势保持平稳。',
+      develop: '网络负面或敏感言论得到有效疏导，网民态度转向理性关注，当前事件走向受控，无发酵风险。'
+    }
   };
 }
 

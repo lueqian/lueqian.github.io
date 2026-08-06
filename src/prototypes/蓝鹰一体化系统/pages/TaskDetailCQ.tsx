@@ -663,6 +663,9 @@ const TaskDetailCQ: React.FC<TaskDetailCQProps> = ({ taskId, onBack, schedules: 
   // 报道趋势图表切换维度（volume: 声量, interaction: 互动量, sentiment: 情感）
   const [trendDimension, setTrendDimension] = useState<'volume' | 'interaction' | 'sentiment'>('volume');
 
+  // 定制：事件详情观点过滤极性状态
+  const [sentimentFilter, setSentimentFilter] = useState<string | null>(null);
+
   // 定制：事件详情 Tab 相关状态与 Refs
   const [timelineData, setTimelineData] = useState([
     {
@@ -2146,71 +2149,115 @@ const TaskDetailCQ: React.FC<TaskDetailCQProps> = ({ taskId, onBack, schedules: 
       <div className="event-detail-cq-container" style={{ display: 'flex', flexDirection: 'column', gap: '20px', padding: '16px 12px 24px 0', flex: 1, overflowY: 'auto' }}>
         
         {/* ==================== 1. 事件概述 ==================== */}
-        <div style={{ background: '#ffffff', borderRadius: '8px', border: '1px solid #f0f0f0', padding: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '16px', borderLeft: '4px solid #3366FF', paddingLeft: '10px' }}>
-            <span style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)' }}>事件概述</span>
-          </div>
-          
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', background: '#f8fafc', borderRadius: '6px', padding: '10px 14px', border: '1px solid #edf2f7' }}>
-              <span style={{ padding: '2px 8px', borderRadius: '12px', background: '#52c41a', color: '#ffffff', fontSize: '11px', fontWeight: 600, marginRight: '12px', whiteSpace: 'nowrap' }}>AI摘要</span>
-              <span style={{ fontSize: '13px', color: 'var(--text-primary)', flex: 1 }}>重庆市纪委监委发布通报，重庆市生态环境局党组成员、副局长向霆涉嫌严重违纪违法接受审查调查。舆情于8月20日爆发，媒体与网民反响强烈。</span>
+        {currentActiveTask.sourceType === 'SingleInstruction' && (
+          <div style={{ background: '#ffffff', borderRadius: '8px', border: '1px solid #f0f0f0', padding: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '16px', borderLeft: '4px solid #3366FF', paddingLeft: '10px' }}>
+              <span style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)' }}>事件概述</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', background: '#f8fafc', borderRadius: '6px', padding: '10px 14px', border: '1px solid #edf2f7' }}>
-              <span style={{ padding: '2px 8px', borderRadius: '12px', background: '#faad14', color: '#ffffff', fontSize: '11px', fontWeight: 600, marginRight: '12px', whiteSpace: 'nowrap' }}>AI研判</span>
-              <span style={{ fontSize: '13px', color: 'var(--text-primary)', flex: 1 }}>环保系统高官涉嫌违纪调查关注度高，易与社会公共资金使用、行业垄断等负面联想绑定，存在二次炒作风险。应做好本地涉稳网民言论常态巡查，防止不实言论煽动舆论。</span>
-            </div>
-          </div>
-
-          {/* 指数三卡片 */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
-            <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '16px', position: 'relative', background: '#ffffff' }}>
-              <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>舆情指数 <span style={{ color: '#cbd5e1', cursor: 'help' }}>ⓘ</span></div>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
-                <span style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text-primary)' }}>2</span>
-                <span style={{ fontSize: '13px', color: '#64748b' }}>/ 低</span>
-                <span style={{ marginLeft: 'auto', background: '#f0fdf4', color: '#16a34a', padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '2px' }}>
-                  <span>⬇️</span> 0.00% 2
-                </span>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', background: '#f8fafc', borderRadius: '6px', padding: '10px 14px', border: '1px solid #edf2f7' }}>
+                <span style={{ padding: '2px 8px', borderRadius: '12px', background: '#52c41a', color: '#ffffff', fontSize: '11px', fontWeight: 600, marginRight: '12px', whiteSpace: 'nowrap' }}>AI摘要</span>
+                <span style={{ fontSize: '13px', color: 'var(--text-primary)', flex: 1 }}>重庆市纪委监委发布通报，重庆市生态环境局党组成员、副局长向霆涉嫌严重违纪违法接受审查调查。舆情于8月20日爆发，媒体与网民反响强烈。</span>
               </div>
-              <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '12px' }}>对比上一个周期变化</div>
+              <div style={{ display: 'flex', alignItems: 'center', background: '#f8fafc', borderRadius: '6px', padding: '10px 14px', border: '1px solid #edf2f7' }}>
+                <span style={{ padding: '2px 8px', borderRadius: '12px', background: '#faad14', color: '#ffffff', fontSize: '11px', fontWeight: 600, marginRight: '12px', whiteSpace: 'nowrap' }}>AI研判</span>
+                <span style={{ fontSize: '13px', color: 'var(--text-primary)', flex: 1 }}>环保系统高官涉嫌违纪调查关注度高，易与社会公共资金使用、行业垄断等负面联想绑定，存在二次炒作风险。应做好本地涉稳网民言论常态巡查，防止不实言论煽动舆论。</span>
+              </div>
             </div>
 
-            <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '16px', position: 'relative', background: '#ffffff' }}>
-              <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>网信指数 <span style={{ color: '#cbd5e1', cursor: 'help' }}>ⓘ</span></div>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
-                <span style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text-primary)' }}>58</span>
-                <span style={{ fontSize: '13px', color: '#64748b' }}>/ 低</span>
-                <span style={{ marginLeft: 'auto', background: '#fef2f2', color: '#dc2626', padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '2px' }}>
-                  <span>⬆️</span> 15.2% 54
-                </span>
+            {/* 指数三卡片 */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
+              <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '16px', position: 'relative', background: '#ffffff' }}>
+                <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>舆情指数 <span style={{ color: '#cbd5e1', cursor: 'help' }}>ⓘ</span></div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
+                  <span style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text-primary)' }}>2</span>
+                  <span style={{ fontSize: '13px', color: '#64748b' }}>/ 低</span>
+                  <span style={{ marginLeft: 'auto', background: '#f0fdf4', color: '#16a34a', padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '2px' }}>
+                    <span>⬇️</span> 0.00% 2
+                  </span>
+                </div>
+                <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '12px' }}>对比上一个周期变化</div>
               </div>
-              <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '12px' }}>对比上一个周期变化</div>
-            </div>
 
-            <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '16px', position: 'relative', background: '#ffffff' }}>
-              <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>部级指数 <span style={{ color: '#cbd5e1', cursor: 'help' }}>ⓘ</span></div>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
-                <span style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text-primary)' }}>61</span>
-                <span style={{ fontSize: '13px', color: '#64748b' }}>/ 低</span>
-                <span style={{ marginLeft: 'auto', background: '#fef2f2', color: '#dc2626', padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '2px' }}>
-                  <span>⬆️</span> 10.2% 58
-                </span>
+              <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '16px', position: 'relative', background: '#ffffff' }}>
+                <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>网信指数 <span style={{ color: '#cbd5e1', cursor: 'help' }}>ⓘ</span></div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
+                  <span style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text-primary)' }}>58</span>
+                  <span style={{ fontSize: '13px', color: '#64748b' }}>/ 低</span>
+                  <span style={{ marginLeft: 'auto', background: '#fef2f2', color: '#dc2626', padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '2px' }}>
+                    <span>⬆️</span> 15.2% 54
+                  </span>
+                </div>
+                <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '12px' }}>对比上一个周期变化</div>
               </div>
-              <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '12px' }}>对比上一个周期变化</div>
+
+              <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '16px', position: 'relative', background: '#ffffff' }}>
+                <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>部级指数 <span style={{ color: '#cbd5e1', cursor: 'help' }}>ⓘ</span></div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
+                  <span style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text-primary)' }}>61</span>
+                  <span style={{ fontSize: '13px', color: '#64748b' }}>/ 低</span>
+                  <span style={{ marginLeft: 'auto', background: '#fef2f2', color: '#dc2626', padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '2px' }}>
+                    <span>⬆️</span> 10.2% 58
+                  </span>
+                </div>
+                <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '12px' }}>对比上一个周期变化</div>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* ==================== 2. 事件概况 ==================== */}
         <div style={{ background: '#ffffff', borderRadius: '8px', border: '1px solid #f0f0f0', padding: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px', borderLeft: '4px solid #3366FF', paddingLeft: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '16px', borderLeft: '4px solid #3366FF', paddingLeft: '10px' }}>
             <span style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', marginRight: '8px' }}>事件概况</span>
             <span style={{ padding: '1px 6px', background: '#3366FF', color: '#ffffff', fontSize: '10px', fontWeight: 700, borderRadius: '4px' }}>Ai</span>
           </div>
-          <div style={{ background: '#f8fafc', border: '1px dashed #e2e8f0', borderRadius: '6px', padding: '12px 16px', fontSize: '13px', color: '#334155', lineHeight: '1.6' }}>
-            针对向霆涉嫌严重违纪违法调查事件，全网累计监测到相关舆情声量 4863 篇。声量主要在微博、新闻媒体等阵地首发并爆发，随后在抖音、今日头条等大V炒作下迅速走高。目前整体舆情正处于消退期，暂无新增二次发酵点。
+          
+          {/* 文本性事件概况 */}
+          <div style={{ background: '#f8fafc', border: '1px dashed #e2e8f0', borderRadius: '6px', padding: '12px 16px', fontSize: '13px', color: '#334155', lineHeight: '1.6', marginBottom: '20px' }}>
+            {taskDataset.summary?.summaryText || "针对该追踪项目，全网累计监测到相关舆情声量呈稳定分布。声量主要在微博、新闻媒体等阵地首发并爆发，随后在抖音、今日头条等大V发文关注下形成传播。目前整体舆情波幅处于消退期，暂无新增二次发酵点。"}
           </div>
+
+          {/* 4个区域从上到下类似于事件脉络的展示样式 */}
+          {taskDataset.fourSegmentSummary && (
+            <div className="summary-vertical-timeline" style={{ paddingLeft: '8px', position: 'relative', marginTop: '10px' }}>
+              {/* 垂直连线 */}
+              <div style={{ position: 'absolute', left: '16px', top: '12px', bottom: '12px', width: '1.5px', background: '#e2e8f0' }} />
+              
+              {[
+                { label: '[起始] 事件起因', color: '#3b82f6', text: taskDataset.fourSegmentSummary.start },
+                { label: '[走向] 网络传播', color: '#f59e0b', text: taskDataset.fourSegmentSummary.trend },
+                { label: '[官方] 媒体定调', color: '#10b981', text: taskDataset.fourSegmentSummary.official },
+                { label: '[发展] 舆论演温', color: '#8b5cf6', text: taskDataset.fourSegmentSummary.develop }
+              ].map((item, idx) => (
+                <div key={idx} style={{ display: 'flex', gap: '20px', marginBottom: '20px', position: 'relative' }}>
+                  {/* 时间轴小圆点 */}
+                  <div style={{ 
+                    zIndex: 2, 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    width: '18px', 
+                    height: '18px', 
+                    borderRadius: '50%', 
+                    background: '#ffffff', 
+                    border: `2px solid ${item.color}`, 
+                    marginLeft: '8px', 
+                    marginTop: '3px' 
+                  }}>
+                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: item.color }} />
+                  </div>
+                  
+                  {/* 右侧内容区块 */}
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px', background: '#f8fafc', padding: '12px 16px', borderRadius: '6px', border: '1px solid #edf2f7' }}>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: item.color }}>{item.label}</span>
+                    <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: '1.6' }}>{item.text}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* ==================== 3. 事件脉络 ==================== */}
@@ -2461,29 +2508,100 @@ const TaskDetailCQ: React.FC<TaskDetailCQProps> = ({ taskId, onBack, schedules: 
             <span style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)' }}>热门网民观点</span>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {[
-              { id: 1, author: '@绿水青山99', platform: '微博', content: '自己主管环保审批却干涉利益寻租，这种知法犯法的贪官必须严惩！支持反腐！', emotion: '负面', hot: 342, color: '#ff4d4f' },
-              { id: 2, author: '@环保卫士老张', platform: '抖音', content: '天网恢恢，疏而不漏，环保领域的油水确实需要好好挤一挤了。', emotion: '负面', hot: 210, color: '#ff4d4f' },
-              { id: 3, author: '@重客小刘', platform: '今日头条', content: '关注后续通报，等待纪委监委公布具体的涉案细节。', emotion: '中性', hot: 85, color: '#faad14' }
-            ].map(comment => (
-              <div key={comment.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', background: '#f8fafc', borderRadius: '6px', border: '1px solid #edf2f7' }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                    <span style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-primary)' }}>{comment.author}</span>
-                    <span style={{ fontSize: '11px', color: '#94a3b8' }}>({comment.platform})</span>
-                    <Tag color={comment.color} style={{ fontSize: '10px', height: '18px', lineHeight: '16px', padding: '0 4px', border: 'none' }}>
-                      {comment.emotion}
-                    </Tag>
+          <div style={{ display: 'grid', gridTemplateColumns: '9fr 15fr', gap: '24px' }}>
+            {/* 左侧观点聚类比例 */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', borderRight: '1px solid #f1f5f9', paddingRight: '20px' }}>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>AI观点聚类比例</div>
+              
+              {[
+                { type: '负面', name: '呼吁严惩腐败 / 支持坚决追责', percent: 60, color: '#ff4d4f' },
+                { type: '中性', name: '关注官方后续 / 等待详情公布', percent: 30, color: '#faad14' },
+                { type: '正面', name: '呼吁保持理性 / 不信谣不传谣', percent: 10, color: '#52c41a' }
+              ].map(item => {
+                const isActive = sentimentFilter === item.type;
+                return (
+                  <div 
+                    key={item.type} 
+                    onClick={() => setSentimentFilter(sentimentFilter === item.type ? null : item.type)}
+                    style={{
+                      padding: '12px 14px',
+                      background: isActive ? '#f0f4ff' : '#f8fafc',
+                      border: isActive ? '1.5px solid #3366FF' : '1px solid #edf2f7',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      boxShadow: isActive ? '0 2px 6px rgba(51,102,255,0.1)' : 'none'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 600, marginBottom: '6px' }}>
+                      <span style={{ color: 'var(--text-primary)' }}>{item.name}</span>
+                      <span style={{ color: item.color }}>{item.percent}%</span>
+                    </div>
+                    <div style={{ width: '100%', height: '6px', background: '#e2e8f0', borderRadius: '3px', overflow: 'hidden' }}>
+                      <div style={{ width: `${item.percent}%`, height: '100%', background: item.color }} />
+                    </div>
                   </div>
-                  <div style={{ fontSize: '13px', color: '#334155', lineHeight: '1.5' }}>{comment.content}</div>
-                </div>
-                <div style={{ fontSize: '12px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
-                  <span>👍 互动量:</span>
-                  <strong>{comment.hot}</strong>
-                </div>
+                );
+              })}
+              <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px' }}>
+                💡 点击左侧观点类别，可实时筛选过滤右侧的原帖明细列表。
               </div>
-            ))}
+            </div>
+
+            {/* 右侧网民原帖卡片 */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>网民原帖列表</span>
+                  {sentimentFilter && (
+                    <Tag 
+                      color="blue" 
+                      closable 
+                      onClose={() => setSentimentFilter(null)}
+                      style={{ margin: 0 }}
+                    >
+                      极性: {sentimentFilter}
+                    </Tag>
+                  )}
+                </div>
+                {sentimentFilter && (
+                  <Button 
+                    size="small" 
+                    type="link" 
+                    onClick={() => setSentimentFilter(null)} 
+                    style={{ padding: 0, height: 'auto', fontSize: '12px' }}
+                  >
+                    清除筛选
+                  </Button>
+                )}
+              </div>
+
+              {[
+                { id: 1, author: '@绿水青山99', platform: '微博', content: '自己主管环保审批却干涉利益寻租，这种知法犯法的贪官必须严惩！支持反腐！', emotion: '负面', hot: 342, color: '#ff4d4f' },
+                { id: 2, author: '@环保卫士老张', platform: '抖音', content: '天网恢恢，疏而不漏，环保领域的油水确实需要好好挤一挤了。', emotion: '负面', hot: 210, color: '#ff4d4f' },
+                { id: 3, author: '@重客小刘', platform: '今日头条', content: '关注后续通报，等待纪委监委公布具体的涉案细节。', emotion: '中性', hot: 85, color: '#faad14' },
+                { id: 4, author: '@理性思考者', platform: '微博', content: '大家先冷静，不要盲目传谣，等待官方把事情全过程和证据公布出来再说。', emotion: '正面', hot: 54, color: '#52c41a' }
+              ]
+                .filter(comment => !sentimentFilter || comment.emotion === sentimentFilter)
+                .map(comment => (
+                  <div key={comment.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', background: '#f8fafc', borderRadius: '6px', border: '1px solid #edf2f7' }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                        <span style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-primary)' }}>{comment.author}</span>
+                        <span style={{ fontSize: '11px', color: '#94a3b8' }}>({comment.platform})</span>
+                        <Tag color={comment.color} style={{ fontSize: '10px', height: '18px', lineHeight: '16px', padding: '0 4px', border: 'none' }}>
+                          {comment.emotion}
+                        </Tag>
+                      </div>
+                      <div style={{ fontSize: '13px', color: '#334155', lineHeight: '1.5' }}>{comment.content}</div>
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
+                      <span>👍 互动量:</span>
+                      <strong>{comment.hot}</strong>
+                    </div>
+                  </div>
+                ))}
+            </div>
           </div>
         </div>
       </div>

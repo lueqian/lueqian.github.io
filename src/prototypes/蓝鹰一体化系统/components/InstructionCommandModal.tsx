@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from 'react';
-import { Input, Modal, Select, Tag } from 'antd';
+import React, { useMemo, useState, useEffect } from 'react';
+import { Input, Modal, Select, Tag, Checkbox, DatePicker, message } from 'antd';
 import { TeamOutlined } from '@ant-design/icons';
+import dayjs from 'dayjs';
 
 interface InstructionOption {
   id: string;
@@ -45,6 +46,50 @@ const InstructionCommandModal: React.FC<InstructionCommandModalProps> = ({
   const [assignments, setAssignments] = useState<Record<string, Record<string, string[]>>>({
     'post-disposal': { '淮安区': [] }
   });
+
+  // ========== 新增：关联重大事项任务及边界控制 ==========
+  const existingTasks = useMemo(() => [
+    { id: 't1', name: '渝中宝马撞人事件', keywords: '渝中, 宝马撞人, 中山路, 警方通告, 事故核查', startDate: '2026-08-01', endDate: '2026-08-15' },
+    { id: 't2', name: '彭水山体滑坡', keywords: '彭水, 山体滑坡, 抢险救援, 暴雨涉灾, 人员疏散', startDate: '2026-07-28', endDate: '2026-08-05' },
+    { id: 't4', name: '重庆火灾舆情', keywords: '重庆火灾, 高层消防, 灭火救援, 消火栓, 原因调查', startDate: '2026-07-15', endDate: '2026-07-20' },
+    { id: 't5', name: '大足一中', keywords: '大足一中, 校园安全, 家校沟通, 网传澄清, 大足教委', startDate: '2026-07-15', endDate: '2026-07-18' },
+  ], []);
+
+  const [linkToTask, setLinkToTask] = useState(false);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | undefined>(undefined);
+  const [dateRange, setDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null]>([null, null]);
+  const [keywords, setKeywords] = useState('');
+
+  useEffect(() => {
+    if (linkToTask) {
+      if (selectedTaskId) {
+        const task = existingTasks.find(t => t.id === selectedTaskId);
+        if (task) {
+          setKeywords(task.keywords);
+          const start = dayjs(task.startDate);
+          const end = dayjs(task.endDate);
+          const diffDays = end.diff(start, 'day');
+          if (diffDays <= 30) {
+            setDateRange([start, end]);
+          } else {
+            // 超出30天限制，补正为以当天为节点的 -4 天至 +25 天
+            const today = dayjs();
+            setDateRange([today.subtract(4, 'day'), today.add(25, 'day')]);
+            message.info("关联任务时间跨度超出 30 天限制，已自动应用默认周期补正！");
+          }
+        }
+      } else {
+        setKeywords('');
+        setDateRange([null, null]);
+      }
+    } else {
+      // 默认情况
+      const today = dayjs();
+      setDateRange([today.subtract(4, 'day'), today.add(25, 'day')]);
+      setKeywords('');
+    }
+  }, [linkToTask, selectedTaskId, existingTasks]);
+  // ======================================================
 
   const handleAreasChange = (instId: string, areas: string[]) => {
     setAssignments((prev) => {
@@ -135,6 +180,58 @@ const InstructionCommandModal: React.FC<InstructionCommandModalProps> = ({
               <Tag key={item} className="variable-tag">{item}</Tag>
             ))}
           </div>
+          
+          <div style={{ marginTop: '16px', borderTop: '1px dashed #e2e8f0', paddingTop: '16px', marginBottom: '16px' }}>
+            <div style={{ marginBottom: '12px' }}>
+              <Checkbox 
+                checked={linkToTask} 
+                onChange={(e) => setLinkToTask(e.target.checked)}
+                style={{ fontWeight: 600, fontSize: '13px', color: '#475569' }}
+              >
+                关联已有的重大事项任务
+              </Checkbox>
+            </div>
+            
+            {linkToTask && (
+              <div style={{ marginBottom: '12px' }}>
+                <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '6px', fontWeight: 500 }}>选择关联事项任务</div>
+                <Select
+                  placeholder="请选择要关联的重大事项任务"
+                  value={selectedTaskId}
+                  onChange={(val) => setSelectedTaskId(val)}
+                  style={{ width: '100%' }}
+                  options={existingTasks.map(t => ({ value: t.id, label: t.name }))}
+                />
+              </div>
+            )}
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '12px', marginBottom: '12px' }}>
+              <div>
+                <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '6px', fontWeight: 500 }}>追踪布控关键词</div>
+                <Input 
+                  value={keywords} 
+                  onChange={(e) => setKeywords(e.target.value)}
+                  placeholder="如：中山路, 警方通告"
+                  disabled={linkToTask}
+                  style={{ fontSize: '12.5px' }}
+                />
+              </div>
+              <div>
+                <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '6px', fontWeight: 500 }}>数据时间范围（最大30天限制）</div>
+                <DatePicker.RangePicker
+                  value={dateRange as any}
+                  onChange={(val) => setDateRange(val as any)}
+                  disabled={linkToTask}
+                  style={{ width: '100%', fontSize: '12px' }}
+                />
+              </div>
+            </div>
+            
+            <div style={{ fontSize: '11px', color: '#94a3b8', lineHeight: '1.4' }}>
+              ℹ️ 勾选关联重大事项后，时间范围与核心关键词将自动继承自该事项任务。若继承的周期跨度超出系统 30 天上限，将自动应用默认布控周期补正。
+            </div>
+          </div>
+
           <div className="target-summary">{targetSummary}</div>
         </div>
         <div className="instruction-modal-right" style={{ maxHeight: '580px', overflowY: 'auto' }}>
