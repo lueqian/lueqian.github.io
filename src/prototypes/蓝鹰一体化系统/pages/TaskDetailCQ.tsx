@@ -2145,12 +2145,11 @@ const TaskDetailCQ: React.FC<TaskDetailCQProps> = ({ taskId, onBack, schedules: 
   const renderEmptyTrackingGuide = () => {
     const currentTaskName = allSideTasksFlat.find(t => t.id === activeSideTask)?.name || activeSideTask;
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#ffffff', borderRadius: '8px', border: '1px solid #f0f0f0', padding: '80px 40px', flex: 1, minHeight: '450px', margin: '20px', width: 'calc(100% - 40px)', textAlign: 'center' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#ffffff', borderRadius: '8px', border: '1px solid #f0f0f0', padding: '60px 40px', flex: 1, minHeight: '450px', margin: '20px' }}>
         <Empty
           image={Empty.PRESENTED_IMAGE_SIMPLE}
-          style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
           description={
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
+            <div style={{ textAlign: 'center' }}>
               <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px' }}>
                 「{currentTaskName}」尚未开启态势追踪
               </p>
@@ -2160,16 +2159,14 @@ const TaskDetailCQ: React.FC<TaskDetailCQProps> = ({ taskId, onBack, schedules: 
             </div>
           }
         >
-          <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
-            <Button 
-              type="primary" 
-              size="large" 
-              onClick={() => setIsOpenStartTrackingModal(true)}
-              style={{ background: '#3366FF', borderColor: '#3366FF', fontWeight: 600, borderRadius: '4px', height: '40px', padding: '0 24px', display: 'inline-flex', alignItems: 'center' }}
-            >
-              开启态势追踪
-            </Button>
-          </div>
+          <Button 
+            type="primary" 
+            size="large" 
+            onClick={() => setIsOpenStartTrackingModal(true)}
+            style={{ background: '#3366FF', borderColor: '#3366FF', fontWeight: 600, borderRadius: '4px', height: '40px', padding: '0 24px', display: 'inline-flex', alignItems: 'center' }}
+          >
+            开启态势追踪
+          </Button>
         </Empty>
       </div>
     );
@@ -2293,7 +2290,7 @@ const TaskDetailCQ: React.FC<TaskDetailCQProps> = ({ taskId, onBack, schedules: 
               type="primary" 
               size="small"
               onClick={() => setIsOpenStartTrackingModal(true)}
-              style={{ background: '#3366FF', borderColor: '#3366FF', fontSize: '12px', display: 'inline-flex', alignItems: 'center' }}
+              style={{ fontSize: '12px', background: '#3366FF', borderColor: '#3366FF', display: 'inline-flex', alignItems: 'center' }}
             >
               继续追踪
             </Button>
