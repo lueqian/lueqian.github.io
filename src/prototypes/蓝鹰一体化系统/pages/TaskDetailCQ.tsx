@@ -2107,15 +2107,6 @@ const TaskDetailCQ: React.FC<TaskDetailCQProps> = ({ taskId, onBack, schedules: 
   };
 
   const handleStartTrackingSubmit = (values: any) => {
-    const range = values.timeRange;
-    if (range && range[0] && range[1]) {
-      const diffDays = range[1].diff(range[0], 'day');
-      if (diffDays > 30) {
-        message.error("开启失败：数据抓取时间范围跨度不能超过 30 天！");
-        return;
-      }
-    }
-
     // 全局并发最大上限拦截
     const runningCount = Object.values(taskTrackingConfigs).filter(c => c.status === 'running').length;
     if (runningCount >= 5) {
@@ -2127,11 +2118,15 @@ const TaskDetailCQ: React.FC<TaskDetailCQProps> = ({ taskId, onBack, schedules: 
       return;
     }
 
+    // 默认取数时间范围计算（当天为节点的当前天数 -4 天 至 +25 天，总共30天）
+    const today = dayjs();
+    const defaultRange = [today.subtract(4, 'day'), today.add(25, 'day')];
+
     setTaskTrackingConfigs(prev => ({
       ...prev,
       [activeSideTask]: {
         status: 'running',
-        dateRange: range,
+        dateRange: defaultRange,
         duration: values.duration,
         frequency: values.frequency
       }
@@ -4760,13 +4755,6 @@ const TaskDetailCQ: React.FC<TaskDetailCQProps> = ({ taskId, onBack, schedules: 
             <Input value={allSideTasksFlat.find(t => t.id === activeSideTask)?.name || activeSideTask} disabled style={{ fontWeight: 600, color: 'var(--text-primary)' }} />
           </Form.Item>
           
-          <Form.Item
-            name="timeRange"
-            label="数据获取时间范围 (跨度限制 ≤30 天)"
-            rules={[{ required: true, message: '请选择数据获取时间范围' }]}
-          >
-            <DatePicker.RangePicker style={{ width: '100%' }} />
-          </Form.Item>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
             <Form.Item

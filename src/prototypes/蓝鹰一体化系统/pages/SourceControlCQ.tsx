@@ -498,33 +498,24 @@ const SourceControlCQ: React.FC = () => {
   };
 
   const handleCreateTaskSubmit = (values: any) => {
-    const range = values.timeRange;
-    if (range && range[0] && range[1]) {
-      const diffDays = range[1].diff(range[0], 'day');
-      if (diffDays > 30) {
-        message.error("创建失败：数据时间范围跨度不能超过 30 天限制！");
-        return;
-      }
-      
-      const newId = `t-user-${Date.now()}`;
-      const newTask = {
-        id: newId,
-        code: `SC-${newId.substring(newId.length - 4).toUpperCase()}`,
-        name: values.name,
-        status: 'normal',
-        department: '网安支队',
-        trend: 12, // 模拟初始声量
-        trendLabel: '正在初次取数...',
-        rank: '新布控',
-      };
-      
-      setLocalSpecialTasks(prev => [newTask, ...prev]);
-      allTasksMap[newId] = values.name;
-      
-      message.success("态势追踪项目创建成功，系统已自动排程获取数据！");
-      setIsCreateTaskOpen(false);
-      createForm.resetFields();
-    }
+    const newId = `t-user-${Date.now()}`;
+    const newTask = {
+      id: newId,
+      code: `SC-${newId.substring(newId.length - 4).toUpperCase()}`,
+      name: values.name,
+      status: 'normal',
+      department: '网安支队',
+      trend: 12, // 模拟初始声量
+      trendLabel: '正在初次取数...',
+      rank: '新布控',
+    };
+    
+    setLocalSpecialTasks(prev => [newTask, ...prev]);
+    allTasksMap[newId] = values.name;
+    
+    message.success("态势追踪项目创建成功，系统已自动排程获取数据！");
+    setIsCreateTaskOpen(false);
+    createForm.resetFields();
   };
 
 
@@ -1406,13 +1397,6 @@ const SourceControlCQ: React.FC = () => {
             <Input placeholder="请输入任务名称，如：某路段舆情追踪" />
           </Form.Item>
           
-          <Form.Item
-            name="timeRange"
-            label="数据时间范围（最大跨度30天）"
-            rules={[{ required: true, message: '请选择数据时间范围' }]}
-          >
-            <DatePicker.RangePicker style={{ width: '100%' }} />
-          </Form.Item>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
             <Form.Item
