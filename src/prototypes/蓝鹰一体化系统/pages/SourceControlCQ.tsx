@@ -1337,18 +1337,7 @@ const SourceControlCQ: React.FC = () => {
                   <TeamOutlined className="title-icon" />
                   <span>重大事项跟踪</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Button 
-                    type="primary" 
-                    size="small" 
-                    icon={<PlusOutlined />} 
-                    onClick={() => setIsCreateTaskOpen(true)}
-                    style={{ background: '#3366FF', borderColor: '#3366FF', fontSize: '11px', height: '24px', display: 'inline-flex', alignItems: 'center' }}
-                  >
-                    创建任务
-                  </Button>
-                  <a className="more-link">更多</a>
-                </div>
+                <a className="more-link">更多</a>
               </div>
               <div className="tasks-list">
                 {localSpecialTasks.map((task) => renderTaskCard(task, 'special'))}
