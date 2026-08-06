@@ -666,6 +666,17 @@ const TaskDetailCQ: React.FC<TaskDetailCQProps> = ({ taskId, onBack, schedules: 
   // 定制：事件详情观点过滤极性状态
   const [sentimentFilter, setSentimentFilter] = useState<string | null>(null);
 
+  // 新增：态势追踪状态与配置管理（默认所有任务初始状态为 idle）
+  const [taskTrackingConfigs, setTaskTrackingConfigs] = useState<Record<string, {
+    status: 'idle' | 'running' | 'ended';
+    dateRange?: any;
+    duration?: number;
+    frequency?: string;
+  }>>({});
+  const [isOpenStartTrackingModal, setIsOpenStartTrackingModal] = useState(false);
+  const [startTrackingForm] = Form.useForm();
+
+
   // 定制：事件详情 Tab 相关状态与 Refs
   const [timelineData, setTimelineData] = useState([
     {
@@ -2074,7 +2085,100 @@ const TaskDetailCQ: React.FC<TaskDetailCQProps> = ({ taskId, onBack, schedules: 
     message.success('脉络节点添加成功！');
   };
 
+  // ========== 新增：态势追踪流转控制与辅助渲染 ==========
+  const handleEndTracking = (taskId: string) => {
+    Modal.confirm({
+      title: '确认结束态势追踪吗？',
+      content: '结束追踪后，系统将停止数据拉取，该任务仅保留已抓取到的历史分析结果。同时将释放 1 个全局并发追踪名额。',
+      okText: '确认结束',
+      cancelText: '取消',
+      okButtonProps: { danger: true },
+      onOk: () => {
+        setTaskTrackingConfigs(prev => ({
+          ...prev,
+          [taskId]: {
+            ...prev[taskId],
+            status: 'ended'
+          }
+        }));
+        message.success('态势追踪任务已成功结束，配额已释放！');
+      }
+    });
+  };
+
+  const handleStartTrackingSubmit = (values: any) => {
+    const range = values.timeRange;
+    if (range && range[0] && range[1]) {
+      const diffDays = range[1].diff(range[0], 'day');
+      if (diffDays > 30) {
+        message.error("开启失败：数据抓取时间范围跨度不能超过 30 天！");
+        return;
+      }
+    }
+
+    // 全局并发最大上限拦截
+    const runningCount = Object.values(taskTrackingConfigs).filter(c => c.status === 'running').length;
+    if (runningCount >= 5) {
+      Modal.error({
+        title: "无法开启追踪任务",
+        content: "目前追踪任务已达到上限，请关闭不需要的追踪任务后重新开启。",
+        okText: "知道了"
+      });
+      return;
+    }
+
+    setTaskTrackingConfigs(prev => ({
+      ...prev,
+      [activeSideTask]: {
+        status: 'running',
+        dateRange: range,
+        duration: values.duration,
+        frequency: values.frequency
+      }
+    }));
+
+    message.success("该事件的态势追踪已成功启动！数据拉取后台任务已激活。");
+    setIsOpenStartTrackingModal(false);
+    startTrackingForm.resetFields();
+  };
+
+  const renderEmptyTrackingGuide = () => {
+    const currentTaskName = allSideTasksFlat.find(t => t.id === activeSideTask)?.name || activeSideTask;
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#ffffff', borderRadius: '8px', border: '1px solid #f0f0f0', padding: '60px 40px', flex: 1, minHeight: '450px', margin: '20px' }}>
+        <Empty
+          image={Empty.PRESENTED_IMAGE_SIMPLE}
+          description={
+            <div style={{ textAlign: 'center' }}>
+              <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                「{currentTaskName}」尚未开启态势追踪
+              </p>
+              <p style={{ fontSize: '12.5px', color: '#94a3b8', maxWidth: '380px', margin: '0 auto 20px auto', lineHeight: '1.5' }}>
+                开启态势追踪后，系统将自动绑定该任务并按设定频次抓取全网监测数据，生成事件脉络、情感走向与大V观点等深度研判结果。
+              </p>
+            </div>
+          }
+        >
+          <Button 
+            type="primary" 
+            size="large" 
+            onClick={() => setIsOpenStartTrackingModal(true)}
+            style={{ background: '#3366FF', borderColor: '#3366FF', fontWeight: 600, borderRadius: '4px', height: '40px', padding: '0 24px', display: 'inline-flex', alignItems: 'center' }}
+          >
+            开启态势追踪
+          </Button>
+        </Empty>
+      </div>
+    );
+  };
+  // ======================================================
+
   const renderEventDetailTab = () => {
+    const config = taskTrackingConfigs[activeSideTask] || { status: 'idle' };
+    if (config.status === 'idle') {
+      return renderEmptyTrackingGuide();
+    }
+
     // 渲染媒体报道二级 Tab
     const renderMediaContent = () => {
       switch (activeMediaTab) {
@@ -2147,6 +2251,41 @@ const TaskDetailCQ: React.FC<TaskDetailCQProps> = ({ taskId, onBack, schedules: 
 
     return (
       <div className="event-detail-cq-container" style={{ display: 'flex', flexDirection: 'column', gap: '20px', padding: '16px 12px 24px 0', flex: 1, overflowY: 'auto' }}>
+        
+        {/* ==================== 态势追踪控制横栏 ==================== */}
+        <div style={{ 
+          background: '#ffffff', 
+          borderRadius: '8px', 
+          border: '1px solid #f0f0f0', 
+          padding: '12px 20px', 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>态势追踪状态</span>
+            <Tag color={config.status === 'running' ? 'blue' : 'default'} style={{ border: 'none', margin: 0, fontWeight: 600 }}>
+              {config.status === 'running' ? '● 追踪进行中' : '○ 追踪已结束'}
+            </Tag>
+            <span style={{ fontSize: '12px', color: '#64748b' }}>
+              ⏱️ 执行频次：{config.frequency === '1_hour' ? '1小时/次' : config.frequency === '3_hours' ? '3小时/次' : config.frequency === '6_hours' ? '6小时/次' : config.frequency === '12_hours' ? '12小时/次' : '1天/次'} | 
+              ⏳ 周期：{config.duration}天 | 
+              📅 数据范围：{config.dateRange ? `${config.dateRange[0]?.format('YYYY-MM-DD')} 至 ${config.dateRange[1]?.format('YYYY-MM-DD')}` : '默认30天'}
+            </span>
+          </div>
+          {config.status === 'running' && (
+            <Button 
+              type="dashed" 
+              danger 
+              size="small"
+              onClick={() => handleEndTracking(activeSideTask)}
+              style={{ fontSize: '12px', display: 'inline-flex', alignItems: 'center' }}
+            >
+              结束追踪
+            </Button>
+          )}
+        </div>
         
         {/* ==================== 1. 事件概述 ==================== */}
         {currentActiveTask.sourceType === 'SingleInstruction' && (
@@ -3860,8 +3999,21 @@ const TaskDetailCQ: React.FC<TaskDetailCQProps> = ({ taskId, onBack, schedules: 
             <div
               className={`sub-tab-item ${firstLevelTab === 'event_detail' ? 'active' : ''}`}
               onClick={() => setFirstLevelTab('event_detail')}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
             >
-              事件详情
+              <span>事件详情</span>
+              {taskTrackingConfigs[activeSideTask]?.status === 'running' && (
+                <span 
+                  style={{ 
+                    display: 'inline-block', 
+                    width: '6px', 
+                    height: '6px', 
+                    borderRadius: '50%', 
+                    background: '#10b981', 
+                    boxShadow: '0 0 6px #10b981',
+                  }} 
+                />
+              )}
             </div>
             <div
               className={`sub-tab-item ${firstLevelTab === 'quantitative_analysis' ? 'active' : ''}`}
@@ -4522,17 +4674,32 @@ const TaskDetailCQ: React.FC<TaskDetailCQProps> = ({ taskId, onBack, schedules: 
                   </div>
                   {!isCollapsed && (
                     <div className="task-tree-children">
-                      {filtered.map(task => (
-                        <div
-                          key={task.id}
-                          className={`task-tree-item ${task.id === activeSideTask ? 'active' : ''}`}
-                          onClick={() => setActiveSideTask(task.id)}
-                          title={task.name}
-                        >
-                          <span className="task-tree-item-dot" />
-                          <span className="task-tree-item-name">{task.name}</span>
-                        </div>
-                      ))}
+                      {filtered.map(task => {
+                        const trackingConfig = taskTrackingConfigs[task.id];
+                        const hasTracking = trackingConfig && trackingConfig.status !== 'idle';
+                        return (
+                          <div
+                            key={task.id}
+                            className={`task-tree-item ${task.id === activeSideTask ? 'active' : ''}`}
+                            onClick={() => setActiveSideTask(task.id)}
+                            title={task.name}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingRight: '8px' }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0 }}>
+                              <span className="task-tree-item-dot" />
+                              <span className="task-tree-item-name" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{task.name}</span>
+                            </div>
+                            {hasTracking && (
+                              <Tag 
+                                color={trackingConfig.status === 'running' ? 'blue' : 'default'}
+                                style={{ fontSize: '10px', height: '18px', lineHeight: '16px', padding: '0 4px', margin: 0, border: 'none' }}
+                              >
+                                {trackingConfig.status === 'running' ? '追踪进行' : '追踪结束'}
+                              </Tag>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -4551,6 +4718,85 @@ const TaskDetailCQ: React.FC<TaskDetailCQProps> = ({ taskId, onBack, schedules: 
           </>
         }
       />
+
+      {/* 新增：开启事件态势追踪模态框 */}
+      <Modal
+        title="开启事件态势追踪"
+        open={isOpenStartTrackingModal}
+        onCancel={() => {
+          setIsOpenStartTrackingModal(false);
+          startTrackingForm.resetFields();
+        }}
+        onOk={() => {
+          startTrackingForm.validateFields().then(values => {
+            handleStartTrackingSubmit(values);
+          });
+        }}
+        okText="开启追踪"
+        cancelText="取消"
+        width={550}
+        destroyOnClose
+      >
+        <Form
+          form={startTrackingForm}
+          layout="vertical"
+          initialValues={{
+            duration: 7,
+            frequency: '1_day'
+          }}
+          style={{ marginTop: '16px' }}
+        >
+          <Form.Item label="绑定当前任务" required>
+            <Input value={allSideTasksFlat.find(t => t.id === activeSideTask)?.name || activeSideTask} disabled style={{ fontWeight: 600, color: 'var(--text-primary)' }} />
+          </Form.Item>
+          
+          <Form.Item
+            name="timeRange"
+            label="数据获取时间范围 (跨度限制 ≤30 天)"
+            rules={[{ required: true, message: '请选择数据获取时间范围' }]}
+          >
+            <DatePicker.RangePicker style={{ width: '100%' }} />
+          </Form.Item>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <Form.Item
+              name="duration"
+              label="追踪执行周期 (最大限制 7 天)"
+              rules={[
+                { required: true, message: '请选择或输入追踪周期' },
+                {
+                  validator: (_, value) => {
+                    if (value !== undefined && value !== null && (value < 1 || value > 7)) {
+                      return Promise.reject(new Error('追踪执行周期最大限制为 7 天！'));
+                    }
+                    return Promise.resolve();
+                  }
+                }
+              ]}
+            >
+              <InputNumber style={{ width: '100%' }} min={1} max={7} addonAfter="天" placeholder="最大7天" />
+            </Form.Item>
+
+            <Form.Item
+              name="frequency"
+              label="自动执行更新频次"
+              rules={[{ required: true }]}
+            >
+              <Select>
+                <Select.Option value="1_hour">1小时/次</Select.Option>
+                <Select.Option value="3_hours">3小时/次</Select.Option>
+                <Select.Option value="6_hours">6小时/次</Select.Option>
+                <Select.Option value="12_hours">12小时/次</Select.Option>
+                <Select.Option value="1_day">1天/次 (默认推荐)</Select.Option>
+              </Select>
+            </Form.Item>
+          </div>
+          
+          <div style={{ fontSize: '11px', color: '#94a3b8', lineHeight: '1.4' }}>
+            ⚠️ 注意：系统资源有限，全局同时处于“追踪进行中”的任务上限为 5 个。到达上限时需要手动结束其它不重要的任务。
+          </div>
+        </Form>
+      </Modal>
 
       {/* 新增：批量链接失效监测弹窗 */}
       <Modal
