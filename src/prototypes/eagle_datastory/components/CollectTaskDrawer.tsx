@@ -1065,6 +1065,8 @@ const CollectTaskDrawer: React.FC<CollectTaskDrawerProps> = function ({ open, ti
         setLinkValidation={setLinkValidation}
         linkText={linkText}
         setLinkText={setLinkText}
+        linkPlatforms={linkPlatforms}
+        setLinkPlatforms={setLinkPlatforms}
       />
     </Drawer>
   );
