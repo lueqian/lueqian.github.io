@@ -27,6 +27,7 @@ export interface CollectTaskDrawerProps {
     link_list?: Array<{ link: string; title: string; topic: string }>;
     related_topic?: string;
     related_source?: string;
+    platform_pages?: Record<string, string>;
   };
 }
 
@@ -318,18 +319,42 @@ const TaskFormContent: React.FC<{
   shakeTrackDays: boolean;
   onShakeTrackDays: (v: boolean) => void;
   isEditMode: boolean;
-}> = function ({ form, scopeType, frequency, submitting, onScopeTypeChange, onFrequencyChange, shakeTrackDays, onShakeTrackDays, isEditMode }) {
+  scopePlatforms: string[];
+  setScopePlatforms: React.Dispatch<React.SetStateAction<string[]>>;
+  scopePlatformPages: Record<string, string>;
+  setScopePlatformPages: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  linkPlatformPages: Record<string, string>;
+  setLinkPlatformPages: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  validateResult: any;
+  setValidateResult: (v: any) => void;
+  linkValidation: any;
+  setLinkValidation: (v: any) => void;
+  linkText: string;
+  setLinkText: (v: string) => void;
+}> = function ({
+  form,
+  scopeType,
+  frequency,
+  submitting,
+  onScopeTypeChange,
+  onFrequencyChange,
+  shakeTrackDays,
+  onShakeTrackDays,
+  isEditMode,
+  scopePlatforms,
+  setScopePlatforms,
+  scopePlatformPages,
+  setScopePlatformPages,
+  linkPlatformPages,
+  setLinkPlatformPages,
+  validateResult,
+  setValidateResult,
+  linkValidation,
+  setLinkValidation,
+  linkText,
+  setLinkText
+}) {
   const [trackDaysError, setTrackDaysError] = useState(false);
-  const [linkText, setLinkText] = useState('');
-  const [linkValidation, setLinkValidation] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [validateResult, setValidateResult] = useState<{ validCount: number; platforms: string[]; invalidList: string[] } | null>(null);
-
-  // 专题/重点源二级配置状态
-  const [scopePlatforms, setScopePlatforms] = useState<string[]>([]);
-  const [scopePlatformPages, setScopePlatformPages] = useState<Record<string, string>>({});
-
-  // 链接模式按平台采集页数状态
-  const [linkPlatformPages, setLinkPlatformPages] = useState<Record<string, string>>({});
 
   const trackDaysValue = Form.useWatch('track_days', form);
   const taskTypeValue = Form.useWatch('task_type', form);
@@ -864,6 +889,14 @@ const CollectTaskDrawer: React.FC<CollectTaskDrawerProps> = function ({ open, ti
   });
   const [shakeTrackDays, setShakeTrackDays] = useState(false);
 
+  // 提升的状态声明
+  const [scopePlatforms, setScopePlatforms] = useState<string[]>([]);
+  const [scopePlatformPages, setScopePlatformPages] = useState<Record<string, string>>({});
+  const [linkPlatformPages, setLinkPlatformPages] = useState<Record<string, string>>({});
+  const [linkText, setLinkText] = useState('');
+  const [linkValidation, setLinkValidation] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [validateResult, setValidateResult] = useState<{ validCount: number; platforms: string[]; platformCounts: Record<string, number>; invalidList: string[] } | null>(null);
+
   // open 变为 true 时，如果有 initialValues 则填充
   useEffect(function () {
     if (open) {
@@ -871,6 +904,14 @@ const CollectTaskDrawer: React.FC<CollectTaskDrawerProps> = function ({ open, ti
         // 设置 scopeType
         if (initialValues.scope_type) {
           setDrawerScopeType(initialValues.scope_type);
+        }
+        // 回显平台页数
+        if (initialValues.platform_pages) {
+          if (initialValues.scope_type === 'other') {
+            setLinkPlatformPages(initialValues.platform_pages);
+          } else {
+            setScopePlatformPages(initialValues.platform_pages);
+          }
         }
         // 延迟填充表单，确保 Drawer 已渲染
         setTimeout(function () {
@@ -887,6 +928,12 @@ const CollectTaskDrawer: React.FC<CollectTaskDrawerProps> = function ({ open, ti
         // 无 initialValues 时重置
         setDrawerScopeType('topic');
         setDrawerFrequency({ mode: 'hour', value: '2' });
+        setScopePlatforms([]);
+        setScopePlatformPages({});
+        setLinkPlatformPages({});
+        setLinkText('');
+        setValidateResult(null);
+        setLinkValidation('idle');
         setTimeout(function () {
           form.resetFields();
         }, 0);
@@ -896,6 +943,12 @@ const CollectTaskDrawer: React.FC<CollectTaskDrawerProps> = function ({ open, ti
       form.resetFields();
       setDrawerScopeType('topic');
       setDrawerFrequency({ mode: 'hour', value: '2' });
+      setScopePlatforms([]);
+      setScopePlatformPages({});
+      setLinkPlatformPages({});
+      setLinkText('');
+      setValidateResult(null);
+      setLinkValidation('idle');
     }
   }, [open, initialValues, form]);
 
@@ -939,10 +992,13 @@ const CollectTaskDrawer: React.FC<CollectTaskDrawerProps> = function ({ open, ti
           }
         }
 
+        const pageConfig = values.scope_type === 'other' ? linkPlatformPages : scopePlatformPages;
+
         // 回传表单 values
         onSubmit?.({
           ...values,
           platforms: finalPlatforms,
+          platform_pages: pageConfig,
           frequency: drawerFrequency.mode === 'hour' ? `每${drawerFrequency.value}小时` : `每天${drawerFrequency.value}`,
           frequency_mode: drawerFrequency.mode,
           frequency_value: drawerFrequency.value,
@@ -950,7 +1006,7 @@ const CollectTaskDrawer: React.FC<CollectTaskDrawerProps> = function ({ open, ti
         onClose();
       }, 1000);
     });
-  }, [form, onSubmit, onClose, drawerFrequency]);
+  }, [form, onSubmit, onClose, drawerFrequency, linkPlatformPages, scopePlatformPages]);
 
   return (
     <Drawer
@@ -986,6 +1042,18 @@ const CollectTaskDrawer: React.FC<CollectTaskDrawerProps> = function ({ open, ti
         shakeTrackDays={shakeTrackDays}
         onShakeTrackDays={setShakeTrackDays}
         isEditMode={isEditMode}
+        scopePlatforms={scopePlatforms}
+        setScopePlatforms={setScopePlatforms}
+        scopePlatformPages={scopePlatformPages}
+        setScopePlatformPages={setScopePlatformPages}
+        linkPlatformPages={linkPlatformPages}
+        setLinkPlatformPages={setLinkPlatformPages}
+        validateResult={validateResult}
+        setValidateResult={setValidateResult}
+        linkValidation={linkValidation}
+        setLinkValidation={setLinkValidation}
+        linkText={linkText}
+        setLinkText={setLinkText}
       />
     </Drawer>
   );

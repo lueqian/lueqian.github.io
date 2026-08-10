@@ -392,6 +392,14 @@ function getTaskLinkRecords(task: TaskItem): LinkCollectRecord[] {
       content = '对指定 URL 进行定向增量跟踪，系统会针对此页面上的互动数值、回复评论内容等进行精准抓取，提供完整的链条审计。';
     }
 
+    const pagesSetting = (task.platform_pages && task.platform_pages[platform]) || '1';
+    let commentBase = 20;
+    if (pagesSetting === '5') commentBase = 100;
+    else if (pagesSetting === '10') commentBase = 200;
+    else if (pagesSetting === 'max') commentBase = 800;
+
+    const commentLast = commentBase + (base % (Math.floor(commentBase * 0.1) + 2));
+
     return {
       id: task.id + '_link_' + (index + 1),
       link: link,
@@ -406,7 +414,7 @@ function getTaskLinkRecords(task: TaskItem): LinkCollectRecord[] {
         reposts: base + 10,
         comments: base * 3 + 20,
       },
-      comment_last: base * 2 + 15,
+      comment_last: commentLast,
       total_collect_count: collectCount,
     };
   });
@@ -1103,8 +1111,16 @@ const CollectTask: React.FC = function () {
                 interaction_last: { likes: lastLikes, favorites: lastFavorites, reposts: lastReposts, comments: lastComments },
               };
             } else {
-              var cTotal = Math.floor(Math.random() * 20000) + 500;
-              var cLast = Math.floor(Math.random() * cTotal * 0.1) + 5;
+              let commentBase = 20;
+              if (t.platform_pages) {
+                var pages = Object.values(t.platform_pages);
+                if (pages.includes('max')) commentBase = 800;
+                else if (pages.includes('10')) commentBase = 200;
+                else if (pages.includes('5')) commentBase = 100;
+              }
+              var multiplier = t.scope_type === 'other' ? 20 : 15;
+              var cTotal = commentBase * multiplier + (Math.floor(Math.random() * 100) + 10);
+              var cLast = Math.floor(commentBase * 0.15) + 5;
               return {
                 ...t,
                 status: 'active' as TaskStatus,
@@ -1195,6 +1211,7 @@ const CollectTask: React.FC = function () {
                     link: values.link_list?.[0]?.link || t.link,
                     title: values.link_list?.[0]?.title || t.title,
                     info_topic: values.link_list?.[0]?.topic || t.info_topic,
+                    platform_pages: values.platform_pages || t.platform_pages,
                     has_activated: true
                   };
                 }
@@ -1210,6 +1227,7 @@ const CollectTask: React.FC = function () {
               task_type: values.task_type,
               scope_type: values.scope_type,
               platforms: values.platforms || [],
+              platform_pages: values.platform_pages,
               frequency: values.frequency || '每2小时',
               frequency_mode: values.frequency_mode || 'hour',
               frequency_value: values.frequency_value || '2',
@@ -1239,6 +1257,7 @@ const CollectTask: React.FC = function () {
           link_list: editData.link ? [{ link: editData.link, title: editData.title || '', topic: editData.info_topic || '' }] : [],
           related_topic: editData.related_topic,
           related_source: editData.related_source,
+          platform_pages: editData.platform_pages,
         } : drawerInitialValues || undefined}
       />
     </div>
