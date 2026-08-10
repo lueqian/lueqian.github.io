@@ -483,25 +483,6 @@ const TaskFormContent: React.FC<{
           <FrequencySelector value={frequency} onChange={onFrequencyChange} />
         </Form.Item>
 
-        <Form.Item label="追踪天数" required>
-          <div className={'ct-track-days-wrapper' + (shakeTrackDays ? ' ct-shake' : '')}>
-            <InputNumber
-              min={0}
-              max={7}
-              value={trackDaysValue}
-              onChange={function (v) { form.setFieldValue('track_days', v); }}
-              style={{ width: 160, borderColor: trackDaysError ? '#FF4D4F' : undefined }}
-              addonBefore="T+"
-              addonAfter="天"
-              placeholder="请输入0～7之间的数字"
-              status={trackDaysError ? 'error' : undefined}
-            />
-          </div>
-          {trackDaysError && (
-            <div className="ct-track-days-error">允许追踪的天数不超过7天，请重新输入</div>
-          )}
-        </Form.Item>
-
         <Form.Item label="结束时间" name="end_date">
           <DatePicker style={{ width: '100%' }} placeholder="请选择结束日期" />
         </Form.Item>
@@ -535,6 +516,25 @@ const TaskFormContent: React.FC<{
         {hasSelectedScopeItem && (
           <div className="ct-scope-secondary">
             <div className="ct-scope-secondary-title">采集配置</div>
+
+            <Form.Item label="追踪天数" required style={{ marginBottom: 20 }}>
+              <div className={'ct-track-days-wrapper' + (shakeTrackDays ? ' ct-shake' : '')}>
+                <InputNumber
+                  min={0}
+                  max={7}
+                  value={trackDaysValue}
+                  onChange={function (v) { form.setFieldValue('track_days', v); }}
+                  style={{ width: 160, borderColor: trackDaysError ? '#FF4D4F' : undefined }}
+                  addonBefore="T+"
+                  addonAfter="天"
+                  placeholder="请输入0～7之间的数字"
+                  status={trackDaysError ? 'error' : undefined}
+                />
+              </div>
+              {trackDaysError && (
+                <div className="ct-track-days-error">允许追踪的天数不超过7天，请重新输入</div>
+              )}
+            </Form.Item>
 
             <Form.Item label="采集来源" required>
               <div className="ct-scope-platform-group">
@@ -626,10 +626,6 @@ const TaskFormContent: React.FC<{
         {scopeType === 'other' && (
           <div className="ct-scope-secondary">
             <div className="ct-scope-secondary-title">采集配置</div>
-
-            <Form.Item label="采集来源" name="platforms">
-              <PlatformCheckboxGroup />
-            </Form.Item>
 
             {/* 流式批量链接录入 */}
             <Form.Item label="链接地址" required>
@@ -840,21 +836,45 @@ const CollectTaskDrawer: React.FC<CollectTaskDrawerProps> = function ({ open, ti
   }, [onClose]);
 
   const handleSubmit = useCallback(function () {
-    // 追踪天数校验拦截
-    var trackDays = form.getFieldValue('track_days');
-    if (trackDays === undefined || trackDays === null || trackDays > 7) {
-      setShakeTrackDays(true);
-      setTimeout(function () { setShakeTrackDays(false); }, 600);
-      message.error('请检查追踪天数，允许范围 0-7 天');
-      return;
+    var scopeType = form.getFieldValue('scope_type');
+    // 追踪天数校验拦截（仅在非“链接”采集时校验）
+    if (scopeType !== 'other') {
+      var trackDays = form.getFieldValue('track_days');
+      if (trackDays === undefined || trackDays === null || trackDays > 7) {
+        setShakeTrackDays(true);
+        setTimeout(function () { setShakeTrackDays(false); }, 600);
+        message.error('请检查追踪天数，允许范围 0-7 天');
+        return;
+      }
     }
     form.validateFields().then(function (values) {
       setSubmitting(true);
       setTimeout(function () {
         setSubmitting(false);
+        // 如果是链接类型，根据录入的链接自动提取识别对应的平台，存入 platforms
+        let finalPlatforms = values.platforms || [];
+        if (values.scope_type === 'other' && values.link_list) {
+          const detected = new Set<string>();
+          values.link_list.forEach(function (item: any) {
+            const l = (item.link || '').toLowerCase();
+            if (l.includes('weibo')) detected.add('微博');
+            else if (l.includes('douyin')) detected.add('抖音');
+            else if (l.includes('toutiao')) detected.add('今日头条');
+            else if (l.includes('xiaohongshu') || l.includes('xhs')) detected.add('小红书');
+            else if (l.includes('zhihu')) detected.add('知乎');
+            else if (l.includes('tieba')) detected.add('百度贴吧');
+          });
+          if (detected.size > 0) {
+            finalPlatforms = Array.from(detected);
+          } else {
+            finalPlatforms = ['链接'];
+          }
+        }
+
         // 回传表单 values
         onSubmit?.({
           ...values,
+          platforms: finalPlatforms,
           frequency: drawerFrequency.mode === 'hour' ? `每${drawerFrequency.value}小时` : `每天${drawerFrequency.value}`,
           frequency_mode: drawerFrequency.mode,
           frequency_value: drawerFrequency.value,
