@@ -720,7 +720,7 @@ const TaskListView: React.FC<{
           rowKey="id"
           pagination={{ pageSize: 20, showSizeChanger: false, showTotal: function (total) { return '共 ' + total + ' 条'; } }}
           size="middle"
-          scroll={{ x: 1210 }}
+          scroll={{ x: 1210, y: 'calc(100vh - 280px)' }}
           onChange={function (_pagination, _filters, sorter: any) {
             setSortOrder(sorter?.columnKey === 'last_updated' ? (sorter.order || '') : '');
           }}
