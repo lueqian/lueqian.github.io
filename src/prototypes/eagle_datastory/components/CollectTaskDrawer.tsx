@@ -883,7 +883,7 @@ const TaskFormContent: React.FC<{
                 scopeLabel="链接"
                 platformPageConfig={linkPlatformPages}
                 linkCount={validateResult?.validCount || 0}
-                frequency={drawerFrequency}
+                frequency={frequency}
                 platformCounts={validateResult?.platformCounts}
               />
             )}
