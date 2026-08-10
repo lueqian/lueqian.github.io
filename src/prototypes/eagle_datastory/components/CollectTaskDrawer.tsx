@@ -331,6 +331,8 @@ const TaskFormContent: React.FC<{
   setLinkValidation: (v: any) => void;
   linkText: string;
   setLinkText: (v: string) => void;
+  linkPlatforms: string[];
+  setLinkPlatforms: React.Dispatch<React.SetStateAction<string[]>>;
 }> = function ({
   form,
   scopeType,
@@ -352,7 +354,9 @@ const TaskFormContent: React.FC<{
   linkValidation,
   setLinkValidation,
   linkText,
-  setLinkText
+  setLinkText,
+  linkPlatforms,
+  setLinkPlatforms
 }) {
   const [trackDaysError, setTrackDaysError] = useState(false);
 
@@ -783,6 +787,20 @@ const TaskFormContent: React.FC<{
                         // 把解析得到的平台同步写入表单，以触发下方的评论区采集页数及额度看板展示
                         form.setFieldValue('platforms', detectedPlatforms);
 
+                        // 同步平台状态
+                        setLinkPlatforms(detectedPlatforms);
+
+                        // 显式给 linkPlatformPages 设置默认值 "1"（前1页）
+                        setLinkPlatformPages(function (prev) {
+                          var nextPages = { ...prev };
+                          detectedPlatforms.forEach(function (p) {
+                            if (!nextPages[p]) {
+                              nextPages[p] = '1';
+                            }
+                          });
+                          return nextPages;
+                        });
+
                         setValidateResult({
                           validCount: validLines.length,
                           platforms: detectedPlatforms,
@@ -833,10 +851,10 @@ const TaskFormContent: React.FC<{
             </Form.Item>
 
             {/* 评论区采集时，按平台配置采集页数 */}
-            {taskTypeValue === 'comment' && linkPlatformsValue && linkPlatformsValue.length > 0 && (
+            {taskTypeValue === 'comment' && linkPlatforms && linkPlatforms.length > 0 && (
               <div className="ct-platform-page-config">
                 <div className="ct-platform-page-config-title">各平台采集页数</div>
-                {linkPlatformsValue.map(function (platform: string) {
+                {linkPlatforms.map(function (platform: string) {
                   return (
                     <div key={platform} className="ct-platform-page-row">
                       <span className="ct-platform-page-label">{platform}</span>
@@ -860,7 +878,7 @@ const TaskFormContent: React.FC<{
             )}
 
             {/* 额度预估看板（仅评论区采集时显示） */}
-            {taskTypeValue === 'comment' && linkPlatformsValue && linkPlatformsValue.length > 0 && (
+            {taskTypeValue === 'comment' && linkPlatforms && linkPlatforms.length > 0 && (
               <QuotaEstimatePanel
                 scopeLabel="链接"
                 platformPageConfig={linkPlatformPages}
@@ -896,6 +914,7 @@ const CollectTaskDrawer: React.FC<CollectTaskDrawerProps> = function ({ open, ti
   const [linkText, setLinkText] = useState('');
   const [linkValidation, setLinkValidation] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [validateResult, setValidateResult] = useState<{ validCount: number; platforms: string[]; platformCounts: Record<string, number>; invalidList: string[] } | null>(null);
+  const [linkPlatforms, setLinkPlatforms] = useState<string[]>([]);
 
   // open 变为 true 时，如果有 initialValues 则填充
   useEffect(function () {
@@ -904,6 +923,10 @@ const CollectTaskDrawer: React.FC<CollectTaskDrawerProps> = function ({ open, ti
         // 设置 scopeType
         if (initialValues.scope_type) {
           setDrawerScopeType(initialValues.scope_type);
+        }
+        // 回显平台
+        if (initialValues.platforms && initialValues.scope_type === 'other') {
+          setLinkPlatforms(initialValues.platforms);
         }
         // 回显平台页数
         if (initialValues.platform_pages) {
@@ -934,6 +957,7 @@ const CollectTaskDrawer: React.FC<CollectTaskDrawerProps> = function ({ open, ti
         setLinkText('');
         setValidateResult(null);
         setLinkValidation('idle');
+        setLinkPlatforms([]);
         setTimeout(function () {
           form.resetFields();
         }, 0);
@@ -949,6 +973,7 @@ const CollectTaskDrawer: React.FC<CollectTaskDrawerProps> = function ({ open, ti
       setLinkText('');
       setValidateResult(null);
       setLinkValidation('idle');
+      setLinkPlatforms([]);
     }
   }, [open, initialValues, form]);
 
@@ -972,24 +997,10 @@ const CollectTaskDrawer: React.FC<CollectTaskDrawerProps> = function ({ open, ti
       setSubmitting(true);
       setTimeout(function () {
         setSubmitting(false);
-        // 如果是链接类型，根据录入的链接自动提取识别对应的平台，存入 platforms
+        // 如果是链接类型，根据已识别的 platforms 状态写入
         let finalPlatforms = values.platforms || [];
-        if (values.scope_type === 'other' && values.link_list) {
-          const detected = new Set<string>();
-          values.link_list.forEach(function (item: any) {
-            const l = (item.link || '').toLowerCase();
-            if (l.includes('weibo')) detected.add('微博');
-            else if (l.includes('douyin')) detected.add('抖音');
-            else if (l.includes('toutiao')) detected.add('今日头条');
-            else if (l.includes('xiaohongshu') || l.includes('xhs')) detected.add('小红书');
-            else if (l.includes('zhihu')) detected.add('知乎');
-            else if (l.includes('tieba')) detected.add('百度贴吧');
-          });
-          if (detected.size > 0) {
-            finalPlatforms = Array.from(detected);
-          } else {
-            finalPlatforms = ['链接'];
-          }
+        if (values.scope_type === 'other') {
+          finalPlatforms = linkPlatforms.length > 0 ? linkPlatforms : ['链接'];
         }
 
         const pageConfig = values.scope_type === 'other' ? linkPlatformPages : scopePlatformPages;
@@ -1006,7 +1017,7 @@ const CollectTaskDrawer: React.FC<CollectTaskDrawerProps> = function ({ open, ti
         onClose();
       }, 1000);
     });
-  }, [form, onSubmit, onClose, drawerFrequency, linkPlatformPages, scopePlatformPages]);
+  }, [form, onSubmit, onClose, drawerFrequency, linkPlatformPages, scopePlatformPages, linkPlatforms]);
 
   return (
     <Drawer
