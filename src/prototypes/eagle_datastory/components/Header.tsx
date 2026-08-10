@@ -450,18 +450,12 @@ const Header: React.FC<HeaderProps> = function Header({
           </div>
         </div>
 
-        {/* 额度预警铃铛消息中心 */}
-        <Popover
-          content={popoverContent}
-          trigger="click"
-          placement="bottomRight"
-        >
-          <Badge count={alertTasks.length} size="small" style={{ boxShadow: 'none', cursor: 'pointer' }}>
-            <div className="ly-header-icon" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginRight: 4 }}>
-              <BellOutlined style={{ fontSize: 16 }} />
-            </div>
-          </Badge>
-        </Popover>
+        {/* 额度预警铃铛（无点击弹窗） */}
+        <Badge count={alertTasks.length} size="small" style={{ offset: [-2, 2], boxShadow: 'none' }}>
+          <div className="ly-header-icon" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginRight: 4 }}>
+            <BellOutlined style={{ fontSize: 16 }} />
+          </div>
+        </Badge>
 
         {/* 分割线 */}
         <div className="ly-header-divider" />
