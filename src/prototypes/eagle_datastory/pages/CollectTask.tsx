@@ -13,7 +13,7 @@
 
 import '../style.css';
 import React, { useState, useCallback, useMemo } from 'react';
-import { Table, Tag, Switch, Button, Select, Input, Space, Tooltip, Popconfirm, message, Descriptions, Card, Drawer, Empty } from 'antd';
+import { Table, Tag, Switch, Button, Select, Input, Space, Tooltip, Popconfirm, message, Descriptions, Card, Drawer, Empty, Badge, Popover, InputNumber, Slider, notification } from 'antd';
 import {
   PlusOutlined,
   SearchOutlined,
@@ -21,6 +21,7 @@ import {
   InfoCircleOutlined,
   BarChartOutlined,
   UnorderedListOutlined,
+  BellOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import CollectTaskDrawer from '../components/CollectTaskDrawer';
@@ -61,6 +62,8 @@ type TaskItem = {
   // 关联项
   related_topic?: string;
   related_source?: string;
+  start_date?: string;
+  end_date?: string;
   // 互动量更新 - 累计互动量
   interaction_total?: InteractionData;
   // 互动量更新 - 最近1次更新互动量
@@ -490,7 +493,11 @@ const TaskListView: React.FC<{
   onView: (task: TaskItem) => void;
   onCreate: () => void;
   onDelete: (id: string) => void;
-}> = function ({ tasks, onToggle, onEdit, onView, onCreate, onDelete }) {
+  alertThreshold: number;
+  setAlertThreshold: (v: number) => void;
+  alertTasks: TaskItem[];
+  setTasks: React.Dispatch<React.SetStateAction<TaskItem[]>>;
+}> = function ({ tasks, onToggle, onEdit, onView, onCreate, onDelete, alertThreshold, setAlertThreshold, alertTasks, setTasks }) {
   const [searchText, setSearchText] = useState<string>('');
   const [filterType, setFilterType] = useState<string>('');
   const [filterScope, setFilterScope] = useState<string>('');
@@ -715,9 +722,103 @@ const TaskListView: React.FC<{
           />
           <Button size="middle" onClick={handleReset}>重置</Button>
         </div>
-        <Button type="primary" icon={<PlusOutlined />} onClick={onCreate}>
-          新建任务
-        </Button>
+        <Space size={16}>
+          <Popover
+            content={
+              <div style={{ width: 320 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, borderBottom: '1px solid #f0f0f0', paddingBottom: 8 }}>
+                  <strong style={{ fontSize: 14 }}>预警配置中心</strong>
+                  <Tag color="red">额度低预警</Tag>
+                </div>
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ fontSize: 12, color: 'rgba(0,0,0,0.65)', marginBottom: 6 }}>低于阈值提醒用户：</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Slider
+                      min={5}
+                      max={50}
+                      value={alertThreshold}
+                      onChange={setAlertThreshold}
+                      style={{ flex: 1, margin: '0 8px' }}
+                    />
+                    <InputNumber
+                      min={5}
+                      max={50}
+                      formatter={function (v) { return v + '%'; }}
+                      parser={function (v) { return v ? parseInt(v.replace('%', ''), 10) : 20; }}
+                      value={alertThreshold}
+                      onChange={function (v) { setAlertThreshold(v || 20); }}
+                      style={{ width: 75 }}
+                      size="small"
+                    />
+                  </div>
+                </div>
+                <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 10 }}>
+                  <div style={{ fontSize: 12, fontWeight: 'bold', marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>异常任务 ({alertTasks.length})</span>
+                    {alertTasks.length > 0 && <span style={{ color: '#ff4d4f', fontSize: 12 }}>任务采集额度较低，请及时添加</span>}
+                  </div>
+                  {alertTasks.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '16px 0', color: 'rgba(0,0,0,0.45)', fontSize: 12 }}>暂无低额度运行中任务</div>
+                  ) : (
+                    <div style={{ maxHeight: 200, overflowY: 'auto' }}>
+                      {alertTasks.map(function (t) {
+                        const limit = 5000;
+                        const current = t.task_type === 'comment' ? (t.comment_total || t.total_count) : t.total_count;
+                        const leftRatio = Math.max(0, Math.floor(((limit - current) / limit) * 100));
+                        return (
+                          <div key={t.id} style={{ padding: '8px', background: '#fff1f0', borderRadius: 4, marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ flex: 1, marginRight: 8 }}>
+                              <div style={{ fontWeight: 'bold', fontSize: 12, color: '#cf1322', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 160 }} title={t.task_name}>{t.task_name}</div>
+                              <div style={{ fontSize: 11, color: 'rgba(0,0,0,0.65)' }}>当前可用额度仅剩 {leftRatio}%</div>
+                            </div>
+                            <Button
+                              type="primary"
+                              danger
+                              size="small"
+                              onClick={function () {
+                                setTasks(function (prev) {
+                                  return prev.map(function (item) {
+                                    if (item.id === t.id) {
+                                      return {
+                                        ...item,
+                                        comment_total: 100,
+                                        total_count: 100,
+                                      };
+                                    }
+                                    return item;
+                                  });
+                                });
+                                message.success('任务【' + t.task_name + '】已成功添加采集额度！');
+                              }}
+                              style={{ fontSize: 11, height: 22, padding: '0 8px' }}
+                            >
+                              一键扩容
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            }
+            title={null}
+            trigger="click"
+            placement="bottomRight"
+          >
+            <Badge count={alertTasks.length} size="small" style={{ boxShadow: 'none' }}>
+              <Button
+                shape="circle"
+                icon={<BellOutlined />}
+                size="middle"
+                style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer' }}
+              />
+            </Badge>
+          </Popover>
+          <Button type="primary" icon={<PlusOutlined />} onClick={onCreate}>
+            新建任务
+          </Button>
+        </Space>
       </div>
 
       {/* 表格 */}
@@ -1076,6 +1177,37 @@ const CollectTask: React.FC = function () {
     localStorage.setItem('eagle_collect_tasks', JSON.stringify(tasks));
   }, [tasks]);
 
+  // 预警百分比，默认 20%
+  const [alertThreshold, setAlertThreshold] = useState(20);
+
+  // 预警判定助手
+  const getAlertTasks = useCallback(function (taskList: TaskItem[], threshold: number) {
+    return taskList.filter(function (t) {
+      if (t.status !== 'active') return false;
+      const limit = 5000;
+      const current = t.task_type === 'comment' ? (t.comment_total || t.total_count) : t.total_count;
+      const leftRatio = (limit - current) / limit;
+      return leftRatio * 100 < threshold;
+    });
+  }, []);
+
+  const alertTasks = useMemo(function () {
+    return getAlertTasks(tasks, alertThreshold);
+  }, [tasks, alertThreshold, getAlertTasks]);
+
+  // 模拟登录时对用户进行全局预警提醒
+  React.useEffect(function () {
+    const lowQuotaTasks = getAlertTasks(tasks, alertThreshold);
+    if (lowQuotaTasks.length > 0) {
+      notification.warning({
+        message: '采集额度预警',
+        description: '任务采集额度较低，请及时添加',
+        duration: 5,
+        placement: 'topRight',
+      });
+    }
+  }, []); // 仅在挂载时运行一次，代表登录提醒
+
   const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
 
   // Drawer 状态
@@ -1189,6 +1321,10 @@ const CollectTask: React.FC = function () {
           onView={handleView}
           onCreate={handleCreate}
           onDelete={handleDelete}
+          alertThreshold={alertThreshold}
+          setAlertThreshold={setAlertThreshold}
+          alertTasks={alertTasks}
+          setTasks={setTasks}
         />
       ) : (
         selectedTask ? <TaskDetailView task={selectedTask} onBack={handleDetailBack} /> : null
@@ -1243,6 +1379,8 @@ const CollectTask: React.FC = function () {
               link: values.link_list?.[0]?.link,
               title: values.link_list?.[0]?.title,
               info_topic: values.link_list?.[0]?.topic,
+              start_date: values.start_date,
+              end_date: values.end_date,
             };
             setTasks(function (prev) { return [newTask, ...prev]; });
             message.success('任务创建成功，请在列表中手动开启');
@@ -1258,6 +1396,8 @@ const CollectTask: React.FC = function () {
           related_topic: editData.related_topic,
           related_source: editData.related_source,
           platform_pages: editData.platform_pages,
+          start_date: editData.start_date,
+          end_date: editData.end_date,
         } : drawerInitialValues || undefined}
       />
     </div>

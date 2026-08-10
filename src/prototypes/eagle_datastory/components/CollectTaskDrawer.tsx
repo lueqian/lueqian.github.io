@@ -28,6 +28,8 @@ export interface CollectTaskDrawerProps {
     related_topic?: string;
     related_source?: string;
     platform_pages?: Record<string, string>;
+    start_date?: string;
+    end_date?: string;
   };
 }
 
@@ -560,8 +562,14 @@ const TaskFormContent: React.FC<{
           <FrequencySelector value={frequency} onChange={onFrequencyChange} />
         </Form.Item>
 
-        <Form.Item label="结束时间" name="end_date">
-          <DatePicker style={{ width: '100%' }} placeholder="请选择结束日期" />
+        <Form.Item label="时间范围" name="date_range" rules={[{ required: true, message: '请选择任务采集的时间范围' }]}>
+          <DatePicker.RangePicker
+            style={{ width: '100%' }}
+            disabledDate={function (current) {
+              return current && current < dayjs().startOf('day');
+            }}
+            placeholder={['开始日期', '结束日期']}
+          />
         </Form.Item>
       </div>
 
@@ -951,6 +959,9 @@ const CollectTaskDrawer: React.FC<CollectTaskDrawerProps> = function ({ open, ti
           if (initialValues.link_list !== undefined) valuesToSet.link_list = initialValues.link_list;
           if (initialValues.related_topic !== undefined) valuesToSet.related_topic = initialValues.related_topic;
           if (initialValues.related_source !== undefined) valuesToSet.related_source = initialValues.related_source;
+          if (initialValues.start_date && initialValues.end_date) {
+            valuesToSet.date_range = [dayjs(initialValues.start_date), dayjs(initialValues.end_date)];
+          }
           form.setFieldsValue(valuesToSet);
         }, 100);
       } else {
@@ -1011,11 +1022,20 @@ const CollectTaskDrawer: React.FC<CollectTaskDrawerProps> = function ({ open, ti
 
         const pageConfig = values.scope_type === 'other' ? linkPlatformPages : scopePlatformPages;
 
+        let startStr = '';
+        let endStr = '';
+        if (values.date_range && values.date_range[0] && values.date_range[1]) {
+          startStr = values.date_range[0].format('YYYY-MM-DD');
+          endStr = values.date_range[1].format('YYYY-MM-DD');
+        }
+
         // 回传表单 values
         onSubmit?.({
           ...values,
           platforms: finalPlatforms,
           platform_pages: pageConfig,
+          start_date: startStr,
+          end_date: endStr,
           frequency: drawerFrequency.mode === 'hour' ? `每${drawerFrequency.value}小时` : `每天${drawerFrequency.value}`,
           frequency_mode: drawerFrequency.mode,
           frequency_value: drawerFrequency.value,
