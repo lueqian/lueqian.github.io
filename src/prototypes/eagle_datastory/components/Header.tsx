@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { Avatar, Tooltip, Select } from 'antd';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import { Avatar, Tooltip, Select, Badge, Popover, Slider, InputNumber, Tag, notification } from 'antd';
 import {
   ArrowLeftOutlined,
   SwapOutlined,
@@ -7,6 +7,7 @@ import {
   InfoCircleOutlined,
   UpOutlined,
   DownOutlined,
+  BellOutlined,
 } from '@ant-design/icons';
 
 // ============ 类型定义 ============
@@ -270,6 +271,126 @@ const Header: React.FC<HeaderProps> = function Header({
     setCurrentTheme(key);
   }, []);
 
+  // 预警百分比，默认 20%
+  const [alertThreshold, setAlertThreshold] = useState(function () {
+    const saved = localStorage.getItem('eagle_alert_threshold');
+    return saved ? parseInt(saved, 10) : 20;
+  });
+
+  const handleThresholdChange = useCallback(function (val: number) {
+    setAlertThreshold(val);
+    localStorage.setItem('eagle_alert_threshold', String(val));
+    window.dispatchEvent(new Event('storage'));
+  }, []);
+
+  const [tasks, setTasks] = useState<any[]>([]);
+
+  const loadTasksFromStorage = useCallback(function () {
+    const local = localStorage.getItem('eagle_collect_tasks');
+    if (local) {
+      try {
+        setTasks(JSON.parse(local));
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }, []);
+
+  useEffect(function () {
+    loadTasksFromStorage();
+    const handleStorageChange = function () {
+      loadTasksFromStorage();
+    };
+    window.addEventListener('storage', handleStorageChange);
+    const interval = setInterval(loadTasksFromStorage, 4000);
+    return function () {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
+  }, [loadTasksFromStorage]);
+
+  const getAlertTasks = useCallback(function (taskList: any[], threshold: number) {
+    return taskList.filter(function (t) {
+      if (t.status !== 'active') return false;
+      const limit = 5000;
+      const current = t.task_type === 'comment' ? (t.comment_total || t.total_count) : t.total_count;
+      const leftRatio = (limit - current) / limit;
+      return leftRatio * 100 < threshold;
+    });
+  }, []);
+
+  const alertTasks = useMemo(function () {
+    return getAlertTasks(tasks, alertThreshold);
+  }, [tasks, alertThreshold, getAlertTasks]);
+
+  useEffect(function () {
+    const timer = setTimeout(function () {
+      const lowQuotaTasks = getAlertTasks(tasks, alertThreshold);
+      if (lowQuotaTasks.length > 0) {
+        notification.warning({
+          message: '系统额度预警',
+          description: '任务采集额度较低，请及时添加',
+          duration: 5,
+          placement: 'topRight',
+        });
+      }
+    }, 1000);
+    return function () { clearTimeout(timer); };
+  }, []); // 仅在挂载时运行一次，即登录提醒
+
+  const popoverContent = (
+    <div style={{ width: 300, padding: '4px 0' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, borderBottom: '1px solid #f0f0f0', paddingBottom: 8 }}>
+        <strong style={{ fontSize: 14 }}>预警参数配置</strong>
+        <Tag color="orange">额度低</Tag>
+      </div>
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ fontSize: 12, color: 'rgba(0,0,0,0.65)', marginBottom: 6 }}>低于阈值提醒用户：</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Slider
+            min={5}
+            max={50}
+            value={alertThreshold}
+            onChange={handleThresholdChange}
+            style={{ flex: 1, margin: '0 8px' }}
+          />
+          <InputNumber
+            min={5}
+            max={50}
+            formatter={function (v) { return v + '%'; }}
+            parser={function (v) { return v ? parseInt(v.replace('%', ''), 10) : 20; }}
+            value={alertThreshold}
+            onChange={function (v) { handleThresholdChange(v || 20); }}
+            style={{ width: 70 }}
+            size="small"
+          />
+        </div>
+      </div>
+      <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 10 }}>
+        <div style={{ fontSize: 12, fontWeight: 'bold', marginBottom: 8, color: '#cf1322' }}>
+          任务采集额度较低，请及时添加 ({alertTasks.length})
+        </div>
+        {alertTasks.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '16px 0', color: 'rgba(0,0,0,0.45)', fontSize: 12 }}>暂无低额度运行中任务</div>
+         ) : (
+          <div style={{ maxHeight: 180, overflowY: 'auto' }}>
+            {alertTasks.map(function (t) {
+              const limit = 5000;
+              const current = t.task_type === 'comment' ? (t.comment_total || t.total_count) : t.total_count;
+              const leftRatio = Math.max(0, Math.floor(((limit - current) / limit) * 100));
+              return (
+                <div key={t.id} style={{ padding: '6px 8px', background: '#fff1f0', borderRadius: 4, marginBottom: 6 }}>
+                  <div style={{ fontWeight: 'bold', fontSize: 12, color: '#cf1322', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={t.task_name}>{t.task_name}</div>
+                  <div style={{ fontSize: 11, color: 'rgba(0,0,0,0.65)' }}>当前可用额度仅剩 {leftRatio}%</div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <header className="ly-header">
       <div className="ly-header-left">
@@ -328,6 +449,19 @@ const Header: React.FC<HeaderProps> = function Header({
             />
           </div>
         </div>
+
+        {/* 额度预警铃铛消息中心 */}
+        <Popover
+          content={popoverContent}
+          trigger="click"
+          placement="bottomRight"
+        >
+          <Badge count={alertTasks.length} size="small" style={{ boxShadow: 'none', cursor: 'pointer' }}>
+            <div className="ly-header-icon" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginRight: 4 }}>
+              <BellOutlined style={{ fontSize: 16 }} />
+            </div>
+          </Badge>
+        </Popover>
 
         {/* 分割线 */}
         <div className="ly-header-divider" />
