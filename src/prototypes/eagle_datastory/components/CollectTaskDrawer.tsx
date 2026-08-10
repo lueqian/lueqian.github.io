@@ -163,12 +163,17 @@ const QuotaEstimatePanel: React.FC<{
         }
       }
       var totalQuota = 0;
-      for (var platform in platformPageConfig) {
-        var pages = platformPageConfig[platform];
-        var multiplier = PAGE_MULTIPLIER[pages] || 1;
-        // 取得该平台的链接条数
-        var platLinkCount = (platformCounts && platformCounts[platform]) || Math.ceil(linkCount / Math.max(1, Object.keys(platformPageConfig).length));
-        totalQuota += platLinkCount * timesPerDay * multiplier;
+      if (Object.keys(platformPageConfig).length === 0) {
+        // 互动量更新，每个链接每轮次更新消耗 1 次额度
+        totalQuota = linkCount * timesPerDay;
+      } else {
+        for (var platform in platformPageConfig) {
+          var pages = platformPageConfig[platform];
+          var multiplier = PAGE_MULTIPLIER[pages] || 1;
+          // 取得该平台的链接条数
+          var platLinkCount = (platformCounts && platformCounts[platform]) || Math.ceil(linkCount / Math.max(1, Object.keys(platformPageConfig).length));
+          totalQuota += platLinkCount * timesPerDay * multiplier;
+        }
       }
       return { posts: linkCount, quota: totalQuota };
     } else {
@@ -230,7 +235,7 @@ const QuotaEstimatePanel: React.FC<{
             <div className="ct-quota-info">
               {scopeLabel === '链接' ? (
                 <span className="ct-quota-info-text">
-                  当前已导入 <strong>{linkCount}</strong> 条待采集链接，每天进行 <strong>{timesPerDay}</strong> 轮次抓取，基于各平台采集页数配置，当前配置预计：
+                  当前已导入 <strong>{linkCount}</strong> 条待采集链接，每天进行 <strong>{timesPerDay}</strong> 轮次抓取，基于{Object.keys(platformPageConfig).length === 0 ? '单链接互动量更新' : '各平台评论采集页数配置'}，当前配置预计：
                 </span>
               ) : (
                 <span className="ct-quota-info-text">
@@ -877,11 +882,12 @@ const TaskFormContent: React.FC<{
               </div>
             )}
 
-            {/* 额度预估看板（仅评论区采集时显示） */}
-            {taskTypeValue === 'comment' && linkPlatforms && linkPlatforms.length > 0 && (
+            {/* 额度预估看板（包含评论区采集与互动量更新） */}
+            {((taskTypeValue === 'comment' && linkPlatforms && linkPlatforms.length > 0) || 
+              (taskTypeValue === 'interaction' && validateResult && validateResult.validCount > 0)) && (
               <QuotaEstimatePanel
                 scopeLabel="链接"
-                platformPageConfig={linkPlatformPages}
+                platformPageConfig={taskTypeValue === 'comment' ? linkPlatformPages : {}}
                 linkCount={validateResult?.validCount || 0}
                 frequency={frequency}
                 platformCounts={validateResult?.platformCounts}
