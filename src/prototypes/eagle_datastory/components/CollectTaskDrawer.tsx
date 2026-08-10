@@ -124,7 +124,7 @@ const COLLECT_PAGE_OPTIONS = [
   { value: '1', label: '前1页' },
   { value: '5', label: '前5页' },
   { value: '10', label: '前10页' },
-  { value: 'max', label: '最大采集' },
+  { value: 'max', label: '最大采集数' },
 ];
 
 const PAGE_MULTIPLIER: Record<string, number> = {
@@ -137,42 +137,79 @@ const PAGE_MULTIPLIER: Record<string, number> = {
 const QuotaEstimatePanel: React.FC<{
   scopeLabel: string;
   platformPageConfig: Record<string, string>;
-}> = function ({ scopeLabel, platformPageConfig }) {
+  linkCount?: number;
+  frequency?: { mode: string; value: string };
+  platformCounts?: Record<string, number>;
+}> = function ({ scopeLabel, platformPageConfig, linkCount, frequency, platformCounts }) {
   const [loading, setLoading] = useState(false);
   const [postData, setPostData] = useState(0);
   const [estimatedQuota, setEstimatedQuota] = useState(0);
 
-  // 将 platformPageConfig 对象序列化为字符串，用于触发重算
-  var configKey = JSON.stringify(platformPageConfig);
+  // 将 platformPageConfig 对象和 frequency/platformCounts 序列化，用于触发重算
+  var configKey = JSON.stringify(platformPageConfig) + '_' + linkCount + '_' + JSON.stringify(frequency);
 
-  // 生成随机数
-  var generateRandom = useCallback(function () {
-    var posts = Math.floor(Math.random() * 4001) + 1000;
-    var median = Math.floor(Math.random() * 151) + 50;
-    var totalQuota = 0;
-    for (var platform in platformPageConfig) {
-      var pages = platformPageConfig[platform];
-      var multiplier = PAGE_MULTIPLIER[pages] || 1;
-      totalQuota += median * multiplier;
+  // 计算消耗额度
+  var calculateQuota = useCallback(function () {
+    if (scopeLabel === '链接' && linkCount) {
+      // 链接计算逻辑：链接总数 * 每天抓取轮数 * 页数系数
+      var timesPerDay = 12; // 默认每2小时
+      if (frequency) {
+        if (frequency.mode === 'hour') {
+          var h = parseInt(frequency.value, 10) || 2;
+          timesPerDay = Math.ceil(24 / h);
+        } else {
+          timesPerDay = 1;
+        }
+      }
+      var totalQuota = 0;
+      for (var platform in platformPageConfig) {
+        var pages = platformPageConfig[platform];
+        var multiplier = PAGE_MULTIPLIER[pages] || 1;
+        // 取得该平台的链接条数
+        var platLinkCount = (platformCounts && platformCounts[platform]) || Math.ceil(linkCount / Math.max(1, Object.keys(platformPageConfig).length));
+        totalQuota += platLinkCount * timesPerDay * multiplier;
+      }
+      return { posts: linkCount, quota: totalQuota };
+    } else {
+      // 专题/重点源原有计算逻辑
+      var posts = Math.floor(Math.random() * 4001) + 1000;
+      var median = Math.floor(Math.random() * 151) + 50;
+      var totalQuota = 0;
+      for (var platform in platformPageConfig) {
+        var pages = platformPageConfig[platform];
+        var multiplier = PAGE_MULTIPLIER[pages] || 1;
+        totalQuota += median * multiplier;
+      }
+      return { posts, quota: totalQuota };
     }
-    return { posts, quota: totalQuota };
-  }, [configKey]);
+  }, [configKey, scopeLabel, linkCount, frequency, platformCounts]);
 
   // 初始化 + 选项变更时重新计算
   useEffect(function () {
     setLoading(true);
     var timer = setTimeout(function () {
-      var result = generateRandom();
+      var result = calculateQuota();
       setPostData(result.posts);
       setEstimatedQuota(result.quota);
       setLoading(false);
     }, 1000);
     return function () { clearTimeout(timer); };
-  }, [configKey, generateRandom]);
+  }, [configKey, calculateQuota]);
 
   // 判断是否有任一平台选择了"最大采集"
   var hasMaxCollect = Object.values(platformPageConfig).some(function (v) { return v === 'max'; });
   var quotaColor = hasMaxCollect ? '#FA8C16' : '#1890FF';
+
+  // 取得每日抓取轮数
+  var timesPerDay = 12;
+  if (frequency) {
+    if (frequency.mode === 'hour') {
+      var h = parseInt(frequency.value, 10) || 2;
+      timesPerDay = Math.ceil(24 / h);
+    } else {
+      timesPerDay = 1;
+    }
+  }
 
   return (
     <div className={'ct-quota-panel' + (hasMaxCollect ? ' ct-quota-panel--warning' : '')}>
@@ -190,9 +227,15 @@ const QuotaEstimatePanel: React.FC<{
         ) : (
           <>
             <div className="ct-quota-info">
-              <span className="ct-quota-info-text">
-                该{scopeLabel}近7天累计收录 <strong>{postData.toLocaleString()}</strong> 条帖子，基于各平台采集页数配置，当前配置预计：
-              </span>
+              {scopeLabel === '链接' ? (
+                <span className="ct-quota-info-text">
+                  当前已导入 <strong>{linkCount}</strong> 条待采集链接，每天进行 <strong>{timesPerDay}</strong> 轮次抓取，基于各平台采集页数配置，当前配置预计：
+                </span>
+              ) : (
+                <span className="ct-quota-info-text">
+                  该{scopeLabel}近7天累计收录 <strong>{postData.toLocaleString()}</strong> 条帖子，基于各平台采集页数配置，当前配置预计：
+                </span>
+              )}
             </div>
             <div className="ct-quota-result">
               <span className="ct-quota-result-label">预计消耗额度：</span>
@@ -677,6 +720,7 @@ const TaskFormContent: React.FC<{
                         var validLines: string[] = [];
                         var invalidList: string[] = [];
                         var platformSet = new Set<string>();
+                        var platformCounts: Record<string, number> = {};
                         // 平台关键词识别
                         var platformKeywords: Record<string, string[]> = {
                           '抖音': ['douyin', 'iesdouyin'],
@@ -691,20 +735,33 @@ const TaskFormContent: React.FC<{
                             validLines.push(line);
                             // 识别平台
                             var lowerLine = line.toLowerCase();
+                            var matched = false;
                             for (var platform in platformKeywords) {
                               var keywords = platformKeywords[platform];
                               if (keywords.some(function (kw) { return lowerLine.includes(kw); })) {
                                 platformSet.add(platform);
+                                platformCounts[platform] = (platformCounts[platform] || 0) + 1;
+                                matched = true;
                                 break;
                               }
+                            }
+                            if (!matched) {
+                              platformSet.add('其他');
+                              platformCounts['其他'] = (platformCounts['其他'] || 0) + 1;
                             }
                           } else {
                             invalidList.push(line);
                           }
                         });
+
+                        const detectedPlatforms = Array.from(platformSet);
+                        // 把解析得到的平台同步写入表单，以触发下方的评论区采集页数及额度看板展示
+                        form.setFieldValue('platforms', detectedPlatforms);
+
                         setValidateResult({
                           validCount: validLines.length,
-                          platforms: Array.from(platformSet),
+                          platforms: detectedPlatforms,
+                          platformCounts: platformCounts,
                           invalidList: invalidList,
                         });
                         setLinkValidation(invalidList.length === 0 ? 'success' : 'error');
@@ -719,12 +776,20 @@ const TaskFormContent: React.FC<{
               </div>
               {/* 校验结果区 */}
               {validateResult && linkValidation === 'success' && (
-                <div className="ct-link-validate-result ct-link-validate-result--success">
-                  <CheckCircleOutlined style={{ marginRight: 6 }} />
-                  已识别 {validateResult.validCount} 条有效链接
-                  {validateResult.platforms.length > 0 && (
-                    <span>（{validateResult.platforms.join('、')}）</span>
-                  )}
+                <div className="ct-link-validate-result ct-link-validate-result--success" style={{ display: 'block', padding: '12px 14px' }}>
+                  <div style={{ marginBottom: 6 }}>
+                    <CheckCircleOutlined style={{ marginRight: 6, color: '#52C41A' }} />
+                    已识别到 <strong>{validateResult.validCount}</strong> 条有效链接，其中：
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', paddingLeft: 18 }}>
+                    {Object.entries(validateResult.platformCounts || {}).map(function ([platform, count]) {
+                      return (
+                        <Tag color="blue" key={platform} style={{ margin: 0 }}>
+                          {platform}：{count} 条
+                        </Tag>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
               {validateResult && linkValidation === 'error' && (
@@ -774,6 +839,9 @@ const TaskFormContent: React.FC<{
               <QuotaEstimatePanel
                 scopeLabel="链接"
                 platformPageConfig={linkPlatformPages}
+                linkCount={validateResult?.validCount || 0}
+                frequency={drawerFrequency}
+                platformCounts={validateResult?.platformCounts}
               />
             )}
           </div>
