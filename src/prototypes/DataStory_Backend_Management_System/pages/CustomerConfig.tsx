@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   ArrowLeftOutlined,
   InfoCircleOutlined,
@@ -9,7 +9,12 @@ import {
   CloseOutlined,
   ExclamationCircleOutlined,
   ClockCircleOutlined,
+  SearchOutlined,
+  RedoOutlined,
+  DownloadOutlined,
 } from '@ant-design/icons';
+import dayjs from 'dayjs';
+import * as XLSX from 'xlsx';
 
 interface CustomerConfigProps {
   customerName: string;
@@ -164,6 +169,138 @@ const DataPackageTab: React.FC = () => {
   );
 };
 
+// ============ 采集任务明细相关类型与常量 ============
+
+type ExecutionRecord = {
+  id: string;
+  collect_time: string;
+  collect_type: string;
+  platform: string;
+  collect_status: '采集成功' | '采集失败';
+  cost: number;
+  fail_reason?: string;
+};
+
+type TaskRecord = {
+  id: string;
+  task_create_time: string;
+  task_name: string;
+  scope_type: string; // topic | source | other
+  platforms: string[];
+  collect_type: string;
+  total_cost: number;
+  status: '进行中' | '已关闭';
+  execution_records: ExecutionRecord[];
+};
+
+const TASK_PREFIXES = ['汽车', '房产', '快消', '教育', '大健康'];
+const TASK_SUFFIXES = ['行业监控', '专题调研', '负面预警'];
+const SCOPE_TYPES = ['topic', 'source', 'other'];
+const COLLECT_TYPES = ['评论区采集', '互动量更新'];
+const TIME_SLOTS = ['00:00:00', '06:00:00', '12:00:00', '18:00:00'];
+const PLATFORMS_LIST = ['小红书', '抖音', '微博', '今日头条', '快手', 'B站'];
+
+const PLATFORM_COST: Record<string, number> = {
+  '小红书': 15,
+  '抖音': 10,
+  '微博': 8,
+  '今日头条': 7,
+  '快手': 6,
+  'B站': 5,
+};
+
+const SCOPE_MAP: Record<string, { label: string; class: string }> = {
+  topic: { label: '全网专题', class: 'qf-tag-scope-topic' },
+  source: { label: '重点源', class: 'qf-tag-scope-source' },
+  other: { label: '链接', class: 'qf-tag-scope-other' },
+};
+
+const PLATFORM_CLASSES: Record<string, string> = {
+  '小红书': 'qf-tag-plat-redbook',
+  '微博': 'qf-tag-plat-weibo',
+  '今日头条': 'qf-tag-plat-toutiao',
+  '抖音': 'qf-tag-plat-dy',
+  'B站': 'qf-tag-plat-bili',
+  '快手': 'qf-tag-plat-kuaishou',
+};
+
+const FAIL_REASONS = [
+  '状态码: 403 - 平台反爬拦截',
+  '状态码: 500 - 目标页面服务异常',
+  '状态码: 429 - 请求频率超限',
+  '状态码: 502 - 网关超时',
+  '状态码: 404 - 页面不存在或已删除',
+];
+
+function generateTaskData(): TaskRecord[] {
+  const tasks: TaskRecord[] = [];
+
+  function seededRandom(seed: number): number {
+    const x = Math.sin(seed * 9301 + 49297) * 233280;
+    return x - Math.floor(x);
+  }
+
+  for (let idx = 0; idx < 15; idx++) {
+    const prefix = TASK_PREFIXES[idx % TASK_PREFIXES.length];
+    const suffix = TASK_SUFFIXES[Math.floor(seededRandom(idx * 7 + 1) * TASK_SUFFIXES.length)];
+    const taskName = prefix + suffix + '_' + String(idx + 1).padStart(3, '0');
+    const scopeType = SCOPE_TYPES[Math.floor(seededRandom(idx * 13 + 3) * SCOPE_TYPES.length)];
+    const collectType = COLLECT_TYPES[Math.floor(seededRandom(idx * 17 + 5) * COLLECT_TYPES.length)];
+
+    const shuffled = [...PLATFORMS_LIST].sort(() => seededRandom(idx * 23 + 7) - 0.5);
+    const platformCount = 1 + Math.floor(seededRandom(idx * 29 + 11) * 3);
+    const taskPlatforms = shuffled.slice(0, platformCount);
+
+    const status = idx < 10 ? '进行中' : '已关闭';
+    const createDay = 18 + Math.floor(seededRandom(idx * 31 + 13) * 10);
+    const createHour = Math.floor(seededRandom(idx * 37 + 17) * 24);
+    const taskCreateTime = '2026-04-' + String(createDay).padStart(2, '0') + ' ' + String(createHour).padStart(2, '0') + ':00:00';
+
+    const execRecords: ExecutionRecord[] = [];
+    let execId = 0;
+    for (let day = 24; day <= 26; day++) {
+      for (let si = 0; si < TIME_SLOTS.length; si++) {
+        const timeStr = '2026-04-' + String(day).padStart(2, '0') + ' ' + TIME_SLOTS[si];
+        for (let pi = 0; pi < taskPlatforms.length; pi++) {
+          const plat = taskPlatforms[pi];
+          const baseCost = PLATFORM_COST[plat] || 10;
+          const failSeed = seededRandom(idx * 1000 + day * 100 + si * 10 + pi);
+          const isFailed = failSeed < 0.05;
+          execRecords.push({
+            id: 'exec_' + String(idx + 1).padStart(2, '0') + '_' + String(execId++).padStart(3, '0'),
+            collect_time: timeStr,
+            collect_type: collectType,
+            platform: plat,
+            collect_status: isFailed ? '采集失败' : '采集成功',
+            cost: isFailed ? 0 : baseCost,
+            fail_reason: isFailed ? FAIL_REASONS[Math.floor(failSeed * 100) % FAIL_REASONS.length] : undefined,
+          });
+        }
+      }
+    }
+    execRecords.reverse();
+
+    const totalCost = execRecords.reduce((s, r) => s + r.cost, 0);
+
+    tasks.push({
+      id: 'task_' + String(idx + 1).padStart(3, '0'),
+      task_create_time: taskCreateTime,
+      task_name: taskName,
+      scope_type: scopeType,
+      platforms: taskPlatforms,
+      collect_type: collectType,
+      total_cost: totalCost,
+      status: status,
+      execution_records: execRecords,
+    });
+  }
+
+  tasks.sort((a, b) => b.task_create_time.localeCompare(a.task_create_time));
+  return tasks;
+}
+
+const TASK_DATA = generateTaskData();
+
 /** ── 采集任务额度（次）子 Tab 内容 ── */
 const CollectTaskQuotaTab: React.FC<{ statsEnabled: boolean; onToggleStats: () => void }> = ({ statsEnabled, onToggleStats }) => {
 
@@ -219,15 +356,133 @@ const CollectTaskQuotaTab: React.FC<{ statsEnabled: boolean; onToggleStats: () =
     { id: 3, expiry: '2027-12-31', record: '额度包', total: 1000000, used: 125600, status: '已启用' },
   ]);
 
-  // ── 模拟使用日志 ──
-  const usageLogs = [
-    { time: '2026-04-22 14:32:18', type: '互动量更新', consumed: 320, remaining: 487400 },
-    { time: '2026-04-22 13:15:07', type: '评论区采集', consumed: 156, remaining: 487720 },
-    { time: '2026-04-22 11:08:45', type: '互动量更新', consumed: 89, remaining: 487876 },
-    { time: '2026-04-21 17:42:33', type: '评论区采集', consumed: 245, remaining: 487965 },
-    { time: '2026-04-21 15:20:11', type: '互动量更新', consumed: 178, remaining: 488210 },
-    { time: '2026-04-21 10:05:29', type: '评论区采集', consumed: 412, remaining: 488388 },
-  ];
+  // ── 额度明细筛选状态 ──
+  const [filterTaskName, setFilterTaskName] = useState('');
+  const [filterScope, setFilterScope] = useState('');
+  const [filterPlatform, setFilterPlatform] = useState('');
+  const [filterType, setFilterType] = useState('');
+  const [filterDateStart, setFilterDateStart] = useState('');
+  const [filterDateEnd, setFilterDateEnd] = useState('');
+
+  // ── 额度明细详情抽屉状态 ──
+  const [selectedTask, setSelectedTask] = useState<TaskRecord | null>(null);
+  const [drawerVisible, setDrawerVisible] = useState(false);
+
+  // ── 导出状态 ──
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [exportScope, setExportScope] = useState<'all' | 'filtered'>('filtered');
+  const [exportDateStart, setExportDateStart] = useState('2026-04-01');
+  const [exportDateEnd, setExportDateEnd] = useState('2026-04-30');
+  const [exportLoading, setExportLoading] = useState(false);
+  const [exportMessage, setExportMessage] = useState('');
+  const [showExportToast, setShowExportToast] = useState(false);
+  const [alertThreshold, setAlertThreshold] = useState(30);
+
+  // ── 过滤数据 ──
+  const filteredData = useMemo(() => {
+    let result = [...TASK_DATA];
+    if (filterTaskName.trim()) {
+      const keyword = filterTaskName.trim().toLowerCase();
+      result = result.filter((r) => r.task_name.toLowerCase().includes(keyword));
+    }
+    if (filterDateStart) {
+      result = result.filter((r) => r.task_create_time.slice(0, 10) >= filterDateStart);
+    }
+    if (filterDateEnd) {
+      result = result.filter((r) => r.task_create_time.slice(0, 10) <= filterDateEnd);
+    }
+    if (filterScope) {
+      result = result.filter((r) => r.scope_type === filterScope);
+    }
+    if (filterPlatform) {
+      result = result.filter((r) => r.platforms.includes(filterPlatform));
+    }
+    if (filterType) {
+      result = result.filter((r) => r.collect_type === filterType);
+    }
+    return result;
+  }, [filterTaskName, filterDateStart, filterDateEnd, filterScope, filterPlatform, filterType]);
+
+  // ── 重置 ──
+  const handleReset = useCallback(() => {
+    setFilterTaskName('');
+    setFilterScope('');
+    setFilterPlatform('');
+    setFilterType('');
+    setFilterDateStart('');
+    setFilterDateEnd('');
+  }, []);
+
+  // ── 查看详情 ──
+  const handleViewDetail = useCallback((record: TaskRecord) => {
+    setSelectedTask(record);
+    setDrawerVisible(true);
+  }, []);
+
+  // ── 导出逻辑 ──
+  const flattenData = useCallback((tasks: TaskRecord[]) => {
+    const rows: Record<string, string | number>[] = [];
+    tasks.forEach((task) => {
+      const scopeInfo = SCOPE_MAP[task.scope_type] || { label: '其他', class: '' };
+      task.execution_records.forEach((exec) => {
+        rows.push({
+          '任务名': task.task_name,
+          '任务创建时间': task.task_create_time,
+          '采集范围': scopeInfo.label,
+          '采集时间': exec.collect_time,
+          '采集类型': exec.collect_type,
+          '采集来源': exec.platform,
+          '采集状态': exec.collect_status === '采集成功' ? '成功' : '失败',
+          '额度消耗(次)': exec.cost,
+        });
+      });
+    });
+    return rows;
+  }, []);
+
+  const handleExport = useCallback(() => {
+    const sourceTasks = exportScope === 'filtered' ? filteredData : TASK_DATA;
+    const allRows = flattenData(sourceTasks);
+    const rows = allRows.filter((row) => {
+      const execDate = (row['采集时间'] as string).slice(0, 10);
+      return execDate >= exportDateStart && execDate <= exportDateEnd;
+    });
+
+    if (rows.length === 0) {
+      alert('所选时间范围内暂无可导出的数据');
+      return;
+    }
+
+    setExportLoading(true);
+    setExportMessage('正在合并多平台计费表并生成文件...');
+
+    setTimeout(() => {
+      const ws = XLSX.utils.json_to_sheet(rows);
+      ws['!cols'] = [
+        { wch: 32 },
+        { wch: 22 },
+        { wch: 10 },
+        { wch: 22 },
+        { wch: 12 },
+        { wch: 10 },
+        { wch: 10 },
+        { wch: 12 },
+      ];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, '额度明细');
+      XLSX.writeFile(wb, '额度明细_' + dayjs().format('YYYYMMDDHHmmss') + '.xlsx');
+
+      setExportLoading(false);
+      setExportModalOpen(false);
+      
+      // 成功提示
+      setExportMessage('导出成功！共 ' + rows.length + ' 条记录');
+      setShowExportToast(true);
+      setTimeout(() => {
+        setShowExportToast(false);
+      }, 3000);
+    }, 2000);
+  }, [exportScope, exportDateStart, exportDateEnd, filteredData, flattenData]);
 
   // ── 计算仪表盘指标 ──
   const totalQuota = quotaPackages.reduce((sum, p) => sum + p.total, 0);
@@ -235,7 +490,7 @@ const CollectTaskQuotaTab: React.FC<{ statsEnabled: boolean; onToggleStats: () =
     .filter((p) => p.status === '已启用' && p.used < p.total)
     .reduce((sum, p) => sum + (p.total - p.used), 0);
   const usageRate = totalQuota > 0 ? Math.round((availableQuota / totalQuota) * 100) : 0;
-  const isLowBalance = usageRate < 10;
+  const isLowBalance = usageRate < alertThreshold;
 
   // ── 打开弹窗 ──
   const openModal = (mode: 'add' | 'reduce' | 'extend', pkgId?: number) => {
@@ -396,7 +651,7 @@ const CollectTaskQuotaTab: React.FC<{ statsEnabled: boolean; onToggleStats: () =
                 <span className={`platform-card-name ${p === '小红书' ? 'platform-name-blue' : ''}`}>{p}</span>
                 <div className="platform-card-fields">
                   <div className="platform-card-field">
-                    <label className="platform-card-label">互动量更新计费权重</label>
+                    <label className="platform-card-label">互动量更新单次费用</label>
                     <input
                       type="number"
                       className="platform-card-input"
@@ -406,9 +661,10 @@ const CollectTaskQuotaTab: React.FC<{ statsEnabled: boolean; onToggleStats: () =
                       value={platformFactors[p]?.interaction ?? '1.00'}
                       onChange={(e) => updateFactor(p, 'interaction', e.target.value)}
                     />
+                    <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>元</span>
                   </div>
                   <div className="platform-card-field">
-                    <label className="platform-card-label">评论区采集计费权重</label>
+                    <label className="platform-card-label">评论区采集单次费用</label>
                     <input
                       type="number"
                       className="platform-card-input"
@@ -418,12 +674,38 @@ const CollectTaskQuotaTab: React.FC<{ statsEnabled: boolean; onToggleStats: () =
                       value={platformFactors[p]?.comment ?? '1.00'}
                       onChange={(e) => updateFactor(p, 'comment', e.target.value)}
                     />
+                    <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>元</span>
                   </div>
                 </div>
               </div>
             ))}
           </div>
         )}
+      </div>
+
+      {/* ── 额度预警配置 ── */}
+      <div className="platform-mgmt-section" style={{ marginTop: '16px' }}>
+        <div className="platform-mgmt-header">
+          <span className="platform-mgmt-title">额度预警配置</span>
+        </div>
+        <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+          <span>当剩余可用额度低于总额度的</span>
+          <input
+            type="number"
+            className="qf-filter-input"
+            style={{ width: '80px', textAlign: 'center', height: '30px', padding: '0 8px' }}
+            min="0"
+            max="100"
+            value={alertThreshold}
+            onChange={(e) => {
+              let val = parseInt(e.target.value, 10);
+              if (isNaN(val)) val = 0;
+              val = Math.max(0, Math.min(100, val));
+              setAlertThreshold(val);
+            }}
+          />
+          <span>% 时，系统进行提醒。</span>
+        </div>
       </div>
 
       {/* ── 额度包列表 ── */}
@@ -495,44 +777,174 @@ const CollectTaskQuotaTab: React.FC<{ statsEnabled: boolean; onToggleStats: () =
         </div>
       </div>
 
-      {/* ── 额度使用日志 ── */}
-      <div className="pkg-section log-section">
+      {/* ── 采集任务额度消耗明细 ── */}
+      <div className="pkg-section log-section" style={{ marginTop: '24px' }}>
         <div className="pkg-header">
           <div className="pkg-header-left">
             <ClockCircleOutlined className="pkg-icon" />
-            <span className="pkg-title">额度使用日志</span>
+            <span className="pkg-title">采集任务额度使用明细</span>
           </div>
         </div>
 
+        {/* 筛选卡片 */}
+        <div className="qf-filter-card" style={{ border: 'none', borderRadius: 0, borderBottom: '1px solid var(--border-light)', margin: 0, padding: '16px' }}>
+          <div className="qf-filter-row">
+            <div className="qf-filter-item">
+              <label className="qf-filter-label">任务名称</label>
+              <input
+                type="text"
+                placeholder="请输入任务名称"
+                className="qf-filter-input"
+                style={{ width: '160px' }}
+                value={filterTaskName}
+                onChange={(e) => setFilterTaskName(e.target.value)}
+              />
+            </div>
+            <div className="qf-filter-item">
+              <label className="qf-filter-label">创建时间</label>
+              <div className="qf-date-picker-group">
+                <input
+                  type="date"
+                  className="qf-filter-input"
+                  value={filterDateStart}
+                  onChange={(e) => setFilterDateStart(e.target.value)}
+                />
+                <span>至</span>
+                <input
+                  type="date"
+                  className="qf-filter-input"
+                  value={filterDateEnd}
+                  onChange={(e) => setFilterDateEnd(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="qf-filter-item">
+              <label className="qf-filter-label">采集范围</label>
+              <select
+                className="qf-filter-select"
+                style={{ width: '120px' }}
+                value={filterScope}
+                onChange={(e) => setFilterScope(e.target.value)}
+              >
+                <option value="">全部范围</option>
+                <option value="topic">全网专题</option>
+                <option value="source">重点源</option>
+                <option value="other">链接</option>
+              </select>
+            </div>
+            <div className="qf-filter-item">
+              <label className="qf-filter-label">采集来源</label>
+              <select
+                className="qf-filter-select"
+                style={{ width: '120px' }}
+                value={filterPlatform}
+                onChange={(e) => setFilterPlatform(e.target.value)}
+              >
+                <option value="">全部平台</option>
+                {PLATFORMS_LIST.map((p) => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+            </div>
+            <div className="qf-filter-item">
+              <label className="qf-filter-label">采集类型</label>
+              <select
+                className="qf-filter-select"
+                style={{ width: '120px' }}
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value)}
+              >
+                <option value="">全部类型</option>
+                <option value="评论区采集">评论区采集</option>
+                <option value="互动量更新">互动量更新</option>
+              </select>
+            </div>
+            <div className="qf-filter-actions">
+              <button className="btn-qf-reset" onClick={handleReset}>
+                <RedoOutlined />
+                <span>重置</span>
+              </button>
+              <button className="btn-qf-export" onClick={() => setExportModalOpen(true)}>
+                <DownloadOutlined />
+                <span>导出明细</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* 任务消耗明细数据表 */}
         <div className="pkg-table-wrapper">
           <table className="pkg-table">
             <thead>
               <tr>
-                <th>操作时间</th>
-                <th>操作类型</th>
-                <th>消耗量</th>
-                <th>余量</th>
+                <th>任务名称</th>
+                <th>创建时间</th>
+                <th>采集范围</th>
+                <th>采集来源</th>
+                <th>采集类型</th>
+                <th style={{ textAlign: 'right' }}>已消耗额度</th>
+                <th>状态</th>
+                <th>操作</th>
               </tr>
             </thead>
             <tbody>
-              {usageLogs.map((log, idx) => (
-                <tr key={idx} className={idx % 2 === 1 ? 'row-odd' : ''}>
-                  <td className="pkg-num">{log.time}</td>
-                  <td>
-                    <span className={`log-type-badge log-type-${log.type === '互动量更新' ? 'interact' : 'comment'}`}>
-                      {log.type}
-                    </span>
+              {filteredData.length === 0 ? (
+                <tr>
+                  <td colSpan={8} style={{ textAlign: 'center', height: '100px', color: 'var(--text-tertiary)' }}>
+                    暂无符合条件的采集任务明细数据
                   </td>
-                  <td className="pkg-num log-consumed">-{formatNum(log.consumed)}</td>
-                  <td className="pkg-num">{formatNum(log.remaining)}</td>
                 </tr>
-              ))}
+              ) : (
+                filteredData.map((task, idx) => {
+                  const scopeInfo = SCOPE_MAP[task.scope_type] || { label: '其他', class: 'qf-tag-scope-other' };
+                  return (
+                    <tr key={task.id} className={idx % 2 === 1 ? 'row-odd' : ''}>
+                      <td style={{ fontWeight: 600, color: 'var(--text-main)' }}>{task.task_name}</td>
+                      <td className="qf-num-tabular">{task.task_create_time}</td>
+                      <td>
+                        <span className={`qf-tag-fixed ${scopeInfo.class}`}>
+                          {scopeInfo.label}
+                        </span>
+                      </td>
+                      <td>
+                        <div style={{ display: 'inline-flex', gap: '4px', flexWrap: 'wrap' }}>
+                          {task.platforms.map((p) => (
+                            <span key={p} className={`qf-tag-fixed ${PLATFORM_CLASSES[p] || 'qf-tag-plat-default'}`}>
+                              {p}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                      <td>
+                        <span className={task.collect_type === '互动量更新' ? 'qf-tag-type-interact' : 'qf-tag-type-comment'}>
+                          {task.collect_type}
+                        </span>
+                      </td>
+                      <td className="qf-num-tabular" style={{ color: '#FF4D4F', fontWeight: 600, textAlign: 'right' }}>
+                        {formatNum(task.total_cost)} 次
+                      </td>
+                      <td>
+                        <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+                          <span className={`qf-status-dot ${task.status === '进行中' ? 'qf-status-dot-active' : 'qf-status-dot-inactive'}`} />
+                          <span style={{ color: task.status === '进行中' ? 'var(--success-color)' : 'var(--text-tertiary)' }}>
+                            {task.status}
+                          </span>
+                        </span>
+                      </td>
+                      <td>
+                        <span className="qf-action-detail" onClick={() => handleViewDetail(task)}>查看明细</span>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
 
+        {/* 分页器 */}
         <div className="pkg-pagination">
-          <span className="pagination-total">共 {usageLogs.length} 条</span>
+          <span className="pagination-total">共 {filteredData.length} 条</span>
           <div className="pagination-pages">
             <button className="page-btn page-prev" disabled>&lt;</button>
             <button className="page-btn page-active">1</button>
@@ -541,7 +953,185 @@ const CollectTaskQuotaTab: React.FC<{ statsEnabled: boolean; onToggleStats: () =
           <span className="pkg-page-size">20 条/页</span>
         </div>
       </div>
-      </>) }
+      </>)}
+
+      {/* ═══════ 查看明细抽屉 (Drawer) ═══════ */}
+      {drawerVisible && selectedTask && (
+        <div className="qf-drawer-overlay" onClick={() => setDrawerVisible(false)}>
+          <div className="qf-drawer-container" onClick={(e) => e.stopPropagation()}>
+            <div className="qf-drawer-header">
+              <span className="qf-drawer-close" onClick={() => setDrawerVisible(false)}>
+                <CloseOutlined />
+              </span>
+              <div className="qf-drawer-title">{selectedTask.task_name}</div>
+              <div className="qf-drawer-meta-list">
+                <div className="qf-drawer-meta-item">
+                  <span>采集范围：</span>
+                  <span className={`qf-tag-fixed ${SCOPE_MAP[selectedTask.scope_type]?.class || 'qf-tag-scope-other'}`}>
+                    {SCOPE_MAP[selectedTask.scope_type]?.label || '其他'}
+                  </span>
+                </div>
+                <div className="qf-drawer-meta-item" style={{ marginLeft: '12px' }}>
+                  <span>采集来源：</span>
+                  <div style={{ display: 'inline-flex', gap: '4px' }}>
+                    {selectedTask.platforms.map((p) => (
+                      <span key={p} className={`qf-tag-fixed ${PLATFORM_CLASSES[p] || 'qf-tag-plat-default'}`}>
+                        {p}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div className="qf-drawer-meta-item" style={{ marginLeft: '12px' }}>
+                  <span>已消耗：</span>
+                  <strong style={{ color: '#FF4D4F', marginLeft: '4px' }}>{formatNum(selectedTask.total_cost)} 次</strong>
+                </div>
+              </div>
+            </div>
+
+            <div className="qf-drawer-body">
+              <div className="qf-drawer-section-title">任务消耗额度详情</div>
+              <div className="pkg-table-wrapper" style={{ border: '1px solid var(--border-light)', borderRadius: '4px' }}>
+                <table className="pkg-table">
+                  <thead>
+                    <tr>
+                      <th>采集时间</th>
+                      <th>采集类型</th>
+                      <th>采集来源</th>
+                      <th>状态</th>
+                      <th style={{ textAlign: 'right' }}>额度消耗</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedTask.execution_records.map((exec, idx) => (
+                      <tr key={exec.id} className={idx % 2 === 1 ? 'row-odd' : ''}>
+                        <td className="qf-num-tabular">{exec.collect_time}</td>
+                        <td>
+                          <span className={exec.collect_type === '互动量更新' ? 'qf-tag-type-interact' : 'qf-tag-type-comment'}>
+                            {exec.collect_type}
+                          </span>
+                        </td>
+                        <td>
+                          <span className={`qf-tag-fixed ${PLATFORM_CLASSES[exec.platform] || 'qf-tag-plat-default'}`}>
+                            {exec.platform}
+                          </span>
+                        </td>
+                        <td>
+                          {exec.collect_status === '采集成功' ? (
+                            <span className="qf-tag-status-success">采集成功</span>
+                          ) : (
+                            <div className="qf-tooltip qf-tag-status-failed">
+                              采集失败
+                              <span className="qf-tooltiptext">{exec.fail_reason || '未知错误'}</span>
+                            </div>
+                          )}
+                        </td>
+                        <td className="qf-num-tabular" style={{ color: exec.cost > 0 ? '#FF4D4F' : 'var(--text-tertiary)', fontWeight: 500, textAlign: 'right' }}>
+                          {exec.cost > 0 ? `-${exec.cost} 次` : '0 次'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="qf-drawer-footer">
+              <button className="btn-modal-cancel" style={{ width: '100%' }} onClick={() => setDrawerVisible(false)}>
+                关闭
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════ 导出额度明细弹窗 ═══════ */}
+      {exportModalOpen && (
+        <div className="modal-overlay" onClick={() => { if (!exportLoading) setExportModalOpen(false); }}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ width: '480px' }}>
+            <div className="modal-header">
+              <span className="modal-title">导出消耗明细</span>
+              {!exportLoading && <CloseOutlined className="modal-close" onClick={() => setExportModalOpen(false)} />}
+            </div>
+            <div className="modal-body" style={{ position: 'relative' }}>
+              {exportLoading && (
+                <div style={{
+                  position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                  background: 'rgba(255,255,255,0.8)', zIndex: 10,
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px'
+                }}>
+                  <div className="loading-spinner" style={{
+                    width: '32px', height: '32px', border: '3px solid var(--border-color)',
+                    borderTop: '3px solid var(--primary-color)', borderRadius: '50%',
+                    animation: 'spin 1s linear infinite'
+                  }} />
+                  <style dangerouslySetInnerHTML={{__html: `
+                    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+                  `}} />
+                  <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{exportMessage}</span>
+                </div>
+              )}
+
+              {/* 导出范围 */}
+              <div className="modal-form-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '8px', marginBottom: '20px' }}>
+                <label className="modal-label" style={{ fontWeight: 600 }}>导出范围</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label className="radio-item">
+                    <span className={`radio-circle ${exportScope === 'all' ? 'radio-checked' : ''}`} onClick={() => setExportScope('all')} />
+                    <span>全部数据</span>
+                  </label>
+                  <label className="radio-item" style={{ marginTop: '4px' }}>
+                    <span className={`radio-circle ${exportScope === 'filtered' ? 'radio-checked' : ''}`} onClick={() => setExportScope('filtered')} />
+                    <span>筛选结果 ({filteredData.length} 条任务)</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* 导出时间 */}
+              <div className="modal-form-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '8px', marginBottom: '16px' }}>
+                <label className="modal-label" style={{ fontWeight: 600 }}>导出流水时间范围</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
+                  <input
+                    type="date"
+                    className="modal-input"
+                    value={exportDateStart}
+                    disabled={exportScope === 'all'}
+                    onChange={(e) => setExportDateStart(e.target.value)}
+                  />
+                  <span style={{ color: 'var(--text-tertiary)' }}>至</span>
+                  <input
+                    type="date"
+                    className="modal-input"
+                    value={exportDateEnd}
+                    disabled={exportScope === 'all'}
+                    onChange={(e) => setExportDateEnd(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn-modal-cancel" onClick={() => setExportModalOpen(false)} disabled={exportLoading}>
+                取消
+              </button>
+              <button className="btn-modal-confirm" onClick={handleExport} disabled={exportLoading}>
+                确认导出
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 导出成功全局 Toast 提示 */}
+      {showExportToast && (
+        <div style={{
+          position: 'fixed', top: '24px', left: '50%', transform: 'translateX(-50%)',
+          background: 'rgba(0,0,0,0.85)', color: '#fff', padding: '10px 20px',
+          borderRadius: '4px', zIndex: 3000, display: 'flex', alignItems: 'center', gap: '8px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)', fontSize: '14px', animation: 'qfFadeIn 0.2s'
+        }}>
+          <span style={{ color: '#52c41a', fontWeight: 'bold' }}>✓</span>
+          <span>{exportMessage}</span>
+        </div>
+      )}
 
       {/* ═══════ 通用额度包弹窗（新增 / 减量 / 延期） ═══════ */}
       {modalMode && (
