@@ -176,9 +176,9 @@ const EagleDataStory = forwardRef<AxureHandle, AxureProps>((props, ref) => {
           </div>
         );
       case 'topic':
-        return <Topics />;
+        return <Topics onNavigate={handleMenuSelect} />;
       case 'source':
-        return <Sources />;
+        return <Sources onNavigate={handleMenuSelect} />;
       case 'collect':
         return <CollectTask />;
       case 'quota':

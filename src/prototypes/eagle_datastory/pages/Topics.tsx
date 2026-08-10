@@ -14,7 +14,7 @@
 
 import '../style.css';
 import React, { useState, useCallback } from 'react';
-import { Checkbox, Tooltip, Dropdown, Input } from 'antd';
+import { Checkbox, Tooltip, Dropdown, Input, Modal, Form, Space, Button, message } from 'antd';
 import {
   UserOutlined,
   PlusOutlined,
@@ -245,7 +245,7 @@ function renderSentimentIcon(sentiment?: SentimentType) {
 
 // ============ 主组件 ============
 
-const Topics: React.FC = function () {
+const Topics: React.FC<{ onNavigate?: (page: string) => void }> = function ({ onNavigate }) {
   // ============ 状态 ============
   const [activePlatform, setActivePlatform] = useState<string>('all');
   const [activeView, setActiveView] = useState<string>('list');
@@ -257,8 +257,8 @@ const Topics: React.FC = function () {
   const [activeTopic, setActiveTopic] = useState<string>('liyutong');
   const [collectDrawerOpen, setCollectDrawerOpen] = useState(false);
   const [collectInitialValues, setCollectInitialValues] = useState<any>(null);
-
-  // ============ 回调 ============
+  const [editTopicModalOpen, setEditTopicModalOpen] = useState<boolean>(false);
+  const [topicForm] = Form.useForm();
 
   // 获取当前专题名称
   var activeTopicLabel = '李雨桐实名举报薛之谦重婚罪';
@@ -270,6 +270,53 @@ const Topics: React.FC = function () {
       });
     }
   });
+
+  const handleEditTopic = useCallback(function () {
+    topicForm.setFieldsValue({
+      name: activeTopicLabel,
+      keywords: '张杰, 谢娜, 塌房, 重婚, 薛之谦'
+    });
+    setEditTopicModalOpen(true);
+  }, [activeTopicLabel, topicForm]);
+
+  const handleSubmitEditTopic = useCallback(function () {
+    topicForm.validateFields().then(function (values) {
+      setEditTopicModalOpen(false);
+      // 校验是否有已启用的关联采集任务
+      let hasRelatedActiveTask = false;
+      const local = localStorage.getItem('eagle_collect_tasks');
+      if (local) {
+        try {
+          const tasks = JSON.parse(local);
+          hasRelatedActiveTask = tasks.some(function (t: any) {
+            return t.scope_type === 'topic' && 
+                   t.status === 'active' && 
+                   (t.related_topic === activeTopic || t.task_name.includes('李雨桐') || t.task_name.includes(values.name.substring(0, 4)));
+          });
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      if (hasRelatedActiveTask) {
+        Modal.confirm({
+          title: '修改成功',
+          content: '相关采集任务消耗发生变化，如有需要，请进一步修改任务配置。',
+          okText: '前往修改任务配置',
+          cancelText: '暂不需要',
+          onOk: function () {
+            if (onNavigate) {
+              onNavigate('collect');
+            }
+          }
+        });
+      } else {
+        message.success('专题配置修改成功');
+      }
+    });
+  }, [activeTopic, activeTopicLabel, topicForm, onNavigate]);
+
+  // ============ 回调 ============
 
   const handleCreateCollectTask = useCallback(function () {
     setCollectInitialValues({
@@ -555,16 +602,31 @@ const Topics: React.FC = function () {
         {/* 专题标题栏 */}
         <div className="nt-topic-header">
           <div className="nt-topic-header-left">
-            <span className="nt-topic-title">李雨桐实名举报薛之谦重婚罪</span>
+            <span className="nt-topic-title">{activeTopicLabel}</span>
             <span className="nt-topic-date">2026-03-31 23:59:59 ~ 2026-04-01 23:59:59</span>
           </div>
-          <button
-            className="nt-topic-header-btn"
-            onClick={handleGenerateReport}
-          >
-            <FileTextOutlined style={{ marginRight: 4 }} />
-            生成专项分析报告
-          </button>
+          <Space>
+            <Button
+              className="nt-topic-header-btn nt-topic-header-btn--edit"
+              style={{
+                backgroundColor: '#1e293b',
+                borderColor: '#3b82f6',
+                color: '#3b82f6',
+                height: 32,
+                borderRadius: 4
+              }}
+              onClick={handleEditTopic}
+            >
+              修改专题配置
+            </Button>
+            <button
+              className="nt-topic-header-btn"
+              onClick={handleGenerateReport}
+            >
+              <FileTextOutlined style={{ marginRight: 4 }} />
+              生成专项分析报告
+            </button>
+          </Space>
         </div>
 
         {/* 筛选工具栏 */}
@@ -759,6 +821,26 @@ const Topics: React.FC = function () {
         onClose={function () { setCollectDrawerOpen(false); setCollectInitialValues(null); }}
         initialValues={collectInitialValues || undefined}
       />
+
+      {/* 修改专题配置 Modal */}
+      <Modal
+        title="修改专题配置"
+        open={editTopicModalOpen}
+        onCancel={function () { setEditTopicModalOpen(false); }}
+        onOk={handleSubmitEditTopic}
+        destroyOnClose
+        okText="提交"
+        cancelText="取消"
+      >
+        <Form form={topicForm} layout="vertical" style={{ marginTop: 16 }}>
+          <Form.Item name="name" label="专题名称" rules={[{ required: true, message: '请输入专题名称' }]}>
+            <Input placeholder="请输入专题名称" />
+          </Form.Item>
+          <Form.Item name="keywords" label="监测关键词" tooltip="多个关键词请用英文逗号分隔" rules={[{ required: true, message: '请输入监测关键词' }]}>
+            <Input.TextArea placeholder="例如: 薛之谦, 重婚, 塌房" autoSize={{ minRows: 2, maxRows: 6 }} />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 };

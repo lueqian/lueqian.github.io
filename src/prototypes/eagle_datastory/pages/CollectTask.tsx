@@ -13,7 +13,7 @@
 
 import '../style.css';
 import React, { useState, useCallback, useMemo } from 'react';
-import { Table, Tag, Switch, Button, Select, Input, Space, Tooltip, Popconfirm, message, Descriptions, Card, Drawer } from 'antd';
+import { Table, Tag, Switch, Button, Select, Input, Space, Tooltip, Popconfirm, message, Descriptions, Card, Drawer, Empty } from 'antd';
 import {
   PlusOutlined,
   SearchOutlined,
@@ -76,13 +76,20 @@ type LinkCollectRecord = {
   link: string;
   platform: string;
   title: string;
+  content: string; // 新增正文
+  author: string;  // 新增作者
   last_collected_at: string;
   interaction_last: InteractionData;
   comment_last: number;
+  total_collect_count: number; // 新增总采集次数
 };
 
 type InteractionHistoryRecord = {
   id: string;
+  link: string; // 新增
+  title: string; // 新增
+  content: string; // 新增
+  publish_time: string; // 新增发帖时间
   collected_at: string;
   likes: number;
   favorites: number;
@@ -95,6 +102,7 @@ type CommentHistoryRecord = {
   id: string;
   user: string;
   platform: string;
+  publish_time: string; // 新增发评时间
   collected_at: string;
   content: string;
 };
@@ -104,6 +112,7 @@ type CommentHistoryRecord = {
 const PLATFORMS = ['小红书', '抖音', '小红书', '今日头条', '快手', 'B站', '知乎', '百度贴吧'];
 
 const TOPIC_OPTIONS = [
+  { value: 'liyutong', label: '李雨桐实名举报薛之谦重婚罪' },
   { value: 'topic_001', label: '汽车行业专题' },
   { value: 'topic_002', label: '消费专题调研' },
   { value: 'topic_003', label: '科技数码专题' },
@@ -112,8 +121,8 @@ const TOPIC_OPTIONS = [
 ];
 
 const SOURCE_OPTIONS = [
-  { value: 'src_001', label: '人民日报' },
-  { value: 'src_002', label: '新华社' },
+  { value: 'src_001', label: '猫咪日常Bot' },
+  { value: 'src_002', label: '科技前沿资讯' },
   { value: 'src_003', label: '央视新闻' },
   { value: 'src_004', label: '环球时报' },
   { value: 'src_005', label: '澎湃新闻' },
@@ -129,30 +138,7 @@ const TASK_NAMES = [
   '物流快递监控', '航空出行预警', '酒店旅游监测', '教育培训评论',
   '新能源汽车追踪', '半导体芯片监测', '人工智能话题', '元宇宙舆情',
   '区块链行业追踪', '数字货币监控', '社交平台热点', '短视频内容分析',
-  '直播电商监测', '跨境电商追踪', '品牌声誉管理', '企业危机预警',
-  '政策法规解读', '国际关系舆情', '突发事件监测', '公共卫生追踪',
-  '双碳目标监测', '乡村振兴专题', '数字经济追踪', '智慧城市监测',
-  '5G通信舆情', '物联网行业', '云计算话题', '大数据安全',
-  '网络安全监测', '隐私保护话题', '知识产权追踪', '反垄断舆情',
-  '职场文化分析', '青年就业话题', '养老产业监测', '生育政策舆情',
-  '房地产调控追踪', '股市行情监控', '基金投资舆情', '保险行业评论',
-  '银行金融监测', 'P2P网贷追踪', '消费维权话题', '产品质量预警',
-  '食品安全评论', '药品监管监测', '医疗器械追踪', '健康管理话题',
-  '心理健康专题', '体育赛事评论', '电影娱乐评论', '音乐综艺话题',
-  '网红达人追踪', '品牌营销监测', '广告投放效果', '用户增长分析',
-  '产品体验评论', '售后服务舆情', '物流配送评价', '价格波动监控',
-  '竞品分析追踪', '行业报告采集', '学术论文监测', '专利技术追踪',
-  '标准规范解读', '人才招聘舆情', '企业文化监测', 'ESG可持续追踪',
-  '碳中和话题', '新能源车评论', '充电桩监测', '光伏产业追踪',
-  '储能行业舆情', '氢能源话题', '风电行业监测', '核电安全追踪',
-  '电力市场分析', '油气管网监测', '煤炭行业追踪', '矿业安全舆情',
-  '钢铁行业监测', '化工行业评论', '建材市场追踪', '工程机械舆情',
-  '船舶制造监测', '航空航天评论', '轨道交通追踪', '智能制造话题',
-  '工业互联网舆情', '数字孪生监测', '机器人行业追踪', '自动驾驶话题',
-  '车联网安全监测', '智能穿戴评论', '家电行业追踪', '消费电子舆情',
 ];
-
-// ============ 生成105条模拟数据 ============
 
 function generateMockData(): TaskItem[] {
   const data: TaskItem[] = [];
@@ -161,12 +147,12 @@ function generateMockData(): TaskItem[] {
   const freqModes = ['hour', 'day', 'month'];
   const freqLabels: Record<string, string[]> = {
     hour: ['每1小时', '每2小时', '每3小时', '每4小时', '每6小时', '每8小时', '每12小时'],
-    day: ['每天08:00', '每天10:00', '每天12:00', '-', '-', '-'],
-    month: ['每天09:00', '每天16:00', '每天10:00', '-', '-', '-'],
+    day: ['每天08:00', '每天10:00', '每天12:00'],
+    month: ['每天09:00', '每天16:00', '每天10:00'],
   };
   const trackDaysMap: Record<string, number[]> = { hour: [1, 3, 5, 7], day: [3, 5, 7], month: [7] };
 
-  for (let i = 0; i < 105; i++) {
+  for (let i = 0; i < 18; i++) {
     const taskType = types[i % 2];
     const scopeType = scopes[i % 3];
     const freqMode = freqModes[i % 3];
@@ -175,20 +161,15 @@ function generateMockData(): TaskItem[] {
     const trackDaysOptions = trackDaysMap[freqMode];
     const trackDays = trackDaysOptions[i % trackDaysOptions.length];
 
-    // 随机选1-3个平台
     const shuffled = [...PLATFORMS].sort(function () { return Math.random() - 0.5; });
     const platformCount = 1 + Math.floor(Math.random() * 3);
     const platforms = shuffled.slice(0, platformCount);
 
-    const isActive = Math.random() > 0.3;
-    const hasActivated = Math.random() > 0.5 || isActive;
-    const totalBase = Math.floor(Math.random() * 200000) + 1000;
-    const hourlyInc = Math.floor(Math.random() * 5000) + 10;
+    const totalBase = Math.floor(Math.random() * 15000) + 500;
+    const hourlyInc = Math.floor(Math.random() * 300) + 10;
 
-    const baseDate = dayjs('2026-04-16');
-    const hourOffset = Math.floor(Math.random() * 72);
-    const lastUpdated = baseDate.subtract(hourOffset, 'hour').format('YYYY-MM-DD HH:mm');
-
+    const baseDate = dayjs();
+    const lastUpdated = baseDate.subtract(i * 30, 'minute').format('YYYY-MM-DD HH:mm');
     const nameSuffix = String(i + 1).padStart(3, '0');
 
     const task: TaskItem = {
@@ -203,10 +184,10 @@ function generateMockData(): TaskItem[] {
       track_days: trackDays,
       total_count: totalBase,
       hourly_increment: hourlyInc,
-      status: isActive ? 'active' : 'inactive',
-      has_activated: hasActivated,
+      status: i % 2 === 0 ? 'active' : 'inactive',
+      has_activated: true, // 保持激活，使详情有数据呈现
       last_updated: lastUpdated,
-      created_at: baseDate.subtract(Math.floor(Math.random() * 90), 'day').format('YYYY-MM-DD HH:mm'),
+      created_at: baseDate.subtract(i + 2, 'day').format('YYYY-MM-DD HH:mm'),
     };
 
     if (scopeType === 'topic') {
@@ -214,60 +195,100 @@ function generateMockData(): TaskItem[] {
     } else if (scopeType === 'source') {
       task.related_source = SOURCE_OPTIONS[i % SOURCE_OPTIONS.length].value;
     } else {
-      task.link = 'https://example.com/post/' + (i + 1);
-      task.title = '示例内容标题_' + nameSuffix;
+      task.link = 'https://example.com/post/item_' + (i + 1);
+      task.title = '指定单链接分析数据_' + nameSuffix;
       task.info_topic = ['社会热点', '产品评测', '行业分析', '用户反馈', '政策解读'][i % 5];
     }
 
     data.push(task);
   }
 
-  // 随机选取50条作为开启状态，其余55条关闭
-  const indices = Array.from({ length: 105 }, function (_, i) { return i; });
-  // Fisher-Yates 洗牌
-  for (let i = indices.length - 1; i > 0; i--) {
+  const indices = Array.from({ length: data.length }, (_, i) => i);
+  for (let i = data.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     var tmp = indices[i]; indices[i] = indices[j]; indices[j] = tmp;
   }
-  const activeIndices = new Set(indices.slice(0, 50));
+  const activeIndices = new Set(indices.slice(0, 9));
 
-  return data.map(function (t, i) {
+  const list = data.map(function (t, i) {
     var isActive = activeIndices.has(i);
     if (t.task_type === 'interaction') {
-      // 互动量更新：生成点赞/收藏/转发/评论的累计和最近1次数据
-      var totalLikes = Math.floor(Math.random() * 50000) + 1000;
-      var totalFavorites = Math.floor(Math.random() * 10000) + 200;
-      var totalReposts = Math.floor(Math.random() * 5000) + 100;
-      var totalComments = Math.floor(Math.random() * 8000) + 50;
-      // 最近1次数据一定小于等于累计数据
-      var lastLikes = Math.floor(Math.random() * totalLikes * 0.15) + 10;
-      var lastFavorites = Math.floor(Math.random() * totalFavorites * 0.15) + 5;
-      var lastReposts = Math.floor(Math.random() * totalReposts * 0.15) + 2;
-      var lastComments = Math.floor(Math.random() * totalComments * 0.15) + 1;
+      var totalLikes = Math.floor(Math.random() * 20000) + 1000;
+      var totalFavorites = Math.floor(Math.random() * 5000) + 200;
+      var totalReposts = Math.floor(Math.random() * 3000) + 100;
+      var totalComments = Math.floor(Math.random() * 4000) + 100;
+      var lastLikes = Math.floor(Math.random() * 200) + 10;
+      var lastFavorites = Math.floor(Math.random() * 50) + 5;
+      var lastReposts = Math.floor(Math.random() * 30) + 2;
+      var lastComments = Math.floor(Math.random() * 40) + 2;
       return {
         ...t,
-        total_count: isActive ? totalLikes + totalFavorites + totalReposts + totalComments : 0,
-        hourly_increment: isActive ? lastLikes + lastFavorites + lastReposts + lastComments : 0,
+        total_count: totalLikes + totalFavorites + totalReposts + totalComments,
+        hourly_increment: lastLikes + lastFavorites + lastReposts + lastComments,
         status: isActive ? 'active' as TaskStatus : 'inactive' as TaskStatus,
-        has_activated: isActive,
-        interaction_total: isActive ? { likes: totalLikes, favorites: totalFavorites, reposts: totalReposts, comments: totalComments } : undefined,
-        interaction_last: isActive ? { likes: lastLikes, favorites: lastFavorites, reposts: lastReposts, comments: lastComments } : undefined,
+        has_activated: true,
+        interaction_total: { likes: totalLikes, favorites: totalFavorites, reposts: totalReposts, comments: totalComments },
+        interaction_last: { likes: lastLikes, favorites: lastFavorites, reposts: lastReposts, comments: lastComments },
       };
     } else {
-      // 评论区采集：生成累计评论数和最近1次评论数
-      var cTotal = Math.floor(Math.random() * 20000) + 500;
-      var cLast = Math.floor(Math.random() * cTotal * 0.1) + 5;
+      var cTotal = Math.floor(Math.random() * 12000) + 500;
+      var cLast = Math.floor(Math.random() * 150) + 5;
       return {
         ...t,
-        total_count: isActive ? cTotal : 0,
-        hourly_increment: isActive ? cLast : 0,
+        total_count: cTotal,
+        hourly_increment: cLast,
         status: isActive ? 'active' as TaskStatus : 'inactive' as TaskStatus,
-        has_activated: isActive,
-        comment_total: isActive ? cTotal : undefined,
-        comment_last: isActive ? cLast : undefined,
+        has_activated: true,
+        comment_total: cTotal,
+        comment_last: cLast,
       };
     }
   });
+
+  // 插入预置的已开启关联任务以进行闭环演示
+  const demoTopicTask: TaskItem = {
+    id: 'task_demo_topic',
+    task_name: '李雨桐专题舆情深度监控',
+    task_type: 'comment',
+    scope_type: 'topic',
+    platforms: ['微博', '今日头条', '抖音'],
+    frequency: '每2小时',
+    frequency_mode: 'hour',
+    frequency_value: '2',
+    track_days: 7,
+    total_count: 1420,
+    hourly_increment: 85,
+    status: 'active',
+    has_activated: true,
+    last_updated: dayjs().subtract(10, 'minute').format('YYYY-MM-DD HH:mm'),
+    created_at: dayjs().subtract(2, 'day').format('YYYY-MM-DD HH:mm'),
+    related_topic: 'liyutong',
+    comment_total: 1420,
+    comment_last: 85,
+  };
+
+  const demoSourceTask: TaskItem = {
+    id: 'task_demo_source',
+    task_name: '猫咪日常Bot重点源监测',
+    task_type: 'interaction',
+    scope_type: 'source',
+    platforms: ['微博', '小红书'],
+    frequency: '每1小时',
+    frequency_mode: 'hour',
+    frequency_value: '1',
+    track_days: 3,
+    total_count: 24500,
+    hourly_increment: 1200,
+    status: 'active',
+    has_activated: true,
+    last_updated: dayjs().subtract(5, 'minute').format('YYYY-MM-DD HH:mm'),
+    created_at: dayjs().subtract(5, 'day').format('YYYY-MM-DD HH:mm'),
+    related_source: 'src_001',
+    interaction_total: { likes: 18500, favorites: 3200, reposts: 1100, comments: 1700 },
+    interaction_last: { likes: 950, favorites: 120, reposts: 50, comments: 80 },
+  };
+
+  return [demoTopicTask, demoSourceTask, ...list];
 }
 
 const MOCK_DATA = generateMockData();
@@ -295,45 +316,120 @@ function getTaskSeed(task: TaskItem): number {
 
 function getTaskLinkRecords(task: TaskItem): LinkCollectRecord[] {
   var seed = getTaskSeed(task);
-  var sourcePlatforms = task.platforms.length > 0 ? task.platforms : ['微博'];
-  var count = Math.max(2, Math.min(4, sourcePlatforms.length + 1));
+  var sourcePlatforms = task.platforms.length > 0 ? task.platforms : ['微博', '今日头条', '小红书'];
+  
+  // 无论是否启用，均统一生成 20 条模拟帖文数据
+  return Array.from({ length: 20 }, function (_, index) {
+    const platform = sourcePlatforms[index % sourcePlatforms.length];
+    const base = seed * 13 + index * 7;
+    
+    // 随机决定该帖文的历史采集次数 (5 ~ 10次)
+    const collectCount = (base % 6) + 5; 
+    
+    var title = '';
+    var content = '';
+    var author = '';
+    var link = '';
 
-  return Array.from({ length: count }, function (_, index) {
-    var platform = sourcePlatforms[index % sourcePlatforms.length];
-    var base = seed * 37 + index * 19;
-    var lastCollectedAt = dayjs(task.last_updated)
-      .subtract(index * 2, 'hour')
-      .format('YYYY-MM-DD HH:mm');
+    if (task.scope_type === 'topic') {
+      const topicsTitles = [
+        '李雨桐爆料内容引起广泛社会反响',
+        '多方曝光谢娜张杰买房风波，真相究竟如何？',
+        '薛之谦巡回演唱会南京站万人大合唱，粉丝泪目',
+        '舆情热点解析：明星重婚指控法律层面的界定',
+        '自媒体对明星私生活报道的边界在哪里？',
+        '粉丝群体在明星公关事件中的表现与引导',
+        '社交平台上明星人设崩塌的传播链条分析',
+        '法律专家谈明星买房“跳单”是否构成违法',
+        '演唱会现场的互动体验如何转化为二次传播热度',
+        '八卦爆料与严肃新闻的受众群体对比研究',
+        '明星工作室深夜发声起诉，法务公关成标配',
+        '关于网络吃瓜群众心理学的趣味剖析',
+        '微博热搜榜在此次明星公关事件中的数据演变',
+        '抖音爆款音乐视频：全场万人合唱《绅士》幕后',
+        '今日头条独家报道：知情人还原薛之谦李雨桐纠葛',
+        '明星口碑度下滑对代言品牌商造成的负面损失评估',
+        '饭圈文化中“做数据”与“洗白”的套路解析',
+        '朝阳群众立功？扒一扒娱乐圈那些实名举报的始末',
+        '如何理性吃瓜：在海量营销号带节奏中保持独立思考',
+        '薛之谦新歌发布，乐评人如何看待其艺术生命力？'
+      ];
+      title = topicsTitles[index] || ('专题监测帖文明细标题_' + (index + 1));
+      author = ['用心生活', '用户8405496717', '恬情', '娱乐掌门人', '法治在线', '吃瓜群众小李', '音乐前沿', '头条娱记', '圈内老鬼', '乐评人阿强'][index % 10];
+      link = 'https://' + (platform === '微博' ? 'weibo.com' : platform === '今日头条' ? 'toutiao.com' : 'douyin.com') + '/post/' + (seed + index * 99);
+      content = '针对此专题下发酵的文章，这是第 ' + (index + 1) + ' 篇被纳入监控的帖文。正文围绕明星买房跳单、实名举报、公关辟谣等多个维度展开，引发了全网热烈的跟帖和讨论。';
+    } else if (task.scope_type === 'source') {
+      const sourceTitles = [
+        '今天分享一组超可爱的布偶猫照片！🐱 这只小布偶叫"棉花糖"',
+        '【猫咪养护小贴士】夏天到了，猫咪的饮水量需要特别注意！',
+        '动物救助了一只被遗弃在路边的橘猫幼崽，目前已经送医',
+        '猫咪发出咕噜咕噜声，其实有这几种不同的含义',
+        '如何挑选适合自己家主子的猫粮？看完这篇不再纠结',
+        '自制猫饭教程：鸡胸肉+蛋黄+三文鱼，营养又美味',
+        '多猫家庭如何做好猫砂盆的摆放与清洁工作？',
+        '新手养猫必备清单，这十样东西买错就是交学费',
+        '科普：猫咪真的能听懂人说话吗？科学家这样说',
+        '搞笑瞬间：我们家猫为了抓苍蝇竟然学会了“飞檐走壁”',
+        '猫咪定期驱虫的重要性，不要等发现寄生虫才后悔',
+        '如何纠正猫咪半夜蹦迪、挠门、抓人的坏习惯？',
+        '猫草和猫薄荷有什么区别？主子更喜欢哪一个？',
+        '带猫咪去宠物医院体检的流程与注意事项',
+        '猫咪社交：如何让新猫与原住民和平相处？',
+        '猫咪的这五个身体语言，说明它非常信任你',
+        '关于猫咪肥胖的危害：关爱主子，从控制体重开始',
+        '云吸猫福利：来看这只网红折耳猫的日常治愈瞬间',
+        '领养代替购买，给流浪动物一个温暖的家',
+        '猫咪掉毛季来袭！这几款除毛神器你绝对用得上'
+      ];
+      title = sourceTitles[index] || ('重点源发文监控_' + (index + 1));
+      author = task.task_name.includes('猫咪') ? '猫咪日常Bot' : '重点信源账号_01';
+      link = 'https://twitter.com/cat_daily_bot/status/' + (seed + index * 123);
+      content = '本篇微博/小红书帖子详细论述了宠物猫的行为特征与夏日防暑常识。该账号拥有超过百万级的粉丝，其发表的内容会在短时间内触发大量的互动和转发，故将其作为重点监控对象进行追踪。';
+    } else {
+      title = '单链接审计：目标网帖追踪分析 #' + (index + 1);
+      author = '指定博主_' + String(index + 1).padStart(2, '0');
+      link = task.link ? task.link + '?index=' + (index + 1) : 'https://example.com/post/' + seed + '-' + (index + 1);
+      content = '对指定 URL 进行定向增量跟踪，系统会针对此页面上的互动数值、回复评论内容等进行精准抓取，提供完整的链条审计。';
+    }
 
     return {
       id: task.id + '_link_' + (index + 1),
-      link: task.link ? task.link + '?target=' + (index + 1) : 'https://example.com/post/' + seed + '-' + (index + 1),
+      link: link,
       platform: platform,
-      title: (task.title || task.task_name.replace(/_\d+$/, '')) + ' #' + (index + 1),
-      last_collected_at: lastCollectedAt,
+      author: author,
+      title: title,
+      content: content,
+      last_collected_at: dayjs(task.last_updated).subtract(index * 40, 'minute').format('YYYY-MM-DD HH:mm'),
       interaction_last: {
-        likes: base * 8 + 320,
-        favorites: base * 2 + 76,
-        reposts: base + 28,
-        comments: base * 3 + 49,
+        likes: base * 7 + 100,
+        favorites: base * 2 + 30,
+        reposts: base + 10,
+        comments: base * 3 + 20,
       },
-      comment_last: base * 2 + 18,
+      comment_last: base * 2 + 15,
+      total_collect_count: collectCount,
     };
   });
 }
 
 function getInteractionHistory(record: LinkCollectRecord): InteractionHistoryRecord[] {
   var seed = parseInt(record.id.replace(/\D/g, '').slice(-4), 10) || 1;
-  return Array.from({ length: 8 }, function (_, index) {
-    var ratio = 8 - index;
-    var likes = record.interaction_last.likes + ratio * (seed % 31 + 12);
-    var favorites = record.interaction_last.favorites + ratio * (seed % 13 + 5);
-    var reposts = record.interaction_last.reposts + ratio * (seed % 9 + 3);
-    var comments = record.interaction_last.comments + ratio * (seed % 17 + 6);
+  const count = record.total_collect_count || 6;
+  
+  return Array.from({ length: count }, function (_, index) {
+    var ratio = count - index;
+    var likes = Math.max(10, record.interaction_last.likes - ratio * (seed % 15 + 8));
+    var favorites = Math.max(5, record.interaction_last.favorites - ratio * (seed % 7 + 3));
+    var reposts = Math.max(2, record.interaction_last.reposts - ratio * (seed % 5 + 1));
+    var comments = Math.max(5, record.interaction_last.comments - ratio * (seed % 9 + 4));
 
     return {
       id: record.id + '_history_' + index,
-      collected_at: dayjs(record.last_collected_at).subtract(index * 2, 'hour').format('YYYY-MM-DD HH:mm'),
+      link: record.link,
+      title: record.title,
+      content: record.content,
+      publish_time: dayjs(record.last_collected_at).subtract(2, 'day').format('YYYY-MM-DD HH:mm'),
+      collected_at: dayjs(record.last_collected_at).subtract(index * 4, 'hour').format('YYYY-MM-DD HH:mm'),
       likes: likes,
       favorites: favorites,
       reposts: reposts,
@@ -344,22 +440,31 @@ function getInteractionHistory(record: LinkCollectRecord): InteractionHistoryRec
 }
 
 function getCommentHistory(record: LinkCollectRecord): CommentHistoryRecord[] {
-  var comments = [
-    '这个内容最近讨论很多，观点变化比较快，建议持续跟踪后续发酵情况。',
-    '从评论区看，用户关注点主要集中在真实体验、售后反馈和价格变化。',
-    '这条信息下面有效评论不少，里面有几条高赞评论值得单独标注。',
-    '平台推荐带来的新增评论比较明显，最新一轮采集已经覆盖核心讨论。',
-    '评论情绪有分化，部分用户认可，也有用户提出了比较具体的质疑。',
-    '建议结合历史互动量一起看，单次评论数量不能完全代表传播质量。',
+  const count = record.total_collect_count || 6;
+  const commentsPool = [
+    '写的太好了，学到了很多实用的养猫知识，已一键三连！',
+    '这个说明逻辑很清晰，但买房跳单这事觉得还需要观望下后续回应。',
+    '支持博主！现在的自媒体造谣成本太低了，必须重拳出击。',
+    '真的吗？我总觉得有些细节有点夸大其词，持保留态度。',
+    '我家主子也是这样的，原来咕噜咕噜还有这个意思，长见识了！',
+    '请问有推荐的猫咪驱虫药牌子吗？国产的还是进口的好？',
+    '每次看演唱会万人合唱都起一身鸡皮疙瘩，薛之谦现场真的牛。',
+    '希望能多科普一些关于动物救助的知识，领养代替购买。',
+    '自媒体整天带节奏太烦了，支持依法维权，净化网络空间。',
+    '猫草确实好用，我们家猫定期吃，毛球症好多了，安利大家。',
+    '评论区人才多，吃瓜也要理性，等一个法院最终的判决。',
+    '看完默默抱紧了我们家的小橘，真的要好好爱护它们一辈子。'
   ];
 
-  return comments.map(function (content, index) {
+  return Array.from({ length: count }, function (_, index) {
+    const commentText = commentsPool[(index + record.title.length) % commentsPool.length];
     return {
       id: record.id + '_comment_' + index,
       user: '用户_' + record.platform + '_' + String(index + 1).padStart(2, '0'),
       platform: record.platform,
-      collected_at: dayjs(record.last_collected_at).subtract(index * 37, 'minute').format('YYYY-MM-DD HH:mm'),
-      content: content,
+      publish_time: dayjs(record.last_collected_at).subtract(index * 35 + 10, 'minute').format('YYYY-MM-DD HH:mm'),
+      collected_at: dayjs(record.last_collected_at).subtract(index * 30, 'minute').format('YYYY-MM-DD HH:mm'),
+      content: commentText,
     };
   });
 }
@@ -412,6 +517,16 @@ const TaskListView: React.FC<{
       key: 'task_name',
       width: 220,
       ellipsis: true,
+      render: function (name: string) {
+        if (name.includes('娱乐热点追踪_015') || name.includes('农业乡村振兴_018') || (name.includes('娱乐热点追踪') && name.includes('015')) || (name.includes('农业乡村振兴') && name.includes('018'))) {
+          return (
+            <span style={{ backgroundColor: '#fff566', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold', color: 'rgba(0,0,0,0.85)' }}>
+              {name}
+            </span>
+          );
+        }
+        return name;
+      },
     },
     {
       title: '类型',
@@ -499,17 +614,9 @@ const TaskListView: React.FC<{
       key: 'action',
       width: 160,
       render: function (_: any, record: TaskItem) {
-        // 总量和增量都为0时允许修改，否则禁用
-        var canEdit = record.total_count === 0 && record.hourly_increment === 0;
         return (
           <Space size={16}>
-            {canEdit ? (
-              <a className="ct-action-link" onClick={function () { onEdit(record); }}>修改</a>
-            ) : (
-              <Tooltip title="任务已启用过，不可修改">
-                <span className="ct-action-disabled">修改</span>
-              </Tooltip>
-            )}
+            <a className="ct-action-link" onClick={function () { onEdit(record); }}>修改</a>
             <a className="ct-action-link" onClick={function () { onView(record); }}>详情</a>
             <Popconfirm
               title="删除提示"
@@ -651,44 +758,70 @@ const TaskDetailView: React.FC<{
       title: '链接',
       dataIndex: 'link',
       key: 'link',
-      width: 360,
-      render: function (link: string, record: LinkCollectRecord) {
-        return (
-          <div className="ct-link-cell">
-            <div className="ct-link-title">{record.title}</div>
-            <div className="ct-link-url">{link}</div>
-          </div>
-        );
+      width: 90,
+      render: function (link: string) {
+        return <a href={link} target="_blank" rel="noreferrer" style={{ fontSize: 12, fontWeight: 500 }}>查看网帖 →</a>;
       },
+    },
+    {
+      title: '标题',
+      dataIndex: 'title',
+      key: 'title',
+      width: 130,
+      ellipsis: true,
+    },
+    {
+      title: '正文',
+      dataIndex: 'content',
+      key: 'content',
+      width: 200,
+      ellipsis: true,
     },
     {
       title: '信源',
       dataIndex: 'platform',
       key: 'platform',
-      width: 120,
+      width: 70,
       render: function (platform: string) {
-        return <Tag color="blue">{platform}</Tag>;
+        return <Tag color="blue" style={{ margin: 0 }}>{platform}</Tag>;
       },
     },
     {
-      title: '最新一次采集时间',
-      dataIndex: 'last_collected_at',
-      key: 'last_collected_at',
-      width: 170,
+      title: '作者',
+      dataIndex: 'author',
+      key: 'author',
+      width: 90,
+      ellipsis: true,
     },
     {
-      title: task.task_type === 'interaction' ? '最新一次采集到的互动量' : '最新一次采集到的有效评论数量',
+      title: '最新采集时间',
+      dataIndex: 'last_collected_at',
+      key: 'last_collected_at',
+      width: 140,
+    },
+    {
+      title: task.task_type === 'interaction' ? '最新互动量' : '采集评论数量',
       key: 'latest_value',
+      width: 160,
       render: function (_: any, record: LinkCollectRecord) {
         return task.task_type === 'interaction'
-          ? <span className="ct-link-stat">{formatInteractionSummary(record.interaction_last)}</span>
-          : <span className="ct-link-stat">{formatCount(record.comment_last)} 条</span>;
+          ? <span className="ct-link-stat" style={{ fontSize: 12 }}>{formatInteractionSummary(record.interaction_last)}</span>
+          : <span className="ct-link-stat" style={{ fontSize: 12 }}>{formatCount(record.comment_last)} 条</span>;
+      },
+    },
+    {
+      title: '总采集次数',
+      dataIndex: 'total_collect_count',
+      key: 'total_collect_count',
+      width: 90,
+      render: function (v: number) {
+        return <span>{v || 5} 次</span>;
       },
     },
     {
       title: '操作',
       key: 'action',
-      width: 90,
+      width: 60,
       render: function (_: any, record: LinkCollectRecord) {
         return <a className="ct-action-link" onClick={function () { openLinkDetail(record); }}>详情</a>;
       },
@@ -696,12 +829,62 @@ const TaskDetailView: React.FC<{
   ];
 
   const interactionHistoryColumns = [
-    { title: '采集时间', dataIndex: 'collected_at', key: 'collected_at', width: 160 },
-    { title: '点赞数', dataIndex: 'likes', key: 'likes', render: function (v: number) { return formatCount(v); } },
-    { title: '收藏数', dataIndex: 'favorites', key: 'favorites', render: function (v: number) { return formatCount(v); } },
-    { title: '转发数', dataIndex: 'reposts', key: 'reposts', render: function (v: number) { return formatCount(v); } },
-    { title: '评论数', dataIndex: 'comments', key: 'comments', render: function (v: number) { return formatCount(v); } },
-    { title: '互动总量', dataIndex: 'total', key: 'total', render: function (v: number) { return <strong>{formatCount(v)}</strong>; } },
+    {
+      title: '发帖时间',
+      dataIndex: 'publish_time',
+      key: 'publish_time',
+      width: 140,
+    },
+    {
+      title: '采集互动量',
+      key: 'interaction',
+      width: 320,
+      render: function (_: any, record: InteractionHistoryRecord) {
+        return (
+          <span style={{ fontSize: 13 }}>
+            赞: <strong>{formatCount(record.likes)}</strong> | 
+            藏: <strong>{formatCount(record.favorites)}</strong> | 
+            转: <strong>{formatCount(record.reposts)}</strong> | 
+            评: <strong>{formatCount(record.comments)}</strong>
+          </span>
+        );
+      },
+    },
+    {
+      title: '采集时间',
+      dataIndex: 'collected_at',
+      key: 'collected_at',
+      width: 140,
+    },
+  ];
+
+  const commentHistoryColumns = [
+    {
+      title: '内容',
+      dataIndex: 'content',
+      key: 'content',
+      width: 260,
+      ellipsis: true,
+    },
+    {
+      title: '昵称',
+      dataIndex: 'user',
+      key: 'user',
+      width: 120,
+      ellipsis: true,
+    },
+    {
+      title: '时间',
+      dataIndex: 'publish_time',
+      key: 'publish_time',
+      width: 140,
+    },
+    {
+      title: '采集时间',
+      dataIndex: 'collected_at',
+      key: 'collected_at',
+      width: 140,
+    },
   ];
 
   return (
@@ -759,57 +942,60 @@ const TaskDetailView: React.FC<{
 
       {/* 采集详情 */}
       <Card className="ct-detail-card" title="采集详情" size="small" style={{ marginTop: 16 }}>
-        {!isOtherScope ? (
-          <div className="ct-detail-redirect">
-            <InfoCircleOutlined style={{ fontSize: 18, color: '#faad14', marginRight: 8 }} />
-            <span>
-              请跳转至对应{task.scope_type === 'topic' ? '专题' : '重点源'}板块查看明细
-            </span>
-            <a className="ct-redirect-link" style={{ marginLeft: 8 }}>
-              前往查看 →
-            </a>
-          </div>
-        ) : task.task_type === 'interaction' ? (
-          <div className="ct-detail-content">
-            <div className="ct-link-list-header">
-              <div>
-                <h4><BarChartOutlined style={{ marginRight: 6 }} />链接互动量采集结果</h4>
-                <p>按链接拆分展示最新一次采集结果，点击详情查看该链接的互动量变动统计。</p>
-              </div>
-            </div>
-            <Table
-              rowKey="id"
-              columns={linkColumns}
-              dataSource={linkRecords}
-              pagination={false}
-              size="small"
-              scroll={{ x: 980 }}
+        {linkRecords.length === 0 ? (
+          <div style={{ padding: '36px 0', textAlign: 'center' }}>
+            <Empty
+              description={
+                <span style={{ color: 'rgba(0,0,0,0.45)' }}>
+                  该任务尚未开启或尚未产生任何采集流水数据。<br />
+                  请返回任务列表，开启该采集任务后即可追踪帖文详情。
+                </span>
+              }
             />
           </div>
         ) : (
-          <div className="ct-detail-content">
-            <div className="ct-link-list-header">
-              <div>
-                <h4><UnorderedListOutlined style={{ marginRight: 6 }} />链接评论采集结果</h4>
-                <p>按链接拆分展示最新一次有效评论数量，点击详情查看该链接从最新到最早的评论内容。</p>
+          <>
+            {task.task_type === 'interaction' ? (
+              <div className="ct-detail-content">
+                <div className="ct-link-list-header">
+                  <div>
+                    <h4><BarChartOutlined style={{ marginRight: 6 }} />链接互动量采集结果</h4>
+                    <p>按链接/帖文拆分展示最新一次采集结果，点击详情查看该链接的互动量变动统计。</p>
+                  </div>
+                </div>
+                <Table
+                  rowKey="id"
+                  columns={linkColumns}
+                  dataSource={linkRecords}
+                  pagination={false}
+                  size="small"
+                />
               </div>
-            </div>
-            <Table
-              rowKey="id"
-              columns={linkColumns}
-              dataSource={linkRecords}
-              pagination={false}
-              size="small"
-              scroll={{ x: 980 }}
-            />
-          </div>
+            ) : (
+              <div className="ct-detail-content">
+                <div className="ct-link-list-header">
+                  <div>
+                    <h4><UnorderedListOutlined style={{ marginRight: 6 }} />链接评论采集结果</h4>
+                    <p>按链接/帖文拆分展示最新一次有效评论数量，点击详情查看该链接从最新到最早的评论内容。</p>
+                  </div>
+                </div>
+                <Table
+                  rowKey="id"
+                  columns={linkColumns}
+                  dataSource={linkRecords}
+                  pagination={false}
+                  size="small"
+                />
+              </div>
+            )}
+          </>
         )}
       </Card>
 
       <Drawer
-        title={task.task_type === 'interaction' ? '互动量变动统计' : '评论内容明细'}
+        title={task.task_type === 'interaction' ? '互动量历史采集明细' : '评论采集明细'}
         placement="right"
-        width={720}
+        width={850}
         open={drawerOpen}
         onClose={closeLinkDetail}
         className="ct-link-detail-drawer"
@@ -817,12 +1003,13 @@ const TaskDetailView: React.FC<{
       >
         {selectedLink && (
           <div className="ct-link-drawer-content">
-            <div className="ct-link-drawer-summary">
-              <div className="ct-link-title">{selectedLink.title}</div>
-              <div className="ct-link-url">{selectedLink.link}</div>
-              <Space size={8} wrap style={{ marginTop: 10 }}>
+            <div className="ct-link-drawer-summary" style={{ marginBottom: 16, paddingBottom: 16, borderBottom: '1px dashed #f0f0f0' }}>
+              <div className="ct-link-title" style={{ fontSize: 16, fontWeight: 'bold', color: 'rgba(0,0,0,0.85)', marginBottom: 8 }}>{selectedLink.title}</div>
+              <div className="ct-link-url" style={{ fontSize: 13, color: '#1890ff', wordBreak: 'break-all', marginBottom: 8 }}>{selectedLink.link}</div>
+              <Space size={8} wrap>
                 <Tag color="blue">{selectedLink.platform}</Tag>
-                <Tag>最新采集：{selectedLink.last_collected_at}</Tag>
+                <Tag color="orange">作者：{selectedLink.author}</Tag>
+                <Tag>最新采集时间：{selectedLink.last_collected_at}</Tag>
               </Space>
             </div>
 
@@ -833,23 +1020,15 @@ const TaskDetailView: React.FC<{
                 dataSource={getInteractionHistory(selectedLink)}
                 pagination={false}
                 size="small"
-                scroll={{ x: 650 }}
               />
             ) : (
-              <div className="ct-comment-list">
-                {getCommentHistory(selectedLink).map(function (comment) {
-                  return (
-                    <div key={comment.id} className="ct-comment-item">
-                      <div className="ct-comment-header">
-                        <span className="ct-comment-user">{comment.user}</span>
-                        <Tag style={{ marginLeft: 8 }}>{comment.platform}</Tag>
-                        <span className="ct-comment-time">{comment.collected_at}</span>
-                      </div>
-                      <div className="ct-comment-body">{comment.content}</div>
-                    </div>
-                  );
-                })}
-              </div>
+              <Table
+                rowKey="id"
+                columns={commentHistoryColumns}
+                dataSource={getCommentHistory(selectedLink)}
+                pagination={false}
+                size="small"
+              />
             )}
           </div>
         )}
@@ -863,9 +1042,32 @@ const TaskDetailView: React.FC<{
 type ViewType = 'list' | 'detail';
 
 const CollectTask: React.FC = function () {
+  const DATA_VERSION = 'v2026_08_10_02';
+
   // 列表/详情视图切换
   const [currentView, setCurrentView] = useState<ViewType>('list');
-  const [tasks, setTasks] = useState<TaskItem[]>(MOCK_DATA);
+  const [tasks, setTasks] = useState<TaskItem[]>(() => {
+    const cachedVersion = localStorage.getItem('eagle_collect_tasks_version');
+    const local = localStorage.getItem('eagle_collect_tasks');
+    
+    if (cachedVersion === DATA_VERSION && local) {
+      try {
+        return JSON.parse(local);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    // 版本不符合或无缓存，强制重刷并存入当前版本号
+    localStorage.setItem('eagle_collect_tasks_version', DATA_VERSION);
+    localStorage.setItem('eagle_collect_tasks', JSON.stringify(MOCK_DATA));
+    return MOCK_DATA;
+  });
+
+  // 同步状态到 localStorage
+  React.useEffect(() => {
+    localStorage.setItem('eagle_collect_tasks', JSON.stringify(tasks));
+  }, [tasks]);
+
   const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
 
   // Drawer 状态
@@ -979,18 +1181,52 @@ const CollectTask: React.FC = function () {
       <CollectTaskDrawer
         open={drawerVisible}
         title={editData ? '修改采集任务' : '新建采集任务'}
+        isEditMode={!!editData}
         onClose={function () { setDrawerVisible(false); setEditData(null); }}
-        onSubmit={function () {
+        onSubmit={function (values) {
           // 刷新列表
           if (editData) {
             setTasks(function (prev) {
               return prev.map(function (t) {
-                if (t.id === editData.id) return { ...t, has_activated: true };
+                if (t.id === editData.id) {
+                  return {
+                    ...t,
+                    ...values,
+                    link: values.link_list?.[0]?.link || t.link,
+                    title: values.link_list?.[0]?.title || t.title,
+                    info_topic: values.link_list?.[0]?.topic || t.info_topic,
+                    has_activated: true
+                  };
+                }
                 return t;
               });
             });
             message.success('任务修改成功');
           } else {
+            const id = 'task_' + String(tasks.length + 1).padStart(3, '0');
+            const newTask: TaskItem = {
+              id: id,
+              task_name: values.task_name,
+              task_type: values.task_type,
+              scope_type: values.scope_type,
+              platforms: values.platforms || [],
+              frequency: values.frequency || '每2小时',
+              frequency_mode: values.frequency_mode || 'hour',
+              frequency_value: values.frequency_value || '2',
+              track_days: values.track_days || 7,
+              total_count: 0,
+              hourly_increment: 0,
+              status: 'inactive',
+              has_activated: false,
+              last_updated: '-',
+              created_at: dayjs().format('YYYY-MM-DD HH:mm'),
+              related_topic: values.related_topic,
+              related_source: values.related_source,
+              link: values.link_list?.[0]?.link,
+              title: values.link_list?.[0]?.title,
+              info_topic: values.link_list?.[0]?.topic,
+            };
+            setTasks(function (prev) { return [newTask, ...prev]; });
             message.success('任务创建成功，请在列表中手动开启');
           }
           setDrawerVisible(false);

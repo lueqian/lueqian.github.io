@@ -16,8 +16,9 @@ type ScopeType = 'topic' | 'source' | 'other';
 export interface CollectTaskDrawerProps {
   open: boolean;
   title?: string;
+  isEditMode?: boolean;
   onClose: () => void;
-  onSubmit?: () => void;  // 提交成功后的回调（可选）
+  onSubmit?: (values: any) => void;  // 提交成功后的回调（可选）
   // 预填充数据（可选，用于跨页面调用时自动填充）
   initialValues?: {
     task_name?: string;
@@ -273,7 +274,8 @@ const TaskFormContent: React.FC<{
   onFrequencyChange: (v: { mode: string; value: string }) => void;
   shakeTrackDays: boolean;
   onShakeTrackDays: (v: boolean) => void;
-}> = function ({ form, scopeType, frequency, submitting, onScopeTypeChange, onFrequencyChange, shakeTrackDays, onShakeTrackDays }) {
+  isEditMode: boolean;
+}> = function ({ form, scopeType, frequency, submitting, onScopeTypeChange, onFrequencyChange, shakeTrackDays, onShakeTrackDays, isEditMode }) {
   const [trackDaysError, setTrackDaysError] = useState(false);
   const [linkText, setLinkText] = useState('');
   const [linkValidation, setLinkValidation] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -305,6 +307,15 @@ const TaskFormContent: React.FC<{
     }
   }, [trackDaysValue]);
 
+  // 当 form 里的 link_list 变化且 linkText 为空时，同步回显链接地址
+  const formLinkList = Form.useWatch('link_list', form);
+  useEffect(function () {
+    if (formLinkList && formLinkList.length > 0 && !linkText) {
+      const links = formLinkList.map(function (item: any) { return item.link; }).filter(Boolean);
+      setLinkText(links.join('\n'));
+    }
+  }, [formLinkList, linkText]);
+
   // 切换采集范围时重置链接文本
   var handleScopeTypeChange = useCallback(function (v: ScopeType) {
     onScopeTypeChange(v);
@@ -312,6 +323,130 @@ const TaskFormContent: React.FC<{
     setValidateResult(null);
     setLinkValidation('idle');
   }, [onScopeTypeChange]);
+
+  const handleDownloadTemplate = useCallback(function () {
+    const csvContent = "\ufeff" + "链接地址,补充标题,信息主题\n" +
+      "https://weibo.com/1234567890/xyz123,微博示例标题,示例信息主题\n" +
+      "https://www.xiaohongshu.com/explore/5e123456789,小红书示例标题,示例信息主题\n";
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "采集链接导入模板.csv");
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    message.success('已开始下载导入模板');
+  }, []);
+
+  const handleImportFile = useCallback(function (e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function (event) {
+      const text = event.target?.result as string;
+      if (!text) {
+        message.error("文件内容为空或读取失败");
+        return;
+      }
+
+      let parsedLinks: Array<{ link: string; title: string; topic: string }> = [];
+      let rawLines: string[] = [];
+
+      if (file.name.endsWith('.csv')) {
+        const rows = text.split(/\r?\n/).map(function (r) { return r.trim(); }).filter(Boolean);
+        if (rows.length <= 1) {
+          message.error("文件有效性校验失败：文件没有有效数据行");
+          return;
+        }
+
+        const header = rows[0].toLowerCase();
+        if (!header.includes("链接") && !header.includes("link") && !header.includes("url")) {
+          message.error("文件有效性校验失败：模板格式不正确，缺少“链接地址”列");
+          return;
+        }
+
+        for (let i = 1; i < rows.length; i++) {
+          const cols = rows[i].split(',').map(function (c) { return c.trim().replace(/^["']|["']$/g, ''); });
+          if (cols[0]) {
+            parsedLinks.push({
+              link: cols[0],
+              title: cols[1] || '',
+              topic: cols[2] || ''
+            });
+            rawLines.push(cols[0]);
+          }
+        }
+      } else {
+        const lines = text.split(/\r?\n/).map(function (r) { return r.trim(); }).filter(Boolean);
+        lines.forEach(function (line) {
+          const cleanLine = line.replace(/^["']|["']$/g, '').trim();
+          if (cleanLine) {
+            parsedLinks.push({
+              link: cleanLine,
+              title: '',
+              topic: ''
+            });
+            rawLines.push(cleanLine);
+          }
+        });
+      }
+
+      if (parsedLinks.length === 0) {
+        message.error("文件有效性校验失败：未在文件中提取到链接");
+        return;
+      }
+
+      const urlPattern = /^https?:\/\/.+/i;
+      const invalidLinks: string[] = [];
+      parsedLinks.forEach(function (item) {
+        if (!urlPattern.test(item.link)) {
+          invalidLinks.push(item.link);
+        }
+      });
+
+      if (invalidLinks.length > 0) {
+        message.error(`文件有效性校验失败：检测到 ${invalidLinks.length} 条非法链接（如：${invalidLinks.slice(0, 2).join(', ')}），已中断导入`);
+        return;
+      }
+
+      const importedText = rawLines.join('\n');
+      const nextText = linkText.trim() ? linkText + '\n' + importedText : importedText;
+      setLinkText(nextText);
+
+      const currentList = form.getFieldValue('link_list') || [];
+      form.setFieldsValue({
+        link_list: [...currentList, ...parsedLinks]
+      });
+
+      message.success(`导入成功，共解析并导入 ${parsedLinks.length} 条有效链接`);
+      e.target.value = '';
+    };
+
+    reader.readAsText(file);
+  }, [linkText, form]);
+
+  const handleLinkTextChange = useCallback(function (e: React.ChangeEvent<HTMLTextAreaElement>) {
+    const text = e.target.value;
+    setLinkText(text);
+    if (validateResult) {
+      setValidateResult(null);
+      setLinkValidation('idle');
+    }
+    
+    const lines = text.split('\n').map(function (l) { return l.trim(); }).filter(Boolean);
+    const list = lines.map(function (line) {
+      const existing = (form.getFieldValue('link_list') || []).find(function (item: any) { return item.link === line; });
+      return {
+        link: line,
+        title: existing?.title || '',
+        topic: existing?.topic || ''
+      };
+    });
+    form.setFieldsValue({ link_list: list });
+  }, [form, validateResult]);
 
   return (
     <Form
@@ -338,7 +473,7 @@ const TaskFormContent: React.FC<{
         </Form.Item>
 
         <Form.Item label="任务类型" name="task_type" rules={[{ required: true, message: '请选择任务类型' }]}>
-          <Radio.Group>
+          <Radio.Group disabled={isEditMode}>
             <Radio value="interaction">互动量更新</Radio>
             <Radio value="comment">评论区采集</Radio>
           </Radio.Group>
@@ -377,7 +512,7 @@ const TaskFormContent: React.FC<{
         <div className="ct-drawer-section-title">任务对象</div>
 
         <Form.Item label="采集范围" name="scope_type" rules={[{ required: true, message: '请选择采集范围' }]}>
-          <Radio.Group onChange={function (e) { handleScopeTypeChange(e.target.value); }}>
+          <Radio.Group disabled={isEditMode} onChange={function (e) { handleScopeTypeChange(e.target.value); }}>
             <Radio value="topic">专题</Radio>
             <Radio value="source">重点源</Radio>
             <Radio value="other">链接</Radio>
@@ -498,23 +633,40 @@ const TaskFormContent: React.FC<{
 
             {/* 流式批量链接录入 */}
             <Form.Item label="链接地址" required>
+              <input
+                type="file"
+                id="collect-link-file-import"
+                accept=".csv,.txt"
+                style={{ display: 'none' }}
+                onChange={handleImportFile}
+              />
               <div className="ct-link-textarea-wrapper">
                 <Input.TextArea
                   value={linkText}
-                  onChange={function (e) {
-                    setLinkText(e.target.value);
-                    // 输入时清除上次校验结果
-                    if (validateResult) {
-                      setValidateResult(null);
-                      setLinkValidation('idle');
-                    }
-                  }}
+                  onChange={handleLinkTextChange}
                   placeholder="支持批量粘贴链接，每行一个或以换行分隔"
                   autoSize={{ minRows: 4, maxRows: 10 }}
                   className="ct-link-textarea"
                 />
-                <div className="ct-link-textarea-footer">
-                  <span />
+                <div className="ct-link-textarea-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                  <Space size={12}>
+                    <Button
+                      type="link"
+                      size="small"
+                      style={{ padding: 0, height: 'auto', fontSize: 12 }}
+                      onClick={handleDownloadTemplate}
+                    >
+                      文件模板下载
+                    </Button>
+                    <Button
+                      type="link"
+                      size="small"
+                      style={{ padding: 0, height: 'auto', fontSize: 12 }}
+                      onClick={function () { document.getElementById('collect-link-file-import')?.click(); }}
+                    >
+                      导入文件
+                    </Button>
+                  </Space>
                   <Button
                     type="link"
                     size="small"
@@ -638,7 +790,7 @@ const TaskFormContent: React.FC<{
 
 // ============ 主组件：CollectTaskDrawer ============
 
-const CollectTaskDrawer: React.FC<CollectTaskDrawerProps> = function ({ open, title = '新建采集任务', onClose, onSubmit, initialValues }) {
+const CollectTaskDrawer: React.FC<CollectTaskDrawerProps> = function ({ open, title = '新建采集任务', isEditMode = false, onClose, onSubmit, initialValues }) {
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
   const [drawerScopeType, setDrawerScopeType] = useState<ScopeType>('topic');
@@ -696,16 +848,21 @@ const CollectTaskDrawer: React.FC<CollectTaskDrawerProps> = function ({ open, ti
       message.error('请检查追踪天数，允许范围 0-7 天');
       return;
     }
-    form.validateFields().then(function () {
+    form.validateFields().then(function (values) {
       setSubmitting(true);
       setTimeout(function () {
         setSubmitting(false);
-        message.success('任务提交成功');
-        onSubmit?.();
+        // 回传表单 values
+        onSubmit?.({
+          ...values,
+          frequency: drawerFrequency.mode === 'hour' ? `每${drawerFrequency.value}小时` : `每天${drawerFrequency.value}`,
+          frequency_mode: drawerFrequency.mode,
+          frequency_value: drawerFrequency.value,
+        });
         onClose();
       }, 1000);
     });
-  }, [form, onSubmit, onClose]);
+  }, [form, onSubmit, onClose, drawerFrequency]);
 
   return (
     <Drawer
@@ -740,6 +897,7 @@ const CollectTaskDrawer: React.FC<CollectTaskDrawerProps> = function ({ open, ti
         onFrequencyChange={setDrawerFrequency}
         shakeTrackDays={shakeTrackDays}
         onShakeTrackDays={setShakeTrackDays}
+        isEditMode={isEditMode}
       />
     </Drawer>
   );

@@ -13,6 +13,9 @@ import {
   Pagination,
   Select,
   DatePicker,
+  Modal,
+  Form,
+  message,
 } from 'antd';
 import {
   SearchOutlined,
@@ -313,7 +316,8 @@ const MOCK_POSTS: PostItem[] = [
 
 const ListView: React.FC<{
   onEnterDetail: (id: number) => void;
-}> = ({ onEnterDetail }) => {
+  onEditDirectory: () => void;
+}> = ({ onEnterDetail, onEditDirectory }) => {
   const [activeContentTab, setActiveContentTab] = useState<string>('all');
   const [searchKeyword, setSearchKeyword] = useState<string>('');
   const [activeFilterDimension, setActiveFilterDimension] = useState<string>('account');
@@ -360,7 +364,7 @@ const ListView: React.FC<{
         </div>
         <div className="ks-content-actions">
           <Button type="link" size="small" className="ks-action-link">批量设置目录范围</Button>
-          <Button type="link" size="small" className="ks-action-link">管理目录</Button>
+          <Button type="link" size="small" className="ks-action-link" onClick={onEditDirectory}>管理目录</Button>
         </div>
       </div>
 
@@ -510,7 +514,8 @@ const ListView: React.FC<{
 const DetailView: React.FC<{
   account: AccountItem;
   onBack: () => void;
-}> = ({ account, onBack }) => {
+  onEditDirectory: () => void;
+}> = ({ account, onBack, onEditDirectory }) => {
   const [activeDetailTab, setActiveDetailTab] = useState<string>('posts');
   const [detailSort, setDetailSort] = useState<string>('time');
   const [detailKeyword, setDetailKeyword] = useState<string>('');
@@ -613,6 +618,11 @@ const DetailView: React.FC<{
               <span className={'ks-profile-attr-value ' + (account.status === 'active' ? 'ks-status-active' : 'ks-status-inactive')}>
                 {account.status === 'active' ? '活跃' : '不活跃'}
               </span>
+            </div>
+            <div style={{ marginTop: 16, padding: '0 8px' }}>
+              <Button type="primary" ghost size="small" style={{ width: '100%', borderRadius: 4 }} onClick={onEditDirectory}>
+                修改监控名单
+              </Button>
             </div>
           </div>
         </div>
@@ -825,9 +835,13 @@ const DetailView: React.FC<{
 
 // ============ 主组件 ============
 
-const Sources: React.FC = () => {
+const Sources: React.FC<{ onNavigate?: (page: string) => void }> = ({ onNavigate }) => {
   const [isDetailView, setIsDetailView] = useState<boolean>(false);
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
+
+  // 弹窗状态
+  const [editDirModalOpen, setEditDirModalOpen] = useState(false);
+  const [dirForm] = Form.useForm();
 
   const handleEnterDetail = useCallback(function (id: number) {
     setSelectedAccountId(id);
@@ -844,11 +858,82 @@ const Sources: React.FC = () => {
     ? MOCK_ACCOUNTS.find(function (a) { return a.id === selectedAccountId; })
     : null;
 
-  if (isDetailView && currentAccount) {
-    return <DetailView account={currentAccount} onBack={handleBackToList} />;
-  }
+  const handleOpenEditDir = useCallback(function () {
+    dirForm.setFieldsValue({
+      name: isDetailView && currentAccount ? currentAccount.name + '监控组' : '重点账号监控目录',
+      accounts: MOCK_ACCOUNTS.map(function (a) { return a.name; }).join(', ')
+    });
+    setEditDirModalOpen(true);
+  }, [isDetailView, currentAccount, dirForm]);
 
-  return <ListView onEnterDetail={handleEnterDetail} />;
+  const handleSubmitEditDir = useCallback(function () {
+    dirForm.validateFields().then(function (values) {
+      setEditDirModalOpen(false);
+      // 校验是否有已启用的关联采集任务
+      let hasRelatedActiveTask = false;
+      const local = localStorage.getItem('eagle_collect_tasks');
+      if (local) {
+        try {
+          const tasks = JSON.parse(local);
+          hasRelatedActiveTask = tasks.some(function (t: any) {
+            return t.scope_type === 'source' && 
+                   t.status === 'active' && 
+                   (t.task_name.includes('重点源') || 
+                    t.task_name.includes('人民日报') || 
+                    (currentAccount && t.task_name.includes(currentAccount.name.substring(0, 4))));
+          });
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      if (hasRelatedActiveTask) {
+        Modal.confirm({
+          title: '修改成功',
+          content: '相关采集任务消耗发生变化，如有需要，请进一步修改任务配置。',
+          okText: '前往修改任务配置',
+          cancelText: '暂不需要',
+          onOk: function () {
+            if (onNavigate) {
+              onNavigate('collect');
+            }
+          }
+        });
+      } else {
+        message.success('重点源监控目录修改成功');
+      }
+    });
+  }, [currentAccount, dirForm, onNavigate]);
+
+  return (
+    <div style={{ height: '100%' }}>
+      {isDetailView && currentAccount ? (
+        <DetailView account={currentAccount} onBack={handleBackToList} onEditDirectory={handleOpenEditDir} />
+      ) : (
+        <ListView onEnterDetail={handleEnterDetail} onEditDirectory={handleOpenEditDir} />
+      )}
+
+      {/* 修改监测目录 Modal */}
+      <Modal
+        title="修改监测目录"
+        open={editDirModalOpen}
+        onCancel={function () { setEditDirModalOpen(false); }}
+        onOk={handleSubmitEditDir}
+        destroyOnClose
+        okText="提交"
+        cancelText="取消"
+      >
+        <Form form={dirForm} layout="vertical" style={{ marginTop: 16 }}>
+          <Form.Item name="name" label="监测组名称" rules={[{ required: true, message: '请输入监测组名称' }]}>
+            <Input placeholder="请输入监测组名称" />
+          </Form.Item>
+          <Form.Item name="accounts" label="监控账号名单" tooltip="请以逗号分隔输入账号名称" rules={[{ required: true, message: '请输入监控账号名单' }]}>
+            <Input.TextArea placeholder="例如: 环球时报, 新华社, 央视新闻" autoSize={{ minRows: 3, maxRows: 8 }} />
+          </Form.Item>
+        </Form>
+      </Modal>
+    </div>
+  );
 };
 
 export default Sources;
