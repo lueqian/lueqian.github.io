@@ -451,7 +451,7 @@ const Header: React.FC<HeaderProps> = function Header({
         </div>
 
         {/* 额度预警铃铛（无点击弹窗） */}
-        <Badge count={alertTasks.length} size="small" style={{ offset: [-2, 2], boxShadow: 'none' }}>
+        <Badge count={alertTasks.length} size="small" offset={[-2, 2]} style={{ boxShadow: 'none' }}>
           <div className="ly-header-icon" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginRight: 4 }}>
             <BellOutlined style={{ fontSize: 16 }} />
           </div>

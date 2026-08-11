@@ -125,16 +125,16 @@ const SCOPE_PLATFORM_OPTIONS = [
 
 const COLLECT_PAGE_OPTIONS = [
   { value: '1', label: '前1页' },
+  { value: '3', label: '前3页' },
   { value: '5', label: '前5页' },
   { value: '10', label: '前10页' },
-  { value: 'max', label: '最大采集数' },
 ];
 
 const PAGE_MULTIPLIER: Record<string, number> = {
   '1': 1,
+  '3': 2,
   '5': 3,
   '10': 8,
-  'max': 30,
 };
 
 const QuotaEstimatePanel: React.FC<{
@@ -204,8 +204,8 @@ const QuotaEstimatePanel: React.FC<{
     return function () { clearTimeout(timer); };
   }, [configKey, calculateQuota]);
 
-  // 判断是否有任一平台选择了"最大采集"
-  var hasMaxCollect = Object.values(platformPageConfig).some(function (v) { return v === 'max'; });
+  // 判断是否有任一平台选择了"前10页"
+  var hasMaxCollect = Object.values(platformPageConfig).some(function (v) { return v === '10'; });
   var quotaColor = hasMaxCollect ? '#FA8C16' : '#1890FF';
 
   // 取得每日抓取轮数
@@ -251,7 +251,7 @@ const QuotaEstimatePanel: React.FC<{
                 {estimatedQuota.toLocaleString()} 次/天
               </span>
               {hasMaxCollect && (
-                <Tooltip title="最大采集将尝试抓取所有历史评论，可能导致额度快速消耗">
+                <Tooltip title="单次采集页数较多（前10页），消耗额度相对较快">
                   <WarningOutlined className="ct-quota-warning-icon" />
                 </Tooltip>
               )}
@@ -841,7 +841,7 @@ const TaskFormContent: React.FC<{
                     {Object.entries(validateResult.platformCounts || {}).map(function ([platform, count]) {
                       return (
                         <Tag color="blue" key={platform} style={{ margin: 0 }}>
-                          {platform}：{count} 条
+                          {platform}：{count as any} 条
                         </Tag>
                       );
                     })}
@@ -854,7 +854,7 @@ const TaskFormContent: React.FC<{
                     已识别 {validateResult.validCount} 条有效链接，无法识别以下内容：
                   </span>
                   <div className="ct-link-validate-error-list">
-                    {validateResult.invalidList.map(function (item, idx) {
+                    {validateResult.invalidList.map(function (item: any, idx: any) {
                       return <span key={idx} className="ct-link-validate-error-item">{item}</span>;
                     })}
                   </div>

@@ -13,7 +13,7 @@
 
 import '../style.css';
 import React, { useState, useCallback, useMemo } from 'react';
-import { Table, Tag, Switch, Button, Select, Input, Space, Tooltip, Popconfirm, message, Descriptions, Card, Drawer, Empty, Badge, Popover, InputNumber, Slider, notification } from 'antd';
+import { Table, Tag, Switch, Button, Select, Input, Space, Tooltip, Popconfirm, message, Descriptions, Card, Drawer, Empty, Badge, Popover, InputNumber, Slider, notification, Radio } from 'antd';
 import {
   PlusOutlined,
   SearchOutlined,
@@ -30,7 +30,7 @@ import CollectTaskDrawer from '../components/CollectTaskDrawer';
 
 type TaskType = 'interaction' | 'comment';
 type ScopeType = 'topic' | 'source' | 'other';
-type TaskStatus = 'active' | 'inactive';
+type TaskStatus = 'not_started' | 'running' | 'ended';
 
 type InteractionData = {
   likes: number;
@@ -55,6 +55,7 @@ type TaskItem = {
   has_activated: boolean;
   last_updated: string;
   created_at: string;
+  platform_pages?: Record<string, string>;
   // 链接范围字段
   link?: string;
   title?: string;
@@ -187,7 +188,7 @@ function generateMockData(): TaskItem[] {
       track_days: trackDays,
       total_count: totalBase,
       hourly_increment: hourlyInc,
-      status: i % 2 === 0 ? 'active' : 'inactive',
+      status: i % 3 === 0 ? 'not_started' : i % 3 === 1 ? 'running' : 'ended',
       has_activated: true, // 保持激活，使详情有数据呈现
       last_updated: lastUpdated,
       created_at: baseDate.subtract(i + 2, 'day').format('YYYY-MM-DD HH:mm'),
@@ -214,7 +215,11 @@ function generateMockData(): TaskItem[] {
   const activeIndices = new Set(indices.slice(0, 9));
 
   const list = data.map(function (t, i) {
-    var isActive = activeIndices.has(i);
+    const statusOptions: TaskStatus[] = ['not_started', 'running', 'ended'];
+    // 随机分配状态，并根据状态决定是否清空初始采集数值
+    const statusVal = statusOptions[Math.floor(Math.random() * statusOptions.length)];
+    const isNotStarted = statusVal === 'not_started';
+
     if (t.task_type === 'interaction') {
       var totalLikes = Math.floor(Math.random() * 20000) + 1000;
       var totalFavorites = Math.floor(Math.random() * 5000) + 200;
@@ -226,24 +231,24 @@ function generateMockData(): TaskItem[] {
       var lastComments = Math.floor(Math.random() * 40) + 2;
       return {
         ...t,
-        total_count: totalLikes + totalFavorites + totalReposts + totalComments,
-        hourly_increment: lastLikes + lastFavorites + lastReposts + lastComments,
-        status: isActive ? 'active' as TaskStatus : 'inactive' as TaskStatus,
-        has_activated: true,
-        interaction_total: { likes: totalLikes, favorites: totalFavorites, reposts: totalReposts, comments: totalComments },
-        interaction_last: { likes: lastLikes, favorites: lastFavorites, reposts: lastReposts, comments: lastComments },
+        total_count: isNotStarted ? 0 : totalLikes + totalFavorites + totalReposts + totalComments,
+        hourly_increment: isNotStarted ? 0 : lastLikes + lastFavorites + lastReposts + lastComments,
+        status: statusVal,
+        has_activated: !isNotStarted,
+        interaction_total: isNotStarted ? undefined : { likes: totalLikes, favorites: totalFavorites, reposts: totalReposts, comments: totalComments },
+        interaction_last: isNotStarted ? undefined : { likes: lastLikes, favorites: lastFavorites, reposts: lastReposts, comments: lastComments },
       };
     } else {
       var cTotal = Math.floor(Math.random() * 12000) + 500;
       var cLast = Math.floor(Math.random() * 150) + 5;
       return {
         ...t,
-        total_count: cTotal,
-        hourly_increment: cLast,
-        status: isActive ? 'active' as TaskStatus : 'inactive' as TaskStatus,
-        has_activated: true,
-        comment_total: cTotal,
-        comment_last: cLast,
+        total_count: isNotStarted ? 0 : cTotal,
+        hourly_increment: isNotStarted ? 0 : cLast,
+        status: statusVal,
+        has_activated: !isNotStarted,
+        comment_total: isNotStarted ? undefined : cTotal,
+        comment_last: isNotStarted ? undefined : cLast,
       };
     }
   });
@@ -261,7 +266,7 @@ function generateMockData(): TaskItem[] {
     track_days: 7,
     total_count: 1420,
     hourly_increment: 85,
-    status: 'active',
+    status: 'running',
     has_activated: true,
     last_updated: dayjs().subtract(10, 'minute').format('YYYY-MM-DD HH:mm'),
     created_at: dayjs().subtract(2, 'day').format('YYYY-MM-DD HH:mm'),
@@ -282,7 +287,7 @@ function generateMockData(): TaskItem[] {
     track_days: 3,
     total_count: 24500,
     hourly_increment: 1200,
-    status: 'active',
+    status: 'running',
     has_activated: true,
     last_updated: dayjs().subtract(5, 'minute').format('YYYY-MM-DD HH:mm'),
     created_at: dayjs().subtract(5, 'day').format('YYYY-MM-DD HH:mm'),
@@ -397,9 +402,9 @@ function getTaskLinkRecords(task: TaskItem): LinkCollectRecord[] {
 
     const pagesSetting = (task.platform_pages && task.platform_pages[platform]) || '1';
     let commentBase = 20;
-    if (pagesSetting === '5') commentBase = 100;
+    if (pagesSetting === '3') commentBase = 60;
+    else if (pagesSetting === '5') commentBase = 100;
     else if (pagesSetting === '10') commentBase = 200;
-    else if (pagesSetting === 'max') commentBase = 800;
 
     const commentLast = commentBase + (base % (Math.floor(commentBase * 0.1) + 2));
 
@@ -484,11 +489,224 @@ function formatInteractionSummary(data: InteractionData): string {
   return '赞 ' + formatCount(data.likes) + ' / 藏 ' + formatCount(data.favorites) + ' / 转 ' + formatCount(data.reposts) + ' / 评 ' + formatCount(data.comments);
 }
 
+// ============ 批次数据结构与生成函数 ============
+
+type BatchCollectRecord = {
+  id: string;
+  batch_name: string;
+  collected_at: string;
+  status: 'success' | 'failed';
+  link_count: number;
+  increment_count: number;
+  quota_consumed: number;
+};
+
+type BatchLinkDetailRecord = {
+  id: string;
+  link: string;
+  platform: string;
+  author: string;
+  title: string;
+  content: string;
+  collected_at: string;
+  interaction_last?: InteractionData;
+  comment_last?: number;
+  latest_comment?: string;
+};
+
+function getTaskBatchRecords(task: TaskItem): BatchCollectRecord[] {
+  const seed = getTaskSeed(task);
+  const count = 10;
+  
+  return Array.from({ length: count }, function (_, index) {
+    const batchIndex = count - index;
+    const hoursDiff = task.frequency.includes('小时')
+      ? (parseInt(task.frequency.replace(/\D/g, ''), 10) || 2) * index
+      : 24 * index;
+      
+    const collectedAt = dayjs(task.last_updated || dayjs()).subtract(hoursDiff, 'hour').format('YYYY-MM-DD HH:mm');
+    const linkCount = task.id === 'task_demo_topic' ? 18 : 12;
+    
+    let increment = 0;
+    if (task.task_type === 'interaction') {
+      increment = (seed * 8 + index * 4) % 150 + 50;
+    } else {
+      increment = (seed * 5 + index * 3) % 40 + 15;
+    }
+    
+    return {
+      id: task.id + '_batch_' + batchIndex,
+      batch_name: `第 ${batchIndex} 次采集`,
+      collected_at: collectedAt,
+      status: 'success',
+      link_count: linkCount,
+      increment_count: increment,
+      quota_consumed: increment,
+    };
+  });
+}
+
+function getBatchLinkRecords(task: TaskItem, batch: BatchCollectRecord): BatchLinkDetailRecord[] {
+  const sourcePlatforms = task.platforms.length > 0 ? task.platforms : ['微博', '今日头条', '小红书'];
+  const seed = getTaskSeed(task);
+  const batchNum = parseInt(batch.batch_name.replace(/\D/g, ''), 10) || 1;
+  
+  const commentPool = [
+    '李雨桐爆料的内容太震撼了，支持维权！',
+    '对于这个专题，我们还是需要理性吃瓜。',
+    '每次看这种舆情事件，公关团队反应太关键了。',
+    '薛之谦演唱会现场粉丝还是很多的，影响似乎没想象中大。',
+    '期待法律给出公正判决，不信谣不传谣。',
+    '这个爆料时间节点选的真好，正好是热度最高的时候。',
+    '感觉有些自媒体在刻意放大矛盾，大家要保持冷静。',
+    '多方声音都有，还是要看最终的实锤证据。',
+    '舆情深度监控很有必要，防止谣言满天飞。'
+  ];
+  
+  return Array.from({ length: batch.link_count }, function (_, index) {
+    const platform = sourcePlatforms[index % sourcePlatforms.length];
+    const linkIndex = index + 1;
+    
+    let title = '';
+    let content = '';
+    let author = '用户_' + platform + '_' + String(linkIndex).padStart(2, '0');
+    let link = 'https://' + (platform === '微博' ? 'weibo.com' : platform === '今日头条' ? 'toutiao.com' : 'douyin.com') + '/post/' + (seed + linkIndex * 99 + batchNum * 7);
+    
+    if (task.id === 'task_demo_topic') {
+      const topicsTitles = [
+        '李雨桐爆料内容引起广泛社会反响',
+        '多方曝光谢娜张杰买房风波，真相究竟如何？',
+        '薛之谦巡回演唱会南京站万人大合唱，粉丝泪目',
+        '舆情热点解析：明星重婚指控法律层面的界定',
+        '自媒体对明星私生活报道的边界在哪里？',
+        '粉丝群体在明星公关事件中的表现与引导',
+        '社交平台上明星人设崩塌的传播链条分析',
+        '法律专家谈明星买房“跳单”是否构成违法',
+        '演唱会现场的互动体验如何转化为二次传播热度',
+        '八卦爆料与严肃新闻的受众群体对比研究',
+        '明星工作室深夜发声起诉，法务公关成标配',
+        '关于网络吃瓜群众心理学的趣味剖析',
+        '微博热搜榜在此次明星公关事件中的数据演变',
+        '抖音爆款音乐视频：全场万人合唱《绅士》幕后',
+        '今日头条独家报道：知情人还原薛之谦李雨桐纠葛',
+        '明星口碑度下滑对代言品牌商造成的负面损失评估',
+        '饭圈文化中“做数据”与“洗白”的套路解析',
+        '朝阳群众立功？扒一扒娱乐圈那些实名举报的始末',
+        '如何理性吃瓜：在海量营销号带节奏中保持独立思考',
+        '薛之谦新歌发布，乐评人如何看待其艺术生命力？'
+      ];
+      title = topicsTitles[index % topicsTitles.length];
+      content = '针对李雨桐专题舆情被监控的帖文。正文围绕薛之谦李雨桐纠葛、实名举报、公关辟谣等展开讨论。';
+    } else {
+      title = `监控链接_${linkIndex}`;
+      content = `本链接已被纳入该任务监控范围，本次采集到最新有效数据。`;
+    }
+    
+    let comments = (seed + index + batchNum) % 8 + 1;
+    let interaction = {
+      likes: (seed * 5 + index * 10 + batchNum * 3) % 50 + 10,
+      favorites: (seed * 2 + index * 5 + batchNum) % 20 + 2,
+      reposts: (seed + index * 2 + batchNum) % 10 + 1,
+      comments: comments,
+    };
+    
+    const commentText = commentPool[(index + batchNum) % commentPool.length];
+    
+    return {
+      id: `${batch.id}_link_${linkIndex}`,
+      link: link,
+      platform: platform,
+      author: author,
+      title: title,
+      content: content,
+      collected_at: batch.collected_at,
+      interaction_last: interaction,
+      comment_last: comments,
+      latest_comment: commentText,
+    };
+  });
+}
+
+type BatchCommentDetailRecord = {
+  id: string;
+  link: string;
+  platform: string;
+  author: string;
+  title: string;
+  content: string;
+  publish_time: string;
+  collected_at: string;
+};
+
+function getBatchCommentRecords(task: TaskItem, batch: BatchCollectRecord): BatchCommentDetailRecord[] {
+  const sourcePlatforms = task.platforms.length > 0 ? task.platforms : ['微博', '今日头条', '小红书'];
+  const seed = getTaskSeed(task);
+  const batchNum = parseInt(batch.batch_name.replace(/\D/g, ''), 10) || 1;
+  
+  const commentPool = [
+    '李雨桐爆料的内容太震撼了，支持维权！',
+    '对于这个专题，我们还是需要理性吃瓜。',
+    '每次看这种舆情事件，公关团队反应太关键了。',
+    '薛之谦演唱会现场粉丝还是很多的，影响似乎没想象中大。',
+    '期待法律给出公正判决，不信谣不传谣。',
+    '这个爆料时间节点选的真好，正好是热度最高的时候。',
+    '感觉有些自媒体在刻意放大矛盾，大家要保持冷静。',
+    '多方声音都有，还是要看最终的实锤证据。',
+    '舆情深度监控很有必要，防止谣言满天飞。',
+    '不管怎么样，锤得很实，吃瓜群众表示佩服。',
+    '人设彻底崩塌了，心疼那些还在洗白的粉丝。',
+    '自媒体整天带节奏太烦了，支持依法维权，净化网络空间。'
+  ];
+
+  const records: BatchCommentDetailRecord[] = [];
+  const linkCount = 5; 
+  
+  for (let i = 0; i < linkCount; i++) {
+    const platform = sourcePlatforms[i % sourcePlatforms.length];
+    const linkIndex = i + 1;
+    let title = '';
+    let author = '博主_' + platform + '_' + String(linkIndex).padStart(2, '0');
+    let link = 'https://' + (platform === '微博' ? 'weibo.com' : platform === '今日头条' ? 'toutiao.com' : 'douyin.com') + '/post/' + (seed + linkIndex * 99 + batchNum * 7);
+    
+    if (task.id === 'task_demo_topic') {
+      const topicsTitles = [
+        '李雨桐爆料内容引起广泛社会反响',
+        '多方曝光谢娜张杰买房风波，真相究竟如何？',
+        '薛之谦巡回演唱会南京站万人大合唱，粉丝泪目',
+        '舆情热点解析：明星重婚指控法律层面的界定',
+        '自媒体对明星私生活报道的边界在哪里？'
+      ];
+      title = topicsTitles[i % topicsTitles.length];
+    } else {
+      title = `监控网帖标题_${linkIndex}`;
+    }
+    
+    const commentCountForLink = 2 + (seed + i + batchNum) % 2;
+    for (let c = 0; c < commentCountForLink; c++) {
+      const commentText = commentPool[(i * 3 + c + batchNum) % commentPool.length];
+      const commentTime = dayjs(batch.collected_at).subtract(c * 15 + 5, 'minute').format('YYYY-MM-DD HH:mm');
+      
+      records.push({
+        id: `${batch.id}_link_${linkIndex}_comment_${c}`,
+        link: link,
+        platform: platform,
+        author: author,
+        title: title,
+        content: commentText,
+        publish_time: commentTime,
+        collected_at: batch.collected_at,
+      });
+    }
+  }
+  
+  return records;
+}
+
 // ============ 列表页 ============
 
 const TaskListView: React.FC<{
   tasks: TaskItem[];
-  onToggle: (id: string, checked: boolean) => void;
+  onStatusChange: (id: string, newStatus: TaskStatus) => void;
   onEdit: (task: TaskItem) => void;
   onView: (task: TaskItem) => void;
   onCreate: () => void;
@@ -497,7 +715,7 @@ const TaskListView: React.FC<{
   setAlertThreshold: (v: number) => void;
   alertTasks: TaskItem[];
   setTasks: React.Dispatch<React.SetStateAction<TaskItem[]>>;
-}> = function ({ tasks, onToggle, onEdit, onView, onCreate, onDelete, alertThreshold, setAlertThreshold, alertTasks, setTasks }) {
+}> = function ({ tasks, onStatusChange, onEdit, onView, onCreate, onDelete, alertThreshold, setAlertThreshold, alertTasks, setTasks }) {
   const [searchText, setSearchText] = useState<string>('');
   const [filterType, setFilterType] = useState<string>('');
   const [filterScope, setFilterScope] = useState<string>('');
@@ -602,15 +820,18 @@ const TaskListView: React.FC<{
       title: '状态',
       dataIndex: 'status',
       key: 'status',
-      width: 80,
-      render: function (val: TaskStatus, record: TaskItem) {
-        return (
-          <Switch
-            size="small"
-            checked={val === 'active'}
-            onChange={function (checked) { onToggle(record.id, checked); }}
-          />
-        );
+      width: 100,
+      render: function (val: TaskStatus) {
+        const map: Record<TaskStatus, { text: string; color: string }> = {
+          not_started: { text: '未开始', color: 'default' },
+          running: { text: '进行中', color: 'processing' },
+          ended: { text: '已结束', color: 'default' }
+        };
+        const item = map[val] || map.not_started;
+        if (val === 'ended') {
+          return <Tag color="default" style={{ opacity: 0.65 }}>已结束</Tag>;
+        }
+        return <Tag color={item.color}>{item.text}</Tag>;
       },
     },
     {
@@ -627,15 +848,24 @@ const TaskListView: React.FC<{
     {
       title: '操作',
       key: 'action',
-      width: 160,
+      width: 220,
       render: function (_: any, record: TaskItem) {
         return (
           <Space size={16}>
+            {record.status === 'not_started' && (
+              <a className="ct-action-link" onClick={function () { onStatusChange(record.id, 'running'); }} style={{ color: '#52c41a' }}>启动</a>
+            )}
+            {record.status === 'running' && (
+              <a className="ct-action-link" onClick={function () { onStatusChange(record.id, 'ended'); }} style={{ color: '#fa8c16' }}>结束</a>
+            )}
+            {record.status === 'ended' && (
+              <a className="ct-action-link" onClick={function () { onStatusChange(record.id, 'running'); }}>重启</a>
+            )}
             <a className="ct-action-link" onClick={function () { onEdit(record); }}>修改</a>
             <a className="ct-action-link" onClick={function () { onView(record); }}>详情</a>
             <Popconfirm
               title="删除提示"
-              description="如需停止采集，建议关闭任务，已采集到的数据在任务删除后将无法查看，请知悉。"
+              description="如需停止采集，建议结束任务，已采集到的数据在任务删除后将无法查看，请知悉。"
               placement="bottom"
               onConfirm={function () { onDelete(record.id); }}
               okText="删除"
@@ -716,8 +946,9 @@ const TaskListView: React.FC<{
             value={filterStatus || undefined}
             onChange={function (v) { setFilterStatus(v || ''); }}
             options={[
-              { value: 'active', label: '开启' },
-              { value: 'inactive', label: '关闭' },
+              { value: 'not_started', label: '未开始' },
+              { value: 'running', label: '进行中' },
+              { value: 'ended', label: '已结束' },
             ]}
           />
           <Button size="middle" onClick={handleReset}>重置</Button>
@@ -751,12 +982,23 @@ const TaskDetailView: React.FC<{
   task: TaskItem;
   onBack: () => void;
 }> = function ({ task, onBack }) {
-  const isOtherScope = task.scope_type === 'other';
   const linkRecords = useMemo(function () {
-    return isOtherScope ? getTaskLinkRecords(task) : [];
-  }, [isOtherScope, task]);
+    return getTaskLinkRecords(task);
+  }, [task]);
+
+  const batchRecords = useMemo(function () {
+    return getTaskBatchRecords(task);
+  }, [task]);
+
+  const [viewMode, setViewMode] = useState<'batch' | 'link'>(() => {
+    return task.id === 'task_demo_topic' ? 'batch' : 'link';
+  });
+
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedLink, setSelectedLink] = useState<LinkCollectRecord | null>(null);
+
+  const [batchDrawerOpen, setBatchDrawerOpen] = useState(false);
+  const [selectedBatch, setSelectedBatch] = useState<BatchCollectRecord | null>(null);
 
   const openLinkDetail = useCallback(function (record: LinkCollectRecord) {
     setSelectedLink(record);
@@ -766,6 +1008,16 @@ const TaskDetailView: React.FC<{
   const closeLinkDetail = useCallback(function () {
     setDrawerOpen(false);
     setSelectedLink(null);
+  }, []);
+
+  const openBatchDetail = useCallback(function (record: BatchCollectRecord) {
+    setSelectedBatch(record);
+    setBatchDrawerOpen(true);
+  }, []);
+
+  const closeBatchDetail = useCallback(function () {
+    setBatchDrawerOpen(false);
+    setSelectedBatch(null);
   }, []);
 
   const linkColumns = [
@@ -843,6 +1095,72 @@ const TaskDetailView: React.FC<{
     },
   ];
 
+  const batchColumns = [
+    {
+      title: '采集批次',
+      dataIndex: 'batch_name',
+      key: 'batch_name',
+      width: 130,
+      render: function (v: string) {
+        return <strong style={{ color: 'rgba(0,0,0,0.85)' }}>{v}</strong>;
+      },
+    },
+    {
+      title: '执行时间',
+      dataIndex: 'collected_at',
+      key: 'collected_at',
+      width: 150,
+    },
+    {
+      title: '采集状态',
+      dataIndex: 'status',
+      key: 'status',
+      width: 110,
+      render: function () {
+        return <Badge status="success" text="全部成功" />;
+      },
+    },
+    {
+      title: '抓取有效链接数',
+      dataIndex: 'link_count',
+      key: 'link_count',
+      width: 130,
+      render: function (v: number) {
+        return <span>{v} 条链接</span>;
+      },
+    },
+    {
+      title: task.task_type === 'interaction' ? '本次抓取新增互动量' : '本次抓取有效评论数',
+      dataIndex: 'increment_count',
+      key: 'increment_count',
+      width: 180,
+      render: function (v: number) {
+        return (
+          <span style={{ fontWeight: 600, color: '#52C41A' }}>
+            +{v} {task.task_type === 'interaction' ? '次' : '条'}
+          </span>
+        );
+      },
+    },
+    {
+      title: '本次消耗额度',
+      dataIndex: 'quota_consumed',
+      key: 'quota_consumed',
+      width: 120,
+      render: function (v: number) {
+        return <span style={{ color: '#1890FF', fontWeight: 500 }}>{v} 次额度</span>;
+      },
+    },
+    {
+      title: '操作',
+      key: 'action',
+      width: 80,
+      render: function (_: any, record: BatchCollectRecord) {
+        return <a className="ct-action-link" onClick={function () { openBatchDetail(record); }}>详情</a>;
+      },
+    },
+  ];
+
   const interactionHistoryColumns = [
     {
       title: '发帖时间',
@@ -902,6 +1220,112 @@ const TaskDetailView: React.FC<{
     },
   ];
 
+  const batchLinkColumns = [
+    {
+      title: '链接',
+      dataIndex: 'link',
+      key: 'link',
+      width: 90,
+      render: function (link: string) {
+        return <a href={link} target="_blank" rel="noreferrer" style={{ fontSize: 12, fontWeight: 500 }}>查看网帖 →</a>;
+      },
+    },
+    {
+      title: '标题',
+      dataIndex: 'title',
+      key: 'title',
+      width: 140,
+      ellipsis: true,
+    },
+    {
+      title: '信源',
+      dataIndex: 'platform',
+      key: 'platform',
+      width: 80,
+      render: function (platform: string) {
+        return <Tag color="blue" style={{ margin: 0 }}>{platform}</Tag>;
+      },
+    },
+    {
+      title: '作者',
+      dataIndex: 'author',
+      key: 'author',
+      width: 100,
+      ellipsis: true,
+    },
+    {
+      title: task.task_type === 'interaction' ? '本次抓取互动量' : '本次抓取评论数',
+      key: 'collected_val',
+      width: 160,
+      render: function (_: any, record: BatchLinkDetailRecord) {
+        return task.task_type === 'interaction' && record.interaction_last
+          ? <span style={{ fontSize: 12, fontWeight: 500 }}>{formatInteractionSummary(record.interaction_last)}</span>
+          : <span style={{ fontSize: 12, fontWeight: 500 }}>{record.comment_last} 条评论</span>;
+      },
+    },
+    ...(task.task_type === 'comment' ? [{
+      title: '采集最新评论快照',
+      dataIndex: 'latest_comment',
+      key: 'latest_comment',
+      width: 260,
+      ellipsis: true,
+      render: function (val: string) {
+        return <span style={{ color: 'rgba(0,0,0,0.65)', fontSize: 12 }}>“{val}”</span>;
+      },
+    }] : []),
+  ];
+
+  const batchCommentColumns = [
+    {
+      title: '链接',
+      dataIndex: 'link',
+      key: 'link',
+      width: 95,
+      render: function (link: string) {
+        return <a href={link} target="_blank" rel="noreferrer" style={{ fontSize: 12, fontWeight: 500 }}>查看网帖 →</a>;
+      },
+    },
+    {
+      title: '标题',
+      dataIndex: 'title',
+      key: 'title',
+      width: 140,
+      ellipsis: true,
+    },
+    {
+      title: '信源',
+      dataIndex: 'platform',
+      key: 'platform',
+      width: 80,
+      render: function (platform: string) {
+        return <Tag color="blue" style={{ margin: 0 }}>{platform}</Tag>;
+      },
+    },
+    {
+      title: '作者',
+      dataIndex: 'author',
+      key: 'author',
+      width: 100,
+      ellipsis: true,
+    },
+    {
+      title: '评论内容',
+      dataIndex: 'content',
+      key: 'content',
+      width: 280,
+      ellipsis: true,
+      render: function (val: string) {
+        return <span style={{ color: 'rgba(0,0,0,0.85)', fontSize: 12 }}>“{val}”</span>;
+      },
+    },
+    {
+      title: '评论时间',
+      dataIndex: 'publish_time',
+      key: 'publish_time',
+      width: 140,
+    },
+  ];
+
   return (
     <div className="ct-detail-view">
       <div className="ct-form-header">
@@ -948,7 +1372,9 @@ const TaskDetailView: React.FC<{
             </Descriptions.Item>
           )}
           <Descriptions.Item label="状态">
-            <Tag color={task.status === 'active' ? 'success' : 'default'}>{task.status === 'active' ? '开启' : '关闭'}</Tag>
+            {task.status === 'running' && <Tag color="processing">进行中</Tag>}
+            {task.status === 'not_started' && <Tag color="default">未开始</Tag>}
+            {task.status === 'ended' && <Tag color="default" style={{ opacity: 0.65 }}>已结束</Tag>}
           </Descriptions.Item>
           <Descriptions.Item label="最近更新">{task.last_updated}</Descriptions.Item>
           <Descriptions.Item label="创建时间">{task.created_at}</Descriptions.Item>
@@ -956,7 +1382,26 @@ const TaskDetailView: React.FC<{
       </Card>
 
       {/* 采集详情 */}
-      <Card className="ct-detail-card" title="采集详情" size="small" style={{ marginTop: 16 }}>
+      <Card 
+        className="ct-detail-card" 
+        title="采集详情" 
+        size="small" 
+        style={{ marginTop: 16 }}
+        extra={
+          <Space size={16}>
+            <span style={{ fontSize: 13, color: 'rgba(0,0,0,0.45)' }}>视图维度:</span>
+            <Radio.Group 
+              value={viewMode} 
+              onChange={function (e: any) { setViewMode(e.target.value); }} 
+              size="small"
+              buttonStyle="solid"
+            >
+              <Radio.Button value="batch">按采集次数</Radio.Button>
+              <Radio.Button value="link">按链接汇总</Radio.Button>
+            </Radio.Group>
+          </Space>
+        }
+      >
         {linkRecords.length === 0 ? (
           <div style={{ padding: '36px 0', textAlign: 'center' }}>
             <Empty
@@ -970,43 +1415,64 @@ const TaskDetailView: React.FC<{
           </div>
         ) : (
           <>
-            {task.task_type === 'interaction' ? (
+            {viewMode === 'batch' ? (
               <div className="ct-detail-content">
                 <div className="ct-link-list-header">
                   <div>
-                    <h4><BarChartOutlined style={{ marginRight: 6 }} />链接互动量采集结果</h4>
-                    <p>按链接/帖文拆分展示最新一次采集结果，点击详情查看该链接的互动量变动统计。</p>
+                    <h4><UnorderedListOutlined style={{ marginRight: 6 }} />采集批次执行记录</h4>
+                    <p>按采集任务的执行次数/批次进行汇总展示，点击详情查看当次批次采集到的网帖链接及数据快照。</p>
                   </div>
                 </div>
                 <Table
                   rowKey="id"
-                  columns={linkColumns}
-                  dataSource={linkRecords}
-                  pagination={false}
+                  columns={batchColumns}
+                  dataSource={batchRecords}
+                  pagination={{ pageSize: 10, showSizeChanger: false }}
                   size="small"
                 />
               </div>
             ) : (
               <div className="ct-detail-content">
-                <div className="ct-link-list-header">
+                {task.task_type === 'interaction' ? (
                   <div>
-                    <h4><UnorderedListOutlined style={{ marginRight: 6 }} />链接评论采集结果</h4>
-                    <p>按链接/帖文拆分展示最新一次有效评论数量，点击详情查看该链接从最新到最早的评论内容。</p>
+                    <div className="ct-link-list-header">
+                      <div>
+                        <h4><BarChartOutlined style={{ marginRight: 6 }} />链接互动量采集结果</h4>
+                        <p>按链接/帖文拆分展示最新一次采集结果，点击详情查看该链接的互动量变动统计。</p>
+                      </div>
+                    </div>
+                    <Table
+                      rowKey="id"
+                      columns={linkColumns}
+                      dataSource={linkRecords}
+                      pagination={{ pageSize: 10, showSizeChanger: false }}
+                      size="small"
+                    />
                   </div>
-                </div>
-                <Table
-                  rowKey="id"
-                  columns={linkColumns}
-                  dataSource={linkRecords}
-                  pagination={false}
-                  size="small"
-                />
+                ) : (
+                  <div>
+                    <div className="ct-link-list-header">
+                      <div>
+                        <h4><UnorderedListOutlined style={{ marginRight: 6 }} />链接评论采集结果</h4>
+                        <p>按链接/帖文拆分展示最新一次有效评论数量，点击详情查看该链接从最新到最早的评论内容。</p>
+                      </div>
+                    </div>
+                    <Table
+                      rowKey="id"
+                      columns={linkColumns}
+                      dataSource={linkRecords}
+                      pagination={{ pageSize: 10, showSizeChanger: false }}
+                      size="small"
+                    />
+                  </div>
+                )}
               </div>
             )}
           </>
         )}
       </Card>
 
+      {/* 抽屉1：链接采集明细（按链接汇总模式下的详情） */}
       <Drawer
         title={task.task_type === 'interaction' ? '互动量历史采集明细' : '评论采集明细'}
         placement="right"
@@ -1048,6 +1514,57 @@ const TaskDetailView: React.FC<{
           </div>
         )}
       </Drawer>
+
+      {/* 抽屉2：采集批次链接明细（按采集次数模式下的详情） */}
+      <Drawer
+        title={selectedBatch ? `采集批次详情 - ${selectedBatch.batch_name} (执行时间: ${selectedBatch.collected_at})` : '采集批次详情'}
+        placement="right"
+        width={850}
+        open={batchDrawerOpen}
+        onClose={closeBatchDetail}
+        className="ct-link-detail-drawer"
+        destroyOnClose
+      >
+        {selectedBatch && (
+          <div className="ct-link-drawer-content">
+            <div className="ct-link-drawer-summary" style={{ marginBottom: 16, paddingBottom: 16, borderBottom: '1px dashed #f0f0f0' }}>
+              <Space size={16} style={{ marginBottom: 8 }}>
+                <span style={{ fontSize: 16, fontWeight: 'bold', color: 'rgba(0,0,0,0.85)' }}>{selectedBatch.batch_name}</span>
+                <Badge status="success" text="采集状态：执行成功" />
+              </Space>
+              <div>
+                <Space size={16} wrap>
+                  <Tag color="cyan">抓取有效链接：{selectedBatch.link_count} 条</Tag>
+                  <Tag color="blue">
+                    {task.task_type === 'interaction' ? '抓取新增互动量：' : '抓取有效评论数：'}
+                    {selectedBatch.increment_count} {task.task_type === 'interaction' ? '次' : '条'}
+                  </Tag>
+                  <Tag color="orange">消耗额度：{selectedBatch.quota_consumed} 次</Tag>
+                  <Tag>采集执行时间：{selectedBatch.collected_at}</Tag>
+                </Space>
+              </div>
+            </div>
+
+            {task.task_type === 'comment' ? (
+              <Table
+                rowKey="id"
+                columns={batchCommentColumns}
+                dataSource={getBatchCommentRecords(task, selectedBatch)}
+                pagination={{ pageSize: 10, showSizeChanger: false }}
+                size="small"
+              />
+            ) : (
+              <Table
+                rowKey="id"
+                columns={batchLinkColumns}
+                dataSource={getBatchLinkRecords(task, selectedBatch)}
+                pagination={{ pageSize: 10, showSizeChanger: false }}
+                size="small"
+              />
+            )}
+          </div>
+        )}
+      </Drawer>
     </div>
   );
 };
@@ -1057,7 +1574,7 @@ const TaskDetailView: React.FC<{
 type ViewType = 'list' | 'detail';
 
 const CollectTask: React.FC = function () {
-  const DATA_VERSION = 'v2026_08_10_02';
+  const DATA_VERSION = 'v2026_08_11_01';
 
   // 列表/详情视图切换
   const [currentView, setCurrentView] = useState<ViewType>('list');
@@ -1089,7 +1606,7 @@ const CollectTask: React.FC = function () {
   // 预警判定助手
   const getAlertTasks = useCallback(function (taskList: TaskItem[], threshold: number) {
     return taskList.filter(function (t) {
-      if (t.status !== 'active') return false;
+      if (t.status !== 'running') return false;
       const limit = 5000;
       const current = t.task_type === 'comment' ? (t.comment_total || t.total_count) : t.total_count;
       const leftRatio = (limit - current) / limit;
@@ -1123,13 +1640,12 @@ const CollectTask: React.FC = function () {
 
   // ============ 列表操作 ============
 
-  const handleToggle = useCallback(function (id: string, checked: boolean) {
+  const handleStatusChange = useCallback(function (id: string, newStatus: TaskStatus) {
     setTasks(function (prev) {
       return prev.map(function (t) {
         if (t.id === id) {
-          if (checked) {
-            // 开启任务：生成模拟数据
-            message.success('任务已开启');
+          if (newStatus === 'running') {
+            message.success('任务已启动');
             if (t.task_type === 'interaction') {
               var totalLikes = Math.floor(Math.random() * 50000) + 1000;
               var totalFavorites = Math.floor(Math.random() * 10000) + 200;
@@ -1141,7 +1657,7 @@ const CollectTask: React.FC = function () {
               var lastComments = Math.floor(Math.random() * totalComments * 0.15) + 1;
               return {
                 ...t,
-                status: 'active' as TaskStatus,
+                status: 'running' as TaskStatus,
                 has_activated: true,
                 total_count: totalLikes + totalFavorites + totalReposts + totalComments,
                 hourly_increment: lastLikes + lastFavorites + lastReposts + lastComments,
@@ -1152,16 +1668,16 @@ const CollectTask: React.FC = function () {
               let commentBase = 20;
               if (t.platform_pages) {
                 var pages = Object.values(t.platform_pages);
-                if (pages.includes('max')) commentBase = 800;
-                else if (pages.includes('10')) commentBase = 200;
+                if (pages.includes('10')) commentBase = 200;
                 else if (pages.includes('5')) commentBase = 100;
+                else if (pages.includes('3')) commentBase = 60;
               }
               var multiplier = t.scope_type === 'other' ? 20 : 15;
               var cTotal = commentBase * multiplier + (Math.floor(Math.random() * 100) + 10);
               var cLast = Math.floor(commentBase * 0.15) + 5;
               return {
                 ...t,
-                status: 'active' as TaskStatus,
+                status: 'running' as TaskStatus,
                 has_activated: true,
                 total_count: cTotal,
                 hourly_increment: cLast,
@@ -1169,12 +1685,16 @@ const CollectTask: React.FC = function () {
                 comment_last: cLast,
               };
             }
-          } else {
-            // 关闭任务：清空数据
-            message.success('任务已关闭');
+          } else if (newStatus === 'ended') {
+            message.success('任务已结束');
             return {
               ...t,
-              status: 'inactive' as TaskStatus,
+              status: 'ended' as TaskStatus,
+            };
+          } else {
+            return {
+              ...t,
+              status: 'not_started' as TaskStatus,
               total_count: 0,
               hourly_increment: 0,
               interaction_total: undefined,
@@ -1222,7 +1742,7 @@ const CollectTask: React.FC = function () {
       {currentView === 'list' ? (
         <TaskListView
           tasks={tasks}
-          onToggle={handleToggle}
+          onStatusChange={handleStatusChange}
           onEdit={handleEdit}
           onView={handleView}
           onCreate={handleCreate}
@@ -1276,7 +1796,7 @@ const CollectTask: React.FC = function () {
               track_days: values.track_days || 7,
               total_count: 0,
               hourly_increment: 0,
-              status: 'inactive',
+              status: 'not_started',
               has_activated: false,
               last_updated: '-',
               created_at: dayjs().format('YYYY-MM-DD HH:mm'),
