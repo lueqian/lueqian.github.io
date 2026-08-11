@@ -355,9 +355,9 @@ const CollectTaskQuotaTab: React.FC<{
 
   // ── 模拟额度包数据 ──
   const [quotaPackages, setQuotaPackages] = useState([
-    { id: 1, expiry: '2027-06-30', record: '额度包', total: 500000, used: 387200, status: '已启用' },
-    { id: 2, expiry: '2026-03-15', record: '额度包', total: 200000, used: 200000, status: '已停用' },
-    { id: 3, expiry: '2027-12-31', record: '额度包', total: 1000000, used: 125600, status: '已启用' },
+    { id: 1, expiry: '2027-06-30', record: '额度包', total: 500000, used: 387200, status: '使用中' },
+    { id: 2, expiry: '2026-03-15', record: '额度包', total: 200000, used: 200000, status: '已用完' },
+    { id: 3, expiry: '2027-12-31', record: '额度包', total: 1000000, used: 125600, status: '使用中' },
   ]);
 
   // ── 额度明细筛选状态 ──
@@ -490,7 +490,7 @@ const CollectTaskQuotaTab: React.FC<{
   // ── 计算仪表盘指标 ──
   const totalQuota = quotaPackages.reduce((sum, p) => sum + p.total, 0);
   const availableQuota = quotaPackages
-    .filter((p) => p.status === '已启用' && p.used < p.total)
+    .filter((p) => p.status === '使用中' && p.used < p.total)
     .reduce((sum, p) => sum + (p.total - p.used), 0);
   const usageRate = totalQuota > 0 ? Math.round((availableQuota / totalQuota) * 100) : 0;
   const isLowBalance = usageRate < alertThreshold;
@@ -526,7 +526,7 @@ const CollectTaskQuotaTab: React.FC<{
         record: '额度包',
         total: parseInt(formAmount, 10),
         used: 0,
-        status: '已启用',
+        status: '使用中',
       };
       setQuotaPackages((prev) => [newPkg, ...prev]);
     } else if (modalMode === 'edit' && editTarget != null) {
@@ -542,8 +542,10 @@ const CollectTaskQuotaTab: React.FC<{
           alert('有效期仅支持延期操作！请输入晚于等于原有效期（' + pkg.expiry + '）的日期。');
           return;
         }
+        const isUsedUp = newTotal <= pkg.used;
+        const newStatus = isUsedUp ? '已用完' : '使用中';
         setQuotaPackages((prev) =>
-          prev.map((p) => (p.id === editTarget ? { ...p, total: newTotal, expiry: formDate } : p))
+          prev.map((p) => (p.id === editTarget ? { ...p, total: newTotal, expiry: formDate, status: newStatus } : p))
         );
       }
     }
@@ -615,7 +617,7 @@ const CollectTaskQuotaTab: React.FC<{
                   <td className="pkg-num">{formatNum(pkg.total)}</td>
                   <td className="pkg-num">{formatNum(pkg.used)}</td>
                   <td>
-                    <span className={pkg.status === '已启用' ? 'pkg-status-enabled' : 'pkg-status-disabled'}>
+                    <span className={pkg.status === '使用中' ? 'pkg-status-enabled' : 'pkg-status-disabled'}>
                       {pkg.status}
                     </span>
                   </td>
