@@ -308,8 +308,8 @@ const CollectTaskQuotaTab: React.FC<{
   alertThreshold: number;
 }> = ({ statsEnabled, onToggleStats, alertThreshold }) => {
 
-  // ── 弹窗模式：add | reduce | extend | null ──
-  const [modalMode, setModalMode] = useState<'add' | 'reduce' | 'extend' | null>(null);
+  // ── 弹窗模式：add | edit | null ──
+  const [modalMode, setModalMode] = useState<'add' | 'edit' | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
   const [editTarget, setEditTarget] = useState<number | null>(null);
@@ -496,17 +496,13 @@ const CollectTaskQuotaTab: React.FC<{
   const isLowBalance = usageRate < alertThreshold;
 
   // ── 打开弹窗 ──
-  const openModal = (mode: 'add' | 'reduce' | 'extend', pkgId?: number) => {
+  const openModal = (mode: 'add' | 'edit', pkgId?: number) => {
     setModalMode(mode);
     setEditTarget(pkgId ?? null);
     if (mode === 'add') {
       setFormAmount('');
       setFormDate('');
-    } else if (mode === 'reduce' && pkgId != null) {
-      const pkg = quotaPackages.find((p) => p.id === pkgId);
-      setFormAmount(String(pkg?.total ?? ''));
-      setFormDate(pkg?.expiry ?? '');
-    } else if (mode === 'extend' && pkgId != null) {
+    } else if (mode === 'edit' && pkgId != null) {
       const pkg = quotaPackages.find((p) => p.id === pkgId);
       setFormAmount(String(pkg?.total ?? ''));
       setFormDate(pkg?.expiry ?? '');
@@ -533,20 +529,23 @@ const CollectTaskQuotaTab: React.FC<{
         status: '已启用',
       };
       setQuotaPackages((prev) => [newPkg, ...prev]);
-    } else if (modalMode === 'reduce' && editTarget != null) {
-      if (!formAmount) return;
+    } else if (modalMode === 'edit' && editTarget != null) {
+      if (!formAmount || !formDate) return;
       const newTotal = parseInt(formAmount, 10);
       const pkg = quotaPackages.find((p) => p.id === editTarget);
-      if (pkg && newTotal > 0 && newTotal <= pkg.total) {
+      if (pkg) {
+        if (newTotal > pkg.total) {
+          alert('数据量仅支持减量操作！请输小于等于原额度（' + pkg.total + '）的数值。');
+          return;
+        }
+        if (formDate < pkg.expiry) {
+          alert('有效期仅支持延期操作！请输入晚于等于原有效期（' + pkg.expiry + '）的日期。');
+          return;
+        }
         setQuotaPackages((prev) =>
-          prev.map((p) => (p.id === editTarget ? { ...p, total: newTotal } : p))
+          prev.map((p) => (p.id === editTarget ? { ...p, total: newTotal, expiry: formDate } : p))
         );
       }
-    } else if (modalMode === 'extend' && editTarget != null) {
-      if (!formDate) return;
-      setQuotaPackages((prev) =>
-        prev.map((p) => (p.id === editTarget ? { ...p, expiry: formDate } : p))
-      );
     }
     closeModal();
   };
@@ -556,6 +555,13 @@ const CollectTaskQuotaTab: React.FC<{
     if (editTarget == null) return Infinity;
     const pkg = quotaPackages.find((p) => p.id === editTarget);
     return pkg?.total ?? Infinity;
+  };
+
+  // ── 延期校验：不允许早于原有过期日期 ──
+  const getExtendMin = () => {
+    if (editTarget == null) return undefined;
+    const pkg = quotaPackages.find((p) => p.id === editTarget);
+    return pkg?.expiry;
   };
 
   // ── 删除额度包 ──
@@ -569,9 +575,7 @@ const CollectTaskQuotaTab: React.FC<{
   const formatNum = (n: number) => n.toLocaleString();
 
   // ── 弹窗标题映射 ──
-  const modalTitleMap = { add: '新增额度包', reduce: '额度包减量', extend: '额度包延期' };
-  const isAmountDisabled = modalMode === 'extend';
-  const isDateDisabled = modalMode === 'reduce';
+  const modalTitleMap = { add: '新增额度包', edit: '编辑额度包' };
 
   return (
     <>
@@ -617,8 +621,7 @@ const CollectTaskQuotaTab: React.FC<{
                   </td>
                   <td>
                     <div className="pkg-actions">
-                      <span className="pkg-action-link" onClick={() => openModal('reduce', pkg.id)}>减量</span>
-                      <span className="pkg-action-link" onClick={() => openModal('extend', pkg.id)}>延期</span>
+                      <span className="pkg-action-link" onClick={() => openModal('edit', pkg.id)}>编辑</span>
                       <span
                         className="pkg-action-link pkg-action-danger"
                         onClick={() => {
@@ -1073,7 +1076,7 @@ const CollectTaskQuotaTab: React.FC<{
         </div>
       )}
 
-      {/* ═══════ 通用额度包弹窗（新增 / 减量 / 延期） ═══════ */}
+      {/* ═══════ 通用额度包弹窗（新增 / 编辑） ═══════ */}
       {modalMode && (
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal-container" onClick={(e) => e.stopPropagation()}>
@@ -1092,14 +1095,13 @@ const CollectTaskQuotaTab: React.FC<{
                       className="modal-input modal-input-group-inner"
                       type="number"
                       min="1"
-                      max={modalMode === 'reduce' ? getReduceMax() : undefined}
+                      max={modalMode === 'edit' ? getReduceMax() : undefined}
                       step="1"
                       placeholder="请输入正整数"
                       value={formAmount}
-                      disabled={isAmountDisabled}
                       onChange={(e) => {
                         let val = e.target.value;
-                        if (modalMode === 'reduce') {
+                        if (modalMode === 'edit') {
                           const n = parseInt(val, 10);
                           if (!isNaN(n) && n > getReduceMax()) {
                             val = String(getReduceMax());
@@ -1120,8 +1122,8 @@ const CollectTaskQuotaTab: React.FC<{
                   <input
                     className="modal-input"
                     type="date"
+                    min={modalMode === 'edit' ? getExtendMin() : undefined}
                     value={formDate}
-                    disabled={isDateDisabled}
                     onChange={(e) => setFormDate(e.target.value)}
                   />
                 </div>
@@ -1131,13 +1133,7 @@ const CollectTaskQuotaTab: React.FC<{
               <button className="btn-modal-cancel" onClick={closeModal}>取消</button>
               <button
                 className="btn-modal-confirm"
-                disabled={
-                  modalMode === 'add'
-                    ? !formAmount || !formDate
-                    : modalMode === 'reduce'
-                      ? !formAmount
-                      : !formDate
-                }
+                disabled={!formAmount || !formDate}
                 onClick={handleModalSubmit}
               >
                 确定
