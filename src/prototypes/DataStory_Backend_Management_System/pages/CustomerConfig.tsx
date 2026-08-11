@@ -572,44 +572,8 @@ const CollectTaskQuotaTab: React.FC<{ statsEnabled: boolean; onToggleStats: () =
 
   return (
     <>
-      {/* ── 仪表盘：3 张指标卡片 ── */}
+      {/* ── 仪表盘已移除 ── */}
       {statsEnabled && (<>
-      <div className="metric-cards metric-cards-3">
-        {/* 总量 */}
-        <div className="metric-card metric-blue">
-          <div className="metric-title">总量</div>
-          <div className="metric-value-row">
-            <span className="metric-value">{formatNum(totalQuota)}</span>
-            <span className="metric-unit">次</span>
-          </div>
-        </div>
-
-        {/* 可用数据量（低于 10% 变红预警） */}
-        <div className={`metric-card ${isLowBalance ? 'metric-red' : 'metric-green'}`}>
-          <div className="metric-title">
-            可用数据量
-            {isLowBalance && <ExclamationCircleOutlined className="metric-warning-icon" />}
-          </div>
-          <div className="metric-value-row">
-            <span className="metric-value">{formatNum(availableQuota)}</span>
-            <span className="metric-unit">次</span>
-          </div>
-        </div>
-
-        {/* 占比（含进度条） */}
-        <div className="metric-card metric-orange">
-          <div className="metric-title">占比</div>
-          <div className="metric-value-row">
-            <span className="metric-value">{usageRate} %</span>
-          </div>
-          <div className="metric-progress">
-            <div
-              className={`metric-progress-bar ${isLowBalance ? 'progress-danger' : 'progress-normal'}`}
-              style={{ width: `${Math.min(usageRate, 100)}%` }}
-            />
-          </div>
-        </div>
-      </div>
 
       {/* ── 采集平台管理 ── */}
       <div className="platform-mgmt-section">
