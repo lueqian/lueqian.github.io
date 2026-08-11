@@ -41,7 +41,7 @@ const costSubTabs = [
 ];
 
 /** ── 共享状态栏组件 ── */
-const CostStatusBar: React.FC<{ statsEnabled: boolean; onToggle: () => void }> = ({ statsEnabled, onToggle }) => {
+const CostStatusBar: React.FC<{ statsEnabled: boolean; onToggle: () => void; showExpiry?: boolean }> = ({ statsEnabled, onToggle, showExpiry = true }) => {
   return (
     <div className="cost-status-bar">
       <div className="cost-status-left">
@@ -59,7 +59,7 @@ const CostStatusBar: React.FC<{ statsEnabled: boolean; onToggle: () => void }> =
           </span>
         )}
       </div>
-      {statsEnabled && (
+      {statsEnabled && showExpiry && (
         <div className="cost-status-right">
           <span className="cost-status-text">有效期: 2027-01-01</span>
           <span className="cost-status-remain">剩余 256 日</span>
@@ -302,7 +302,11 @@ function generateTaskData(): TaskRecord[] {
 const TASK_DATA = generateTaskData();
 
 /** ── 采集任务额度（次）子 Tab 内容 ── */
-const CollectTaskQuotaTab: React.FC<{ statsEnabled: boolean; onToggleStats: () => void }> = ({ statsEnabled, onToggleStats }) => {
+const CollectTaskQuotaTab: React.FC<{
+  statsEnabled: boolean;
+  onToggleStats: () => void;
+  alertThreshold: number;
+}> = ({ statsEnabled, onToggleStats, alertThreshold }) => {
 
   // ── 弹窗模式：add | reduce | extend | null ──
   const [modalMode, setModalMode] = useState<'add' | 'reduce' | 'extend' | null>(null);
@@ -376,7 +380,6 @@ const CollectTaskQuotaTab: React.FC<{ statsEnabled: boolean; onToggleStats: () =
   const [exportLoading, setExportLoading] = useState(false);
   const [exportMessage, setExportMessage] = useState('');
   const [showExportToast, setShowExportToast] = useState(false);
-  const [alertThreshold, setAlertThreshold] = useState(30);
 
   // ── 过滤数据 ──
   const filteredData = useMemo(() => {
@@ -575,109 +578,12 @@ const CollectTaskQuotaTab: React.FC<{ statsEnabled: boolean; onToggleStats: () =
       {/* ── 仪表盘已移除 ── */}
       {statsEnabled && (<>
 
-      {/* ── 采集平台管理 ── */}
-      <div className="platform-mgmt-section">
-        <div className="platform-mgmt-header">
-          <span className="platform-mgmt-title">采集平台管理</span>
-        </div>
-        <div className="platform-mgmt-platform-select">
-          <span className="platform-mgmt-select-label">允许用户采集的平台：</span>
-          <div className="platform-mgmt-checkboxes">
-            <label
-              className={`checkbox-item ${selectedPlatforms.length === platforms.length ? 'checkbox-checked' : ''}`}
-              onClick={toggleAllPlatforms}
-            >
-              <span className="checkbox-box">
-                {selectedPlatforms.length === platforms.length && <span className="checkbox-tick">✓</span>}
-              </span>
-              <span>全部</span>
-            </label>
-            {platforms.map((p) => (
-              <label
-                key={p}
-                className={`checkbox-item ${selectedPlatforms.includes(p) ? 'checkbox-checked' : ''}`}
-                onClick={() => togglePlatform(p)}
-              >
-                <span className="checkbox-box">
-                  {selectedPlatforms.includes(p) && <span className="checkbox-tick">✓</span>}
-                </span>
-                <span>{p}</span>
-              </label>
-            ))}
-          </div>
-        </div>
-
-        {/* 平台卡片列表 */}
-        {selectedPlatforms.length > 0 && (
-          <div className="platform-card-list">
-            {selectedPlatforms.map((p) => (
-              <div key={p} className="platform-card">
-                <span className={`platform-card-name ${p === '小红书' ? 'platform-name-blue' : ''}`}>{p}</span>
-                <div className="platform-card-fields">
-                  <div className="platform-card-field">
-                    <label className="platform-card-label">互动量更新单次费用</label>
-                    <input
-                      type="number"
-                      className="platform-card-input"
-                      min="0"
-                      max="100"
-                      step="0.01"
-                      value={platformFactors[p]?.interaction ?? '1.00'}
-                      onChange={(e) => updateFactor(p, 'interaction', e.target.value)}
-                    />
-                    <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>元</span>
-                  </div>
-                  <div className="platform-card-field">
-                    <label className="platform-card-label">评论区采集单次费用</label>
-                    <input
-                      type="number"
-                      className="platform-card-input"
-                      min="0"
-                      max="100"
-                      step="0.01"
-                      value={platformFactors[p]?.comment ?? '1.00'}
-                      onChange={(e) => updateFactor(p, 'comment', e.target.value)}
-                    />
-                    <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>元</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* ── 额度预警配置 ── */}
-      <div className="platform-mgmt-section" style={{ marginTop: '16px' }}>
-        <div className="platform-mgmt-header">
-          <span className="platform-mgmt-title">额度预警配置</span>
-        </div>
-        <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--text-secondary)' }}>
-          <span>当剩余可用额度低于总额度的</span>
-          <input
-            type="number"
-            className="qf-filter-input"
-            style={{ width: '80px', textAlign: 'center', height: '30px', padding: '0 8px' }}
-            min="0"
-            max="100"
-            value={alertThreshold}
-            onChange={(e) => {
-              let val = parseInt(e.target.value, 10);
-              if (isNaN(val)) val = 0;
-              val = Math.max(0, Math.min(100, val));
-              setAlertThreshold(val);
-            }}
-          />
-          <span>% 时，系统进行提醒。</span>
-        </div>
-      </div>
-
-      {/* ── 额度包列表 ── */}
+      {/* ── 额度包管理 ── */}
       <div className="pkg-section">
         <div className="pkg-header">
           <div className="pkg-header-left">
             <DatabaseOutlined className="pkg-icon" />
-            <span className="pkg-title">额度包</span>
+            <span className="pkg-title">额度包管理</span>
           </div>
           <button className="btn-add-pkg" onClick={() => openModal('add')}>
             <PlusOutlined />
@@ -741,12 +647,82 @@ const CollectTaskQuotaTab: React.FC<{ statsEnabled: boolean; onToggleStats: () =
         </div>
       </div>
 
-      {/* ── 采集任务额度消耗明细 ── */}
+      {/* ── 信源计费规则 ── */}
+      <div className="platform-mgmt-section" style={{ marginTop: '24px' }}>
+        <div className="platform-mgmt-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span className="platform-mgmt-title">信源计费规则</span>
+          <label
+            className={`checkbox-item ${selectedPlatforms.length === platforms.length ? 'checkbox-checked' : ''}`}
+            onClick={toggleAllPlatforms}
+            style={{ margin: 0, padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--border-light)', cursor: 'pointer' }}
+          >
+            <span className="checkbox-box" style={{ marginRight: '6px' }}>
+              {selectedPlatforms.length === platforms.length && <span className="checkbox-tick">✓</span>}
+            </span>
+            <span style={{ fontSize: '13px', fontWeight: 'normal', color: 'var(--text-main)' }}>全选所有平台</span>
+          </label>
+        </div>
+
+        {/* 平台卡片列表 */}
+        <div className="platform-card-list" style={{ marginTop: '16px' }}>
+          {platforms.map((p) => {
+            const isChecked = selectedPlatforms.includes(p);
+            return (
+              <div key={p} className={`platform-card ${isChecked ? '' : 'platform-card-disabled'}`}>
+                {/* 平台复选框勾选 */}
+                <label
+                  className={`checkbox-item ${isChecked ? 'checkbox-checked' : ''}`}
+                  onClick={() => togglePlatform(p)}
+                  style={{ margin: 0, padding: 0, border: 'none', background: 'transparent', display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}
+                >
+                  <span className="checkbox-box" style={{ marginRight: '8px' }}>
+                    {isChecked && <span className="checkbox-tick">✓</span>}
+                  </span>
+                  <span className={`platform-card-name ${isChecked && p === '小红书' ? 'platform-name-blue' : ''}`}>{p}</span>
+                </label>
+
+                <div className="platform-card-fields">
+                  <div className="platform-card-field">
+                    <label className="platform-card-label">互动量更新单次费用</label>
+                    <input
+                      type="number"
+                      className="platform-card-input"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      disabled={!isChecked}
+                      value={platformFactors[p]?.interaction ?? '1.00'}
+                      onChange={(e) => updateFactor(p, 'interaction', e.target.value)}
+                    />
+                    <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>元</span>
+                  </div>
+                  <div className="platform-card-field">
+                    <label className="platform-card-label">评论区采集单次费用</label>
+                    <input
+                      type="number"
+                      className="platform-card-input"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      disabled={!isChecked}
+                      value={platformFactors[p]?.comment ?? '1.00'}
+                      onChange={(e) => updateFactor(p, 'comment', e.target.value)}
+                    />
+                    <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>元</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── 任务额度明细 ── */}
       <div className="pkg-section log-section" style={{ marginTop: '24px' }}>
         <div className="pkg-header">
           <div className="pkg-header-left">
             <ClockCircleOutlined className="pkg-icon" />
-            <span className="pkg-title">采集任务额度使用明细</span>
+            <span className="pkg-title">任务额度明细</span>
           </div>
         </div>
 
@@ -1194,8 +1170,8 @@ const CollectTaskQuotaTab: React.FC<{ statsEnabled: boolean; onToggleStats: () =
 };
 
 /** ── 费用统计主 Tab ── */
-const CostStatisticsTab: React.FC = () => {
-  const [activeCostTab, setActiveCostTab] = useState('rows');
+const CostStatisticsTab: React.FC<{ alertThreshold: number }> = ({ alertThreshold }) => {
+  const [activeCostTab, setActiveCostTab] = useState('times');
   const [statsEnabled, setStatsEnabled] = useState(true);
 
   return (
@@ -1214,19 +1190,29 @@ const CostStatisticsTab: React.FC = () => {
       </div>
 
       {/* ── 共享状态栏 ── */}
-      <CostStatusBar statsEnabled={statsEnabled} onToggle={() => setStatsEnabled(!statsEnabled)} />
+      <CostStatusBar 
+        statsEnabled={statsEnabled} 
+        onToggle={() => setStatsEnabled(!statsEnabled)} 
+        showExpiry={activeCostTab !== 'times'}
+      />
 
       {/* ── 二级 Tab 内容 ── */}
       <div className="cost-sub-tab-content">
         {activeCostTab === 'rows' && <DataPackageTab />}
-        {activeCostTab === 'times' && <CollectTaskQuotaTab statsEnabled={statsEnabled} onToggleStats={() => setStatsEnabled(!statsEnabled)} />}
+        {activeCostTab === 'times' && (
+          <CollectTaskQuotaTab 
+            statsEnabled={statsEnabled} 
+            onToggleStats={() => setStatsEnabled(!statsEnabled)} 
+            alertThreshold={alertThreshold} 
+          />
+        )}
       </div>
     </div>
   );
 };
 
 const CustomerConfig: React.FC<CustomerConfigProps> = ({ customerName, onBack }) => {
-  const [activeTab, setActiveTab] = useState('service');
+  const [activeTab, setActiveTab] = useState('cost');
 
   // ── 专题配置表单状态 ──
   const [historyLimitMode, setHistoryLimitMode] = useState<'unlimited' | 'byCount'>('byCount');
@@ -1251,6 +1237,9 @@ const CustomerConfig: React.FC<CustomerConfigProps> = ({ customerName, onBack })
   // ── 搜索配置表单状态 ──
   const [searchDefaultDays, setSearchDefaultDays] = useState(7);
   const [searchLongestDays, setSearchLongestDays] = useState(90);
+
+  // ── 预警配置状态 ──
+  const [alertThreshold, setAlertThreshold] = useState(30);
 
   /** 步进器通用组件 */
   const Stepper = ({ value, onChange, min = 0, max = 99999999 }: { value: number; onChange: (v: number) => void; min?: number; max?: number }) => (
@@ -1480,13 +1469,36 @@ const CustomerConfig: React.FC<CustomerConfigProps> = ({ customerName, onBack })
                 </div>
               </div>
             </div>
+
+            {/* 额度预警配置 */}
+            <div className="form-row">
+              <label className="form-label">额度预警配置</label>
+              <div className="form-control" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                <span>当剩余可用额度低于总额度的</span>
+                <input
+                  type="number"
+                  className="qf-filter-input"
+                  style={{ width: '80px', textAlign: 'center', height: '30px', padding: '0 8px' }}
+                  min="0"
+                  max="100"
+                  value={alertThreshold}
+                  onChange={(e) => {
+                    let val = parseInt(e.target.value, 10);
+                    if (isNaN(val)) val = 0;
+                    val = Math.max(0, Math.min(100, val));
+                    setAlertThreshold(val);
+                  }}
+                />
+                <span>% 时，系统进行提醒。</span>
+              </div>
+            </div>
           </div>
         </div>
           </>
         )}
 
         {activeTab === 'cost' && (
-          <CostStatisticsTab />
+          <CostStatisticsTab alertThreshold={alertThreshold} />
         )}
       </div>
 

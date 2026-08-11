@@ -39,7 +39,8 @@ const menuLabelMap = buildMenuMap(menuConfig);
 const Index: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [breadcrumbStack, setBreadcrumbStack] = useState<BreadcrumbItem[]>([
-    { path: 'dashboard', label: 'Dashboard' },
+    { path: 'customer-list', label: '运营管理 / 客户列表' },
+    { path: 'customer-config', label: '腾讯元宝', params: { customerName: '腾讯元宝' } },
   ]);
 
   const currentPath = breadcrumbStack[breadcrumbStack.length - 1].path;

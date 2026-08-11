@@ -1720,6 +1720,30 @@ thead .col-fixed-right {
   box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
 }
 
+.platform-card-disabled {
+  background: #fafafa !important;
+  border-color: #e8e8e8 !important;
+}
+
+.platform-card-disabled:hover {
+  box-shadow: none !important;
+}
+
+.platform-card-disabled .platform-card-name {
+  color: var(--text-tertiary) !important;
+}
+
+.platform-card-disabled .platform-card-label {
+  color: var(--text-tertiary) !important;
+}
+
+.platform-card-disabled .platform-card-input {
+  background-color: #f5f5f5 !important;
+  color: var(--text-tertiary) !important;
+  border-color: #d9d9d9 !important;
+  cursor: not-allowed;
+}
+
 /* ── 5 列卡片布局（保留条 Tab 原有） ── */
 .metric-cards-5 {
   grid-template-columns: repeat(5, 1fr);
