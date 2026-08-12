@@ -404,9 +404,9 @@ const TaskFormContent: React.FC<{
   }, [onScopeTypeChange]);
 
   const handleDownloadTemplate = useCallback(function () {
-    const csvContent = "\ufeff" + "链接地址,补充标题,信息主题\n" +
-      "https://weibo.com/1234567890/xyz123,微博示例标题,示例信息主题\n" +
-      "https://www.xiaohongshu.com/explore/5e123456789,小红书示例标题,示例信息主题\n";
+    const csvContent = "\ufeff" + "链接地址\n" +
+      "https://weibo.com/1234567890/xyz123\n" +
+      "https://www.xiaohongshu.com/explore/5e123456789\n";
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -452,8 +452,8 @@ const TaskFormContent: React.FC<{
           if (cols[0]) {
             parsedLinks.push({
               link: cols[0],
-              title: cols[1] || '',
-              topic: cols[2] || ''
+              title: '',
+              topic: ''
             });
             rawLines.push(cols[0]);
           }
