@@ -69,6 +69,59 @@ const CostStatusBar: React.FC<{ statsEnabled: boolean; onToggle: () => void; sho
   );
 };
 
+/** ── 采集任务状态配置栏组件 ── */
+const CollectTaskStatusBar: React.FC<{
+  collectTaskEnabled: boolean;
+  onToggleCollectTask: () => void;
+  quotaDetailEnabled: boolean;
+  onToggleQuotaDetail: () => void;
+}> = ({
+  collectTaskEnabled,
+  onToggleCollectTask,
+  quotaDetailEnabled,
+  onToggleQuotaDetail,
+}) => {
+  return (
+    <div className="cost-status-bar" style={{ display: 'flex', gap: '32px', justifyContent: 'flex-start', alignItems: 'center' }}>
+      {/* 采集任务 */}
+      <div className="cost-status-left" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <label className="cost-switch-label" style={{ fontWeight: 500 }}>
+          采集任务
+        </label>
+        <div 
+          className={`status-toggle ${collectTaskEnabled ? 'toggle-on' : 'toggle-off'}`} 
+          onClick={onToggleCollectTask}
+        >
+          <span className="toggle-dot" />
+        </div>
+        <span style={{ fontSize: '12px', color: 'var(--text-secondary)', marginLeft: '4px' }}>
+          备注：开启后，客户系统中支持使用采集任务功能
+        </span>
+      </div>
+
+      {/* 分割线 */}
+      <div style={{ width: '1px', height: '16px', backgroundColor: 'var(--border-light)' }} />
+
+      {/* 额度明细 */}
+      <div className="cost-status-left" style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: collectTaskEnabled ? 1 : 0.5 }}>
+        <label className="cost-switch-label" style={{ fontWeight: 500 }}>
+          额度明细
+        </label>
+        <div 
+          className={`status-toggle ${quotaDetailEnabled ? 'toggle-on' : 'toggle-off'}`} 
+          style={!collectTaskEnabled ? { background: '#e8e8e8', cursor: 'not-allowed' } : undefined}
+          onClick={() => collectTaskEnabled && onToggleQuotaDetail()}
+        >
+          <span className="toggle-dot" />
+        </div>
+        <span style={{ fontSize: '12px', color: 'var(--text-secondary)', marginLeft: '4px' }}>
+          备注：开启后，客户系统中允许查看采集任务消耗的具体额度
+        </span>
+      </div>
+    </div>
+  );
+};
+
 /** ── 数据包额度（条）子 Tab 内容 ── */
 const DataPackageTab: React.FC = () => {
   const [pkgLimitEnabled, setPkgLimitEnabled] = useState(true);
@@ -303,10 +356,10 @@ const TASK_DATA = generateTaskData();
 
 /** ── 采集任务额度（次）子 Tab 内容 ── */
 const CollectTaskQuotaTab: React.FC<{
-  statsEnabled: boolean;
-  onToggleStats: () => void;
+  collectTaskEnabled: boolean;
+  quotaDetailEnabled: boolean;
   alertThreshold: number;
-}> = ({ statsEnabled, onToggleStats, alertThreshold }) => {
+}> = ({ collectTaskEnabled, quotaDetailEnabled, alertThreshold }) => {
 
   // ── 弹窗模式：add | edit | null ──
   const [modalMode, setModalMode] = useState<'add' | 'edit' | null>(null);
@@ -582,7 +635,7 @@ const CollectTaskQuotaTab: React.FC<{
   return (
     <>
       {/* ── 仪表盘已移除 ── */}
-      {statsEnabled && (<>
+      {collectTaskEnabled && (<>
 
       {/* ── 额度包管理 ── */}
       <div className="pkg-section">
@@ -723,11 +776,23 @@ const CollectTaskQuotaTab: React.FC<{
       </div>
 
       {/* ── 任务额度明细 ── */}
-      <div className="pkg-section log-section" style={{ marginTop: '24px' }}>
+      <div 
+        className="pkg-section log-section" 
+        style={{ 
+          marginTop: '24px', 
+          opacity: quotaDetailEnabled ? 1 : 0.75,
+          transition: 'opacity 0.3s ease'
+        }}
+      >
         <div className="pkg-header">
           <div className="pkg-header-left">
             <ClockCircleOutlined className="pkg-icon" />
             <span className="pkg-title">任务额度明细</span>
+            {!quotaDetailEnabled && (
+              <span style={{ fontSize: '12px', color: '#8c8c8c', marginLeft: '12px', fontWeight: 'normal' }}>
+                （已关闭：客户系统中不可查看此明细）
+              </span>
+            )}
           </div>
         </div>
 
@@ -1171,6 +1236,8 @@ const CollectTaskQuotaTab: React.FC<{
 const CostStatisticsTab: React.FC<{ alertThreshold: number }> = ({ alertThreshold }) => {
   const [activeCostTab, setActiveCostTab] = useState('times');
   const [statsEnabled, setStatsEnabled] = useState(true);
+  const [collectTaskEnabled, setCollectTaskEnabled] = useState(true);
+  const [quotaDetailEnabled, setQuotaDetailEnabled] = useState(true);
 
   return (
     <div className="cost-tab">
@@ -1187,20 +1254,35 @@ const CostStatisticsTab: React.FC<{ alertThreshold: number }> = ({ alertThreshol
         ))}
       </div>
 
-      {/* ── 共享状态栏 ── */}
-      <CostStatusBar 
-        statsEnabled={statsEnabled} 
-        onToggle={() => setStatsEnabled(!statsEnabled)} 
-        showExpiry={activeCostTab !== 'times'}
-      />
+      {/* ── 状态栏 ── */}
+      {activeCostTab === 'rows' ? (
+        <CostStatusBar 
+          statsEnabled={statsEnabled} 
+          onToggle={() => setStatsEnabled(!statsEnabled)} 
+          showExpiry={true}
+        />
+      ) : (
+        <CollectTaskStatusBar
+          collectTaskEnabled={collectTaskEnabled}
+          onToggleCollectTask={() => {
+            const nextVal = !collectTaskEnabled;
+            setCollectTaskEnabled(nextVal);
+            if (!nextVal) {
+              setQuotaDetailEnabled(false);
+            }
+          }}
+          quotaDetailEnabled={quotaDetailEnabled}
+          onToggleQuotaDetail={() => setQuotaDetailEnabled(!quotaDetailEnabled)}
+        />
+      )}
 
       {/* ── 二级 Tab 内容 ── */}
       <div className="cost-sub-tab-content">
         {activeCostTab === 'rows' && <DataPackageTab />}
         {activeCostTab === 'times' && (
           <CollectTaskQuotaTab 
-            statsEnabled={statsEnabled} 
-            onToggleStats={() => setStatsEnabled(!statsEnabled)} 
+            collectTaskEnabled={collectTaskEnabled} 
+            quotaDetailEnabled={quotaDetailEnabled} 
             alertThreshold={alertThreshold} 
           />
         )}
