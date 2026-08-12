@@ -990,25 +990,8 @@ const TaskDetailView: React.FC<{
     return getTaskBatchRecords(task);
   }, [task]);
 
-  const [viewMode, setViewMode] = useState<'batch' | 'link'>(() => {
-    return task.id === 'task_demo_topic' ? 'batch' : 'link';
-  });
-
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [selectedLink, setSelectedLink] = useState<LinkCollectRecord | null>(null);
-
   const [batchDrawerOpen, setBatchDrawerOpen] = useState(false);
   const [selectedBatch, setSelectedBatch] = useState<BatchCollectRecord | null>(null);
-
-  const openLinkDetail = useCallback(function (record: LinkCollectRecord) {
-    setSelectedLink(record);
-    setDrawerOpen(true);
-  }, []);
-
-  const closeLinkDetail = useCallback(function () {
-    setDrawerOpen(false);
-    setSelectedLink(null);
-  }, []);
 
   const openBatchDetail = useCallback(function (record: BatchCollectRecord) {
     setSelectedBatch(record);
@@ -1019,81 +1002,6 @@ const TaskDetailView: React.FC<{
     setBatchDrawerOpen(false);
     setSelectedBatch(null);
   }, []);
-
-  const linkColumns = [
-    {
-      title: '链接',
-      dataIndex: 'link',
-      key: 'link',
-      width: 90,
-      render: function (link: string) {
-        return <a href={link} target="_blank" rel="noreferrer" style={{ fontSize: 12, fontWeight: 500 }}>查看网帖 →</a>;
-      },
-    },
-    {
-      title: '标题',
-      dataIndex: 'title',
-      key: 'title',
-      width: 130,
-      ellipsis: true,
-    },
-    {
-      title: '正文',
-      dataIndex: 'content',
-      key: 'content',
-      width: 200,
-      ellipsis: true,
-    },
-    {
-      title: '信源',
-      dataIndex: 'platform',
-      key: 'platform',
-      width: 70,
-      render: function (platform: string) {
-        return <Tag color="blue" style={{ margin: 0 }}>{platform}</Tag>;
-      },
-    },
-    {
-      title: '作者',
-      dataIndex: 'author',
-      key: 'author',
-      width: 90,
-      ellipsis: true,
-    },
-    {
-      title: '最新采集时间',
-      dataIndex: 'last_collected_at',
-      key: 'last_collected_at',
-      width: 140,
-    },
-    {
-      title: task.task_type === 'interaction' ? '最新互动量' : '采集评论数量',
-      key: 'latest_value',
-      width: 160,
-      render: function (_: any, record: LinkCollectRecord) {
-        return task.task_type === 'interaction'
-          ? <span className="ct-link-stat" style={{ fontSize: 12 }}>{formatInteractionSummary(record.interaction_last)}</span>
-          : <span className="ct-link-stat" style={{ fontSize: 12 }}>{formatCount(record.comment_last)} 条</span>;
-      },
-    },
-    {
-      title: '总采集次数',
-      dataIndex: 'total_collect_count',
-      key: 'total_collect_count',
-      width: 90,
-      render: function (v: number) {
-        return <span>{v || 5} 次</span>;
-      },
-    },
-    {
-      title: '操作',
-      key: 'action',
-      width: 60,
-      render: function (_: any, record: LinkCollectRecord) {
-        return <a className="ct-action-link" onClick={function () { openLinkDetail(record); }}>详情</a>;
-      },
-    },
-  ];
 
   const batchColumns = [
     {
@@ -1161,64 +1069,6 @@ const TaskDetailView: React.FC<{
     },
   ];
 
-  const interactionHistoryColumns = [
-    {
-      title: '发帖时间',
-      dataIndex: 'publish_time',
-      key: 'publish_time',
-      width: 140,
-    },
-    {
-      title: '采集互动量',
-      key: 'interaction',
-      width: 320,
-      render: function (_: any, record: InteractionHistoryRecord) {
-        return (
-          <span style={{ fontSize: 13 }}>
-            赞: <strong>{formatCount(record.likes)}</strong> | 
-            藏: <strong>{formatCount(record.favorites)}</strong> | 
-            转: <strong>{formatCount(record.reposts)}</strong> | 
-            评: <strong>{formatCount(record.comments)}</strong>
-          </span>
-        );
-      },
-    },
-    {
-      title: '采集时间',
-      dataIndex: 'collected_at',
-      key: 'collected_at',
-      width: 140,
-    },
-  ];
-
-  const commentHistoryColumns = [
-    {
-      title: '内容',
-      dataIndex: 'content',
-      key: 'content',
-      width: 260,
-      ellipsis: true,
-    },
-    {
-      title: '昵称',
-      dataIndex: 'user',
-      key: 'user',
-      width: 120,
-      ellipsis: true,
-    },
-    {
-      title: '时间',
-      dataIndex: 'publish_time',
-      key: 'publish_time',
-      width: 140,
-    },
-    {
-      title: '采集时间',
-      dataIndex: 'collected_at',
-      key: 'collected_at',
-      width: 140,
-    },
-  ];
 
   const batchLinkColumns = [
     {
@@ -1350,27 +1200,6 @@ const TaskDetailView: React.FC<{
           </Descriptions.Item>
           <Descriptions.Item label="更新频率">{task.frequency}</Descriptions.Item>
           <Descriptions.Item label="追踪天数">T+{task.track_days}</Descriptions.Item>
-          <Descriptions.Item label="累计总量" span={task.task_type === 'interaction' ? 2 : 1}>
-            {task.task_type === 'interaction' ? (
-              task.interaction_total
-                ? '赞：' + formatCount(task.interaction_total.likes) + '、藏：' + formatCount(task.interaction_total.favorites) + '、转：' + formatCount(task.interaction_total.reposts) + '、评：' + formatCount(task.interaction_total.comments)
-                : '暂无数据'
-            ) : (
-              formatCount(task.comment_total || 0)
-            )}
-          </Descriptions.Item>
-          {task.task_type === 'comment' && (
-            <Descriptions.Item label="最近1次增量">
-              {formatCount(task.comment_last || 0)}
-            </Descriptions.Item>
-          )}
-          {task.task_type === 'interaction' && (
-            <Descriptions.Item label="最近1次增量" span={2}>
-              {task.interaction_last
-                ? '赞：' + formatCount(task.interaction_last.likes) + '、藏：' + formatCount(task.interaction_last.favorites) + '、转：' + formatCount(task.interaction_last.reposts) + '、评：' + formatCount(task.interaction_last.comments)
-                : '暂无数据'}
-            </Descriptions.Item>
-          )}
           <Descriptions.Item label="状态">
             {task.status === 'running' && <Tag color="processing">进行中</Tag>}
             {task.status === 'not_started' && <Tag color="default">未开始</Tag>}
@@ -1387,20 +1216,6 @@ const TaskDetailView: React.FC<{
         title="采集详情" 
         size="small" 
         style={{ marginTop: 16 }}
-        extra={
-          <Space size={16}>
-            <span style={{ fontSize: 13, color: 'rgba(0,0,0,0.45)' }}>视图维度:</span>
-            <Radio.Group 
-              value={viewMode} 
-              onChange={function (e: any) { setViewMode(e.target.value); }} 
-              size="small"
-              buttonStyle="solid"
-            >
-              <Radio.Button value="batch">按采集次数</Radio.Button>
-              <Radio.Button value="link">按链接汇总</Radio.Button>
-            </Radio.Group>
-          </Space>
-        }
       >
         {linkRecords.length === 0 ? (
           <div style={{ padding: '36px 0', textAlign: 'center' }}>
@@ -1414,106 +1229,17 @@ const TaskDetailView: React.FC<{
             />
           </div>
         ) : (
-          <>
-            {viewMode === 'batch' ? (
-              <div className="ct-detail-content">
-                <div className="ct-link-list-header">
-                  <div>
-                    <h4><UnorderedListOutlined style={{ marginRight: 6 }} />采集批次执行记录</h4>
-                    <p>按采集任务的执行次数/批次进行汇总展示，点击详情查看当次批次采集到的网帖链接及数据快照。</p>
-                  </div>
-                </div>
-                <Table
-                  rowKey="id"
-                  columns={batchColumns}
-                  dataSource={batchRecords}
-                  pagination={{ pageSize: 10, showSizeChanger: false }}
-                  size="small"
-                />
-              </div>
-            ) : (
-              <div className="ct-detail-content">
-                {task.task_type === 'interaction' ? (
-                  <div>
-                    <div className="ct-link-list-header">
-                      <div>
-                        <h4><BarChartOutlined style={{ marginRight: 6 }} />链接互动量采集结果</h4>
-                        <p>按链接/帖文拆分展示最新一次采集结果，点击详情查看该链接的互动量变动统计。</p>
-                      </div>
-                    </div>
-                    <Table
-                      rowKey="id"
-                      columns={linkColumns}
-                      dataSource={linkRecords}
-                      pagination={{ pageSize: 10, showSizeChanger: false }}
-                      size="small"
-                    />
-                  </div>
-                ) : (
-                  <div>
-                    <div className="ct-link-list-header">
-                      <div>
-                        <h4><UnorderedListOutlined style={{ marginRight: 6 }} />链接评论采集结果</h4>
-                        <p>按链接/帖文拆分展示最新一次有效评论数量，点击详情查看该链接从最新到最早的评论内容。</p>
-                      </div>
-                    </div>
-                    <Table
-                      rowKey="id"
-                      columns={linkColumns}
-                      dataSource={linkRecords}
-                      pagination={{ pageSize: 10, showSizeChanger: false }}
-                      size="small"
-                    />
-                  </div>
-                )}
-              </div>
-            )}
-          </>
-        )}
-      </Card>
-
-      {/* 抽屉1：链接采集明细（按链接汇总模式下的详情） */}
-      <Drawer
-        title={task.task_type === 'interaction' ? '互动量历史采集明细' : '评论采集明细'}
-        placement="right"
-        width={850}
-        open={drawerOpen}
-        onClose={closeLinkDetail}
-        className="ct-link-detail-drawer"
-        destroyOnClose
-      >
-        {selectedLink && (
-          <div className="ct-link-drawer-content">
-            <div className="ct-link-drawer-summary" style={{ marginBottom: 16, paddingBottom: 16, borderBottom: '1px dashed #f0f0f0' }}>
-              <div className="ct-link-title" style={{ fontSize: 16, fontWeight: 'bold', color: 'rgba(0,0,0,0.85)', marginBottom: 8 }}>{selectedLink.title}</div>
-              <div className="ct-link-url" style={{ fontSize: 13, color: '#1890ff', wordBreak: 'break-all', marginBottom: 8 }}>{selectedLink.link}</div>
-              <Space size={8} wrap>
-                <Tag color="blue">{selectedLink.platform}</Tag>
-                <Tag color="orange">作者：{selectedLink.author}</Tag>
-                <Tag>最新采集时间：{selectedLink.last_collected_at}</Tag>
-              </Space>
-            </div>
-
-            {task.task_type === 'interaction' ? (
-              <Table
-                rowKey="id"
-                columns={interactionHistoryColumns}
-                dataSource={getInteractionHistory(selectedLink)}
-                pagination={false}
-                size="small"
-              />
-            ) : (
-              <Table
-                rowKey="id"
-                columns={commentHistoryColumns}
-                dataSource={getCommentHistory(selectedLink)}
-                pagination={false}
-                size="small"
-              />
-            )}
+          <div className="ct-detail-content">
+            <Table
+              rowKey="id"
+              columns={batchColumns}
+              dataSource={batchRecords}
+              pagination={{ pageSize: 10, showSizeChanger: false }}
+              size="small"
+            />
           </div>
         )}
-      </Drawer>
+      </Card>
 
       {/* 抽屉2：采集批次链接明细（按采集次数模式下的详情） */}
       <Drawer
