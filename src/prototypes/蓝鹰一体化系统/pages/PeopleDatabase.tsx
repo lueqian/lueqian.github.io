@@ -80,6 +80,21 @@ export interface PostItem {
   likes: number;
   ipAddress?: string;
   captureTime?: string;
+
+  // 优化关联事件展示所需的指令下达与反馈字段
+  instructionName?: string;
+  dispatchTime?: string;
+  dispatcherDept?: string;
+  instructionTag?: string;
+  instructionRequirement?: string;
+  signDept?: string;
+  signTime?: string;
+  signTimeSpent?: string;
+  feedbackDept?: string;
+  feedbackTime?: string;
+  feedbackTimeSpent?: string;
+  feedbackEventDesc?: string;
+  feedbackContent?: string;
 }
 
 export interface PersonItem {
@@ -380,6 +395,48 @@ export const generateMockPeople = (): PersonItem[] => {
         }
       );
     }
+  });
+
+  // 遍历所有生成的网民，对其 recordList 中的每个事件进行指令与反馈信息的初始化填充
+  list.forEach((p) => {
+    p.recordList = p.recordList.map((post) => {
+      // 提取核心事件描述
+      let eventDesc = "";
+      let title = "";
+      if (post.content.includes("关于洪泽垃圾焚烧厂")) {
+        title = "关于洪泽垃圾焚烧厂异味扰民的视频反映";
+        eventDesc = "网民发帖反映洪泽垃圾焚烧厂清晨排放异味气体情况已核查。经现场监测及走访，该厂存在短时异味排放问题，环保局已下达整改通知书。";
+      } else if (post.content.includes("关于流均镇承包土地")) {
+        title = "关于流均镇土地流转补偿款拖欠问题的发帖维权";
+        eventDesc = "网民反映的流均镇承包土地流转补偿款拖欠问题已查明。经镇政府调解，发包方与村民已达成延期支付协议，现场无聚集滋事风险。";
+      } else {
+        title = "关于本地热议维权诉求的号召帖文";
+        eventDesc = "网民针对本地维权诉求发帖号召、组织网民聚集情况已核实。属地派出所已联合居委会对当事人进行法规宣贯与劝阻，消除线上串联隐患。";
+      }
+
+      // 根据网民属地设定接收部门
+      const locationDept = `${p.department} 张三`;
+      const signTime = "2026-07-27 17:27:19";
+      const feedbackTime = "2026-07-27 17:30:40";
+
+      return {
+        ...post,
+        title: title,
+        instructionName: "事件核报",
+        dispatchTime: "2026-07-27 15:11:40",
+        dispatcherDept: "支队值班岗",
+        instructionTag: "张三",
+        instructionRequirement: "请对线上舆情反映的问题进行事件核报，核实线索真实性，并进行相关涉事网民的身份落地与事件描述反馈。",
+        signDept: locationDept,
+        signTime: signTime,
+        signTimeSpent: "2时15分",
+        feedbackDept: locationDept,
+        feedbackTime: feedbackTime,
+        feedbackTimeSpent: "2时19分",
+        feedbackEventDesc: eventDesc,
+        feedbackContent: `姓名: ${p.name}, 身份证号: ${p.idCard}, 标签: ${p.tags.join('、')}, 手机号: ${p.phone}, 居住地: ${p.residentAddress}, 备注: ${p.note || '这是一条自动生成的事件核报反馈'}`
+      };
+    });
   });
 
   return list;
@@ -713,6 +770,7 @@ const PeopleDatabase: React.FC = () => {
   // 人员详情 Modal
   const [detailVisible, setDetailVisible] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState<PersonItem | null>(null);
+  const [realViewMode, setRealViewMode] = useState<'list' | 'block'>('list');
 
   // 取证穿透 Modal
   const [penetrateVisible, setPenetrateVisible] = useState(false);
@@ -1293,6 +1351,11 @@ const PeopleDatabase: React.FC = () => {
   // 虚拟账号过滤逻辑
   const getFilteredVirtualPeople = () => {
     return virtualPeopleList.filter((item) => {
+      // 过滤掉未实名的行
+      if (!item.personId) return false;
+      const person = peopleList.find(p => p.id === item.personId);
+      if (!person) return false;
+
       if (appliedSearchText) {
         const query = appliedSearchText.toLowerCase();
         const matchNickname = item.nickname?.toLowerCase().includes(query);
@@ -1336,13 +1399,51 @@ const PeopleDatabase: React.FC = () => {
 
   // 得到卡片帖文标题
   const getPostDisplayTitle = (post: PostItem) => {
-    if (post.title) return post.title;
-    return post.content.length > 25 ? post.content.substring(0, 25) + '...' : post.content;
+    let rawTitle = post.title || post.content;
+    let cleanTitle = rawTitle.replace(/【[^】]+】/g, '').trim();
+    if (cleanTitle.length > 25) {
+      return cleanTitle.substring(0, 25) + '...';
+    }
+    return cleanTitle || '舆情帖文';
   };
 
   const handleOpenPenetrate = (post: PostItem) => {
     setPenetratePost(post);
     setPenetrateVisible(true);
+  };
+
+  const renderSplitTag = (label: string, value: string) => {
+    return (
+      <span style={{ 
+        display: 'inline-flex', 
+        alignItems: 'center', 
+        borderRadius: '4px', 
+        overflow: 'hidden', 
+        border: '1px solid #ff4d4f', 
+        fontSize: '11px', 
+        lineHeight: '1.2',
+        height: '20px'
+      }}>
+        <span style={{ 
+          background: '#ff4d4f', 
+          color: '#fff', 
+          padding: '2px 6px', 
+          fontWeight: 500,
+          display: 'inline-block'
+        }}>
+          {label}
+        </span>
+        <span style={{ 
+          background: '#fff', 
+          color: '#ff4d4f', 
+          padding: '2px 6px', 
+          fontWeight: 500,
+          display: 'inline-block'
+        }}>
+          {value}
+        </span>
+      </span>
+    );
   };
 
   return (
@@ -1355,6 +1456,71 @@ const PeopleDatabase: React.FC = () => {
           {/* 右侧主区域 */}
           <div>
 
+
+            {/* 顶部主子页签与操作面板 */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #f0f0f0', paddingBottom: '8px' }}>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <div
+                  onClick={() => setActiveTab('real')}
+                  style={{
+                    padding: '8px 16px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: activeTab === 'real' ? 600 : 'normal',
+                    color: activeTab === 'real' ? '#5c56e0' : '#4b5563',
+                    borderBottom: activeTab === 'real' ? '2px solid #5c56e0' : 'none',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  真实身份库
+                </div>
+                <div
+                  onClick={() => setActiveTab('virtual')}
+                  style={{
+                    padding: '8px 16px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: activeTab === 'virtual' ? 600 : 'normal',
+                    color: activeTab === 'virtual' ? '#5c56e0' : '#4b5563',
+                    borderBottom: activeTab === 'virtual' ? '2px solid #5c56e0' : 'none',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  虚拟身份库
+                </div>
+              </div>
+
+              {/* 右侧操作面板：视图切换 + 新建人员 */}
+              <Space size={12}>
+                {activeTab === 'real' && (
+                  <Segmented
+                    value={realViewMode}
+                    onChange={(val) => setRealViewMode(val as any)}
+                    options={[
+                      { label: '列表视图', value: 'list', icon: <UnorderedListOutlined /> },
+                      { label: '卡片视图', value: 'block', icon: <AppstoreOutlined /> }
+                    ]}
+                    size="small"
+                  />
+                )}
+                <Button
+                  type="primary"
+                  icon={<UserAddOutlined />}
+                  onClick={() => {
+                    if (activeTab === 'real') {
+                      setOpinionModalVisible(true);
+                    } else {
+                      setEditingVirtual(null);
+                      virtualForm.resetFields();
+                      setAddVirtualVisible(true);
+                    }
+                  }}
+                  style={{ background: '#5c56e0', borderColor: '#5c56e0', borderRadius: '6px', height: '36px' }}
+                >
+                  新建人员
+                </Button>
+              </Space>
+            </div>
 
             {/* 顶部综合筛选区 */}
             <Card size="small" style={{ marginBottom: '16px', background: '#fafafb', borderRadius: '8px', border: '1px solid #eef2f6' }}>
@@ -1428,111 +1594,186 @@ const PeopleDatabase: React.FC = () => {
               </Row>
             </Card>
 
-            {/* 页签标题与操作面板 */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #f0f0f0', paddingBottom: '8px' }}>
-              <Space size={12} align="center">
-                <span style={{ fontSize: '16px', fontWeight: 600, color: '#1f2937' }}>人员列表</span>
-                
-                {/* 双重药丸 Badge */}
-                <Space size={4}>
-                  <Tag color="warning" style={{ margin: 0, borderRadius: '4px', fontSize: '11px', border: 'none', background: '#fffbe6', color: '#faad14', fontWeight: 500 }}>重点人员</Tag>
-                  <Tag color="processing" style={{ margin: 0, borderRadius: '4px', fontSize: '11px', border: 'none', background: '#e6f7ff', color: '#1890ff', fontWeight: 500 }}>虚拟身份</Tag>
-                </Space>
-
-                {/* 主子页签切换，对齐系统主题色 #5c56e0 */}
-                <div style={{ display: 'flex', borderBottom: 'none', marginLeft: '16px', gap: '8px' }}>
-                  <div
-                    onClick={() => setActiveTab('real')}
-                    style={{
-                      padding: '8px 16px',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: activeTab === 'real' ? 600 : 'normal',
-                      color: activeTab === 'real' ? '#5c56e0' : '#4b5563',
-                      borderBottom: activeTab === 'real' ? '2px solid #5c56e0' : 'none',
-                      transition: 'all 0.2s',
-                    }}
-                  >
-                    真实身份库
-                  </div>
-                  <div
-                    onClick={() => setActiveTab('virtual')}
-                    style={{
-                      padding: '8px 16px',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: activeTab === 'virtual' ? 600 : 'normal',
-                      color: activeTab === 'virtual' ? '#5c56e0' : '#4b5563',
-                      borderBottom: activeTab === 'virtual' ? '2px solid #5c56e0' : 'none',
-                      transition: 'all 0.2s',
-                    }}
-                  >
-                    虚拟身份库
-                  </div>
-                </div>
-              </Space>
-
-              {/* 右侧操作按钮 */}
-              <Button
-                type="primary"
-                icon={<UserAddOutlined />}
-                onClick={() => {
-                  if (activeTab === 'real') {
-                    setOpinionModalVisible(true);
-                  } else {
-                    setEditingVirtual(null);
-                    virtualForm.resetFields();
-                    setAddVirtualVisible(true);
-                  }
-                }}
-                style={{ background: '#5c56e0', borderColor: '#5c56e0', borderRadius: '6px', height: '36px' }}
-              >
-                新建人员
-              </Button>
-            </div>
-
             {/* 内容列表渲染 */}
             {activeTab === 'real' ? (
-              /* ================== 真实身份库（卡片视图） ================== */
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '12px' }}>
-                {currentList.map((person) => {
-                  return (
+              /* ================== 真实身份库（列表/方块视图） ================== */
+              realViewMode === 'list' ? (
+                <div>
+                  <Card size="small" style={{ borderRadius: '8px', border: '1px solid #f0f0f0' }}>
+                    <Table
+                      dataSource={currentList}
+                      rowKey="id"
+                      size="middle"
+                      bordered
+                      pagination={false}
+                      onRow={(record) => ({
+                        onClick: () => {
+                          setSelectedPerson(record);
+                          setDetailVisible(true);
+                        },
+                        style: { cursor: 'pointer' }
+                      })}
+                      columns={[
+                        {
+                          title: '姓名',
+                          dataIndex: 'name',
+                          key: 'name',
+                          width: 120,
+                          render: (text) => <strong style={{ color: '#111827' }}>{text}</strong>
+                        },
+                        {
+                          title: '属地',
+                          dataIndex: 'department',
+                          key: 'department',
+                          width: 140,
+                          render: (text) => <span>{text}分局</span>
+                        },
+                        {
+                          title: '标签',
+                          key: 'tags',
+                          render: (_, record) => {
+                            const allTags = record.tags || [];
+                            return (
+                              <Space size={4} wrap>
+                                {allTags.map(t => (
+                                  <Tag key={t} color="blue" style={{ fontSize: '11px', margin: 0 }}>
+                                    {t}
+                                  </Tag>
+                                ))}
+                              </Space>
+                            );
+                          }
+                        },
+                        {
+                          title: '历史发声',
+                          key: 'incidentCount',
+                          width: 130,
+                          align: 'center',
+                          render: (_, record) => {
+                            const count = record.recordList ? record.recordList.length : 0;
+                            return (
+                              <Tag 
+                                color="purple" 
+                                style={{ cursor: 'pointer', margin: 0 }} 
+                                onClick={(e) => { 
+                                  e.stopPropagation(); 
+                                  setSelectedPerson(record);
+                                  setDetailVisible(true);
+                                }}
+                              >
+                                {count} 次
+                              </Tag>
+                            );
+                          }
+                        },
+                        {
+                          title: '虚拟账号',
+                          key: 'virtualAccountCount',
+                          width: 130,
+                          align: 'center',
+                          render: (_, record) => {
+                            const count = record.socialAccounts ? record.socialAccounts.length : 0;
+                            return <span style={{ fontWeight: 600, color: '#4b5563' }}>{count} 个</span>;
+                          }
+                        },
+                        {
+                          title: '入库日期',
+                          key: 'joinDate',
+                          width: 150,
+                          render: (_, record) => {
+                            const date = record.recordList[0]?.dispatchTime?.split(' ')[0] || '2026-07-27';
+                            return <span style={{ color: '#666' }}>{date}</span>;
+                          }
+                        },
+                        {
+                          title: '操作',
+                          key: 'action',
+                          width: 100,
+                          align: 'center',
+                          render: (_, record) => (
+                            <Space size={8}>
+                              <Button 
+                                type="link" 
+                                size="small" 
+                                style={{ padding: 0 }} 
+                                onClick={(e) => { 
+                                  e.stopPropagation(); 
+                                  setSelectedPerson(record);
+                                  setDetailVisible(true);
+                                }}
+                              >
+                                详情
+                              </Button>
+                            </Space>
+                          )
+                        }
+                      ]}
+                    />
+                  </Card>
+                </div>
+              ) : (
+                /* 方块视图 */
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '16px' }}>
+                  {currentList.map((person) => (
                     <Card
                       key={person.id}
-                      size="small"
                       hoverable
                       onClick={() => {
                         setSelectedPerson(person);
                         setDetailVisible(true);
                       }}
-                      style={{ borderTop: '3px solid #5c56e0', position: 'relative', borderRadius: '8px' }}
+                      style={{ 
+                        borderRadius: '12px', 
+                        border: '1px solid #e2e8f0', 
+                        textAlign: 'center', 
+                        padding: '12px',
+                        position: 'relative'
+                      }}
+                      bodyStyle={{ padding: '8px' }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <Avatar style={{ backgroundColor: '#87d068' }}>{person.name[0]}</Avatar>
+                      <Avatar 
+                        size={56} 
+                        style={{ backgroundColor: '#5c56e0', fontSize: '24px', marginBottom: '8px' }}
+                      >
+                        {person.name[0]}
+                      </Avatar>
+                      <div style={{ fontWeight: 600, fontSize: '15px', color: '#1e293b', marginBottom: '4px' }}>
+                        {person.name}
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '12px' }}>
+                        {person.department}分局
+                      </div>
+                      
+                      {/* Info Grid */}
+                      <div style={{ 
+                        display: 'grid', 
+                        gridTemplateColumns: '1fr 1fr', 
+                        gap: '8px', 
+                        background: '#f8fafc', 
+                        padding: '8px', 
+                        borderRadius: '6px', 
+                        marginBottom: '12px',
+                        fontSize: '11px',
+                        color: '#475569'
+                      }}>
                         <div>
-                          <div style={{ fontWeight: 600, fontSize: '14px' }}>{person.name}</div>
-                          <div style={{ fontSize: '12px', color: '#999' }}>
-                            {person.peopleType === 'media' ? '自媒体' : person.peopleType === 'kol' ? '大V' : '普通网民'}
-                          </div>
+                          <div style={{ color: '#94a3b8', marginBottom: '2px' }}>历史发声</div>
+                          <strong style={{ fontSize: '12.5px', color: '#0f172a' }}>{person.recordList?.length || 0} 次</strong>
+                        </div>
+                        <div>
+                          <div style={{ color: '#94a3b8', marginBottom: '2px' }}>虚拟账号</div>
+                          <strong style={{ fontSize: '12.5px', color: '#0f172a' }}>{person.socialAccounts?.length || 0} 个</strong>
                         </div>
                       </div>
 
-                      <Divider style={{ margin: '8px 0' }} />
-
-                      <div style={{ fontSize: '11.5px', color: '#666', lineHeight: '1.8' }}>
-                        <div>归属地: <span style={{ color: '#333' }}>{person.department}</span></div>
-                        {person.opinionTags && person.opinionTags.length > 0 && (
-                          <div style={{ marginTop: '4px' }}>舆情分类:
-                            <Space size={2} wrap style={{ marginLeft: '4px' }}>
-                              {person.opinionTags.map(t => <Tag color="blue" key={t} style={{ fontSize: '9px', padding: '0 4px', margin: 0 }}>{t}</Tag>)}
-                            </Space>
-                          </div>
-                        )}
+                      {/* Tags */}
+                      <div style={{ minHeight: '24px', display: 'flex', justifyContent: 'center' }}>
+                        {renderTagsWithCollapse(person.tags || [])}
                       </div>
                     </Card>
-                  );
-                })}
-              </div>
+                  ))}
+                </div>
+              )
             ) : (
               /* ================== 虚拟身份库（优化后的列表视图） ================== */
               <div>
@@ -1543,14 +1784,17 @@ const PeopleDatabase: React.FC = () => {
                     size="middle"
                     bordered
                     pagination={false}
-                    columns={[
-                      {
-                        title: '序号',
-                        key: 'index',
-                        width: 60,
-                        align: 'center',
-                        render: (_, __, idx) => idx + 1
+                    onRow={(record) => ({
+                      onClick: () => {
+                        const person = peopleList.find(p => p.id === record.personId);
+                        if (person) {
+                          setSelectedPerson(person);
+                          setDetailVisible(true);
+                        }
                       },
+                      style: { cursor: 'pointer' }
+                    })}
+                    columns={[
                       {
                         title: '昵称',
                         dataIndex: 'nickname',
@@ -1559,7 +1803,7 @@ const PeopleDatabase: React.FC = () => {
                         render: (text) => text ? <strong>{text}</strong> : <span style={{ color: '#ccc' }}>-</span>
                       },
                       {
-                        title: '所属平台',
+                        title: '平台',
                         dataIndex: 'platform',
                         key: 'platform',
                         width: 100,
@@ -1605,7 +1849,7 @@ const PeopleDatabase: React.FC = () => {
                         }
                       },
                       {
-                        title: '属性分类',
+                        title: '标签',
                         key: 'realCategory',
                         width: 130,
                         render: (_, record) => {
@@ -1617,7 +1861,7 @@ const PeopleDatabase: React.FC = () => {
                         }
                       },
                       {
-                        title: '相关事件（次）',
+                        title: '历史发声',
                         key: 'realEvents',
                         width: 120,
                         align: 'center',
@@ -1631,7 +1875,7 @@ const PeopleDatabase: React.FC = () => {
                         }
                       },
                       {
-                        title: '入库时间',
+                        title: '入库日期',
                         dataIndex: 'importTime',
                         key: 'importTime',
                         width: 170,
@@ -1662,7 +1906,11 @@ const PeopleDatabase: React.FC = () => {
                                 icon={<FileSearchOutlined style={{ color: '#52c41a' }} />}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleViewVirtualDetail(record);
+                                  const person = peopleList.find(p => p.id === record.personId);
+                                  if (person) {
+                                    setSelectedPerson(person);
+                                    setDetailVisible(true);
+                                  }
                                 }}
                               />
                             </Tooltip>
@@ -1809,39 +2057,146 @@ const PeopleDatabase: React.FC = () => {
                 <div style={{ fontWeight: 600, color: '#333', marginBottom: '10px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <LinkOutlined style={{ color: '#1890ff' }} />
                   <span>关联事件</span>
-                  <span style={{ fontWeight: 'normal', color: '#999', fontSize: '11px' }}>(内网直达，不提供AI概要摘要)</span>
                 </div>
 
                 <Timeline style={{ paddingLeft: '8px', marginTop: '8px' }}>
                   {selectedPerson.recordList.map((post) => (
-                    <Timeline.Item key={post.id} color={post.platform === 'weibo' ? 'red' : 'green'}>
-                      <Card size="small" style={{ border: '1px solid #e8e8e8' }}>
-                        {/* 帖文原文标题/链接，可穿透 */}
-                        <div style={{ marginBottom: '6px' }}>
-                          <a
-                            onClick={() => handleOpenPenetrate(post)}
-                            style={{
-                              fontSize: '13px',
-                              fontWeight: 600,
-                              color: '#1890ff',
-                              textDecoration: 'underline',
-                              cursor: 'pointer'
-                            }}
-                          >
-                            {getPostDisplayTitle(post)}
-                          </a>
-                        </div>
-                        <div style={{ fontSize: '12px', color: '#4b5563', lineHeight: '1.5', marginBottom: '8px' }}>
-                          {post.content.length > 80 ? post.content.substring(0, 80) + '...' : post.content}
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', color: '#999' }}>
-                          <Space>
-                            <span>博主: <strong>{post.author}</strong> ({post.authorId})</span>
-                            <span>平台: <Tag color="blue" style={{ fontSize: '10px', padding: '0 4px' }}>{post.platform.toUpperCase()}</Tag></span>
+                    <Timeline.Item key={post.id} color="#748ffc">
+                      {/* 1. 下达指令头部信息行 */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '13px', color: '#8c8c8c', marginRight: '4px' }}>
+                          {post.dispatchTime || "2026-07-27 15:11:40"}
+                        </span>
+                        <span style={{ background: '#5c7cfa', color: '#fff', padding: '1px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 500 }}>
+                          {post.instructionName || "事件核报"}
+                        </span>
+                        <span style={{ background: '#748ffc', color: '#fff', padding: '1px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 500 }}>
+                          {post.dispatcherDept || "支队值班岗"}
+                        </span>
+                        <span style={{ background: '#ffffff', color: '#748ffc', border: '1px solid #748ffc', padding: '0px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 500, lineHeight: '18px' }}>
+                          {post.instructionTag || "张三"}
+                        </span>
+                      </div>
+
+                      {/* 2. 指令卡片主体 */}
+                      <div style={{ 
+                        background: '#f8f9fa', 
+                        border: '1px solid #e9ecef', 
+                        borderRadius: '8px', 
+                        padding: '12px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '10px'
+                      }}>
+                        {/* 关联舆情源贴标题行 (置于指令要求上方，采用标题样式) */}
+                        <div style={{ 
+                          borderBottom: '1px dashed #e2e8f0', 
+                          paddingBottom: '10px', 
+                          marginBottom: '2px',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          flexWrap: 'wrap',
+                          gap: '8px'
+                        }}>
+                          <Space size={4}>
+                            <a
+                              onClick={() => handleOpenPenetrate(post)}
+                              style={{
+                                fontSize: '14px',
+                                fontWeight: 700,
+                                color: '#1890ff',
+                                textDecoration: 'underline',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              {getPostDisplayTitle(post)}
+                            </a>
                           </Space>
-                          <span>发布时间: {post.publishTime}</span>
+                          <Space size={8} style={{ fontSize: '12px', color: '#64748b' }}>
+                            <span>发布人: <strong style={{ color: '#475569' }}>{post.author}</strong></span>
+                            <span style={{ color: '#cbd5e1' }}>|</span>
+                            <span>平台: <Tag color="blue" style={{ fontSize: '10px', padding: '0 4px', margin: 0 }}>{post.platform.toUpperCase()}</Tag></span>
+                          </Space>
                         </div>
-                      </Card>
+
+                        {/* 指令要求 */}
+                        <div style={{ fontSize: '12.5px', color: '#333333', fontWeight: 600, lineHeight: '1.5' }}>
+                          指令要求：
+                          <span style={{ fontWeight: 'normal', color: '#4b5563' }}>
+                            {post.instructionRequirement || "请对线上舆情反映的问题进行事件核报，核实线索真实性，并进行相关涉事网民的身份落地与事件描述反馈。"}
+                          </span>
+                        </div>
+
+                        {/* 签收信息 */}
+                        <div style={{ 
+                          background: '#ffffff', 
+                          border: '1px solid #e2e8f0', 
+                          borderRadius: '6px', 
+                          padding: '8px 12px',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center'
+                        }}>
+                          <div style={{ fontSize: '12px', color: '#334155' }}>
+                            <strong style={{ color: '#475569', fontWeight: 500 }}>{post.signDept || "淮安区 张三"}</strong>
+                            <span style={{ color: '#94a3b8', margin: '0 8px' }}>{post.signTime || "2026-07-27 17:27:19"}</span>
+                            <span style={{ color: '#475569' }}>签收</span>
+                          </div>
+                          {renderSplitTag("接收用时", post.signTimeSpent || "2时15分")}
+                        </div>
+
+                        {/* 反馈信息 */}
+                        <div style={{ 
+                          background: '#ffffff', 
+                          border: '1px solid #e2e8f0', 
+                          borderRadius: '6px', 
+                          padding: '10px 12px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '8px'
+                        }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ fontSize: '12px', color: '#334155' }}>
+                              <strong style={{ color: '#475569', fontWeight: 500 }}>{post.feedbackDept || "淮安区 张三"}</strong>
+                              <span style={{ color: '#94a3b8', margin: '0 8px' }}>{post.feedbackTime || "2026-07-27 17:30:40"}</span>
+                              <span style={{ color: '#475569' }}>反馈</span>
+                            </div>
+                            {renderSplitTag("接收用时", post.feedbackTimeSpent || "2时19分")}
+                          </div>
+
+                          <div style={{ 
+                            fontSize: '12px', 
+                            color: '#475569', 
+                            lineHeight: '1.6',
+                            borderTop: '1px solid #f1f5f9',
+                            paddingTop: '6px',
+                            marginTop: '2px'
+                          }}>
+                            <div style={{ marginBottom: '4px' }}>
+                              <strong style={{ color: '#1e293b' }}>事件描述：</strong>
+                              <span style={{ color: '#334155' }}>{post.feedbackEventDesc || "网民发帖反映的土地补偿款拖欠、小区业主集会维权等情况已进行实地核查，情况基本属实。"}</span>
+                            </div>
+                            <div>
+                              <strong style={{ color: '#1e293b' }}>身份落地：</strong>
+                              <span style={{ 
+                                background: '#f8fafc', 
+                                padding: '6px 10px', 
+                                borderRadius: '4px', 
+                                display: 'inline-block', 
+                                width: '100%',
+                                boxSizing: 'border-box',
+                                border: '1px solid #e2e8f0',
+                                marginTop: '4px',
+                                fontFamily: 'monospace',
+                                color: '#0f172a'
+                              }}>
+                                {post.feedbackContent || `姓名: ${selectedPerson.name}, 身份证号: ${selectedPerson.idCard}, 标签: ${selectedPerson.tags.join('、')}, 手机号: ${selectedPerson.phone}, 居住地: ${selectedPerson.residentAddress}`}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </Timeline.Item>
                   ))}
                 </Timeline>
