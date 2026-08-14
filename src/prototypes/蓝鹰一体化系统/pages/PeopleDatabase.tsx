@@ -442,13 +442,13 @@ export const generateMockPeople = (): PersonItem[] => {
   return list;
 };
 
-// 群体/多级标签折叠折缩函数：超过2个，只展示第1个，其余部分以 +n 带有 Tooltip 展现
+// 群体/多级标签折叠折缩函数：超过3个，只展示前2个，其余部分以 +n 带有 Tooltip 展现
 export const renderTagsWithCollapse = (tags: string[]) => {
   if (!tags || tags.length === 0) return <span style={{ color: '#ccc', fontSize: '10px' }}>无标签</span>;
   
-  if (tags.length <= 2) {
+  if (tags.length <= 3) {
     return (
-      <Space size={4} wrap>
+      <Space size={4} wrap style={{ justifyContent: 'center' }}>
         {tags.map((t, idx) => (
           <Tag color="blue" style={{ margin: 0, fontSize: '10px' }} key={idx}>{t}</Tag>
         ))}
@@ -456,13 +456,15 @@ export const renderTagsWithCollapse = (tags: string[]) => {
     );
   }
   
-  const visibleTag = tags[0];
-  const remainingCount = tags.length - 1;
-  const remainingTags = tags.slice(1).join('、');
+  const visibleTags = tags.slice(0, 2);
+  const remainingCount = tags.length - 2;
+  const remainingTags = tags.slice(2).join('、');
 
   return (
-    <Space size={4} align="center">
-      <Tag color="blue" style={{ margin: 0, fontSize: '10px' }}>{visibleTag}</Tag>
+    <Space size={4} align="center" style={{ justifyContent: 'center' }}>
+      {visibleTags.map((t, idx) => (
+        <Tag color="blue" style={{ margin: 0, fontSize: '10px' }} key={idx}>{t}</Tag>
+      ))}
       <Tooltip title={`其余标签: ${remainingTags}`} placement="top">
         <Tag color="default" style={{ margin: 0, fontSize: '10px', cursor: 'pointer', border: '1px solid #d9d9d9' }}>
           +{remainingCount}
@@ -1740,8 +1742,32 @@ const PeopleDatabase: React.FC = () => {
                       <div style={{ fontWeight: 600, fontSize: '15px', color: '#1e293b', marginBottom: '4px' }}>
                         {person.name}
                       </div>
-                      <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '12px' }}>
-                        {person.department}分局
+                      <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '8px' }}>
+                        <span style={{ marginRight: '8px' }}>{person.department}分局</span>
+                        <span>{person.gender} | {person.age}岁</span>
+                      </div>
+                      
+                      {/* 真实身份证和电话信息展示面板 */}
+                      <div style={{ 
+                        fontSize: '11px', 
+                        color: '#475569', 
+                        marginBottom: '10px', 
+                        background: '#f1f5f9', 
+                        padding: '6px 10px', 
+                        borderRadius: '6px',
+                        textAlign: 'left',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '4px'
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ color: '#64748b' }}>手机号码:</span>
+                          <strong style={{ color: '#334155' }}>{person.phone ? `${person.phone.substring(0, 3)}****${person.phone.substring(7)}` : '-'}</strong>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ color: '#64748b' }}>身份证号:</span>
+                          <strong style={{ fontFamily: 'monospace', color: '#334155' }}>{person.idCard ? `${person.idCard.substring(0, 6)}********${person.idCard.substring(14)}` : '-'}</strong>
+                        </div>
                       </div>
                       
                       {/* Info Grid */}
@@ -1786,21 +1812,31 @@ const PeopleDatabase: React.FC = () => {
                     pagination={false}
                     onRow={(record) => ({
                       onClick: () => {
-                        const person = peopleList.find(p => p.id === record.personId);
-                        if (person) {
-                          setSelectedPerson(person);
-                          setDetailVisible(true);
-                        }
+                        handleViewVirtualDetail(record);
                       },
                       style: { cursor: 'pointer' }
                     })}
                     columns={[
                       {
                         title: '昵称',
-                        dataIndex: 'nickname',
                         key: 'nickname',
-                        width: 150,
-                        render: (text) => text ? <strong>{text}</strong> : <span style={{ color: '#ccc' }}>-</span>
+                        width: 180,
+                        render: (_, record) => (
+                          <div>
+                            <div>
+                              {record.nickname ? (
+                                <strong style={{ color: '#111827' }}>{record.nickname}</strong>
+                              ) : (
+                                <span style={{ color: '#ccc' }}>-</span>
+                              )}
+                            </div>
+                            {record.userId && (
+                              <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
+                                ID: <code>{record.userId}</code>
+                              </div>
+                            )}
+                          </div>
+                        )
                       },
                       {
                         title: '平台',
@@ -1825,18 +1861,6 @@ const PeopleDatabase: React.FC = () => {
                         render: (_, record) => {
                           const person = peopleList.find(p => p.id === record.personId);
                           return person ? <strong style={{ color: '#111827' }}>{person.name}</strong> : <span style={{ color: '#9ca3af' }}>未实名</span>;
-                        }
-                      },
-                      {
-                        title: '身份证号',
-                        key: 'realIdCard',
-                        width: 180,
-                        render: (_, record) => {
-                          const person = peopleList.find(p => p.id === record.personId);
-                          if (person) {
-                            return <code>{person.idCard.substring(0, 6)}********{person.idCard.substring(14)}</code>;
-                          }
-                          return <span style={{ color: '#9ca3af' }}>-</span>;
                         }
                       },
                       {
@@ -1906,11 +1930,7 @@ const PeopleDatabase: React.FC = () => {
                                 icon={<FileSearchOutlined style={{ color: '#52c41a' }} />}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  const person = peopleList.find(p => p.id === record.personId);
-                                  if (person) {
-                                    setSelectedPerson(person);
-                                    setDetailVisible(true);
-                                  }
+                                  handleViewVirtualDetail(record);
                                 }}
                               />
                             </Tooltip>
