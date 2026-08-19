@@ -13,7 +13,7 @@
 
 import '../style.css';
 import React, { useState, useCallback, useMemo } from 'react';
-import { Table, Tag, Switch, Button, Select, Input, Space, Tooltip, Popconfirm, message, Descriptions, Card, Drawer, Empty, Badge, Popover, InputNumber, Slider, notification, Radio } from 'antd';
+import { Table, Tag, Switch, Button, Select, Input, Space, Tooltip, Popconfirm, message, Descriptions, Card, Drawer, Empty, Badge, Popover, InputNumber, Slider, notification, Radio, Modal } from 'antd';
 import {
   PlusOutlined,
   SearchOutlined,
@@ -65,6 +65,7 @@ type TaskItem = {
   related_source?: string;
   start_date?: string;
   end_date?: string;
+  frequency_custom_rules?: any[];
   // 互动量更新 - 累计互动量
   interaction_total?: InteractionData;
   // 互动量更新 - 最近1次更新互动量
@@ -717,6 +718,19 @@ const TaskListView: React.FC<{
   setTasks: React.Dispatch<React.SetStateAction<TaskItem[]>>;
 }> = function ({ tasks, onStatusChange, onEdit, onView, onCreate, onDelete, alertThreshold, setAlertThreshold, alertTasks, setTasks }) {
   const [searchText, setSearchText] = useState<string>('');
+  
+  const handleConfirmEnd = useCallback(function (record: TaskItem) {
+    Modal.confirm({
+      title: '确认结束任务？',
+      content: '结束任务后将不允许手动重启。如需继续采集，需要新建任务。是否确认结束该采集任务？',
+      okText: '确认结束',
+      cancelText: '取消',
+      okButtonProps: { danger: true },
+      onOk() {
+        onStatusChange(record.id, 'ended');
+      },
+    });
+  }, [onStatusChange]);
   const [filterType, setFilterType] = useState<string>('');
   const [filterScope, setFilterScope] = useState<string>('');
   const [filterStatus, setFilterStatus] = useState<string>('');
@@ -852,14 +866,10 @@ const TaskListView: React.FC<{
       render: function (_: any, record: TaskItem) {
         return (
           <Space size={16}>
-            {record.status === 'not_started' && (
-              <a className="ct-action-link" onClick={function () { onStatusChange(record.id, 'running'); }} style={{ color: '#52c41a' }}>启动</a>
-            )}
-            {record.status === 'running' && (
-              <a className="ct-action-link" onClick={function () { onStatusChange(record.id, 'ended'); }} style={{ color: '#fa8c16' }}>结束</a>
-            )}
-            {record.status === 'ended' && (
-              <a className="ct-action-link" onClick={function () { onStatusChange(record.id, 'running'); }}>重启</a>
+            {record.status === 'running' ? (
+              <a className="ct-action-link" onClick={function () { handleConfirmEnd(record); }} style={{ color: '#fa8c16' }}>结束</a>
+            ) : (
+              <span style={{ color: 'rgba(0, 0, 0, 0.25)', cursor: 'not-allowed' }}>结束</span>
             )}
             <a className="ct-action-link" onClick={function () { onEdit(record); }}>修改</a>
             <a className="ct-action-link" onClick={function () { onView(record); }}>详情</a>
@@ -1260,12 +1270,6 @@ const TaskDetailView: React.FC<{
               </Space>
               <div>
                 <Space size={16} wrap>
-                  <Tag color="cyan">抓取有效链接：{selectedBatch.link_count} 条</Tag>
-                  <Tag color="blue">
-                    {task.task_type === 'interaction' ? '抓取新增互动量：' : '抓取有效评论数：'}
-                    {selectedBatch.increment_count} {task.task_type === 'interaction' ? '次' : '条'}
-                  </Tag>
-                  <Tag color="orange">消耗额度：{selectedBatch.quota_consumed} 次</Tag>
                   <Tag>采集执行时间：{selectedBatch.collected_at}</Tag>
                 </Space>
               </div>
@@ -1519,6 +1523,7 @@ const CollectTask: React.FC = function () {
               frequency: values.frequency || '每2小时',
               frequency_mode: values.frequency_mode || 'hour',
               frequency_value: values.frequency_value || '2',
+              frequency_custom_rules: values.frequency_custom_rules || [],
               track_days: values.track_days || 7,
               total_count: 0,
               hourly_increment: 0,
@@ -1550,6 +1555,9 @@ const CollectTask: React.FC = function () {
           platform_pages: editData.platform_pages,
           start_date: editData.start_date,
           end_date: editData.end_date,
+          frequency_mode: editData.frequency_mode,
+          frequency_value: editData.frequency_value,
+          frequency_custom_rules: editData.frequency_custom_rules,
         } : drawerInitialValues || undefined}
       />
     </div>

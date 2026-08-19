@@ -5,8 +5,8 @@
 
 import '../style.css';
 import React, { useState, useCallback, useEffect } from 'react';
-import { Button, Input, Select, Radio, Form, InputNumber, TimePicker, DatePicker, Drawer, Divider, Checkbox, message, Space, Tooltip, Tag } from 'antd';
-import { DoubleRightOutlined, LoadingOutlined, CheckCircleOutlined, WarningOutlined } from '@ant-design/icons';
+import { Button, Input, Select, Radio, Form, InputNumber, TimePicker, DatePicker, Drawer, Divider, Checkbox, message, Space, Tooltip, Tag, Table, Badge } from 'antd';
+import { DoubleRightOutlined, LoadingOutlined, CheckCircleOutlined, WarningOutlined, PlusOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
 // ============ 类型定义 ============
@@ -30,6 +30,9 @@ export interface CollectTaskDrawerProps {
     platform_pages?: Record<string, string>;
     start_date?: string;
     end_date?: string;
+    frequency_mode?: string;
+    frequency_value?: string;
+    frequency_custom_rules?: any[];
   };
 }
 
@@ -64,51 +67,227 @@ const LINK_PLATFORM_OPTIONS = [
   { value: '百度贴吧', label: '百度贴吧' },
 ];
 
+const HOUR_OPTIONS = Array.from({ length: 24 }, function (_, i) {
+  var hourStr = String(i).padStart(2, '0') + ':00';
+  return { value: hourStr, label: hourStr };
+});
+
+function validateSingleLink(linkStr: string): { id: string; link: string; platform: string; status: 'valid' | 'invalid' } {
+  var cleanLink = linkStr.trim();
+  
+  var testUrl = cleanLink;
+  if (cleanLink && !/^https?:\/\//i.test(cleanLink)) {
+    testUrl = 'http://' + cleanLink;
+  }
+  
+  var domain = '';
+  try {
+    var urlObj = new URL(testUrl);
+    domain = urlObj.hostname.toLowerCase();
+  } catch (e) {
+    var domainMatch = cleanLink.match(/^(?:https?:\/\/)?(?:[^\s\/]+\.)?([a-zA-Z0-9\-]+\.[a-z]{2,})(?:\/|$)/i);
+    domain = domainMatch ? domainMatch[1].toLowerCase() : '';
+  }
+
+  var platformKeywords: Record<string, string[]> = {
+    '抖音': ['douyin.com', 'iesdouyin.com'],
+    '微博': ['weibo.com', 'weibo.cn'],
+    '小红书': ['xiaohongshu.com', 'xhslink.com'],
+    '快手': ['kuaishou.com'],
+    'B站': ['bilibili.com', 'b23.tv'],
+    '知乎': ['zhihu.com'],
+  };
+
+  var matchedPlatform = '其他';
+  var isValid = false;
+
+  for (var platform in platformKeywords) {
+    var domains = platformKeywords[platform];
+    if (domains.some(function (d) { return domain === d || domain.endsWith('.' + d); })) {
+      matchedPlatform = platform;
+      isValid = true;
+      break;
+    }
+  }
+
+  return {
+    id: Math.random().toString(36).slice(2, 9),
+    link: cleanLink,
+    platform: matchedPlatform,
+    status: isValid ? 'valid' : 'invalid'
+  };
+}
+
 // ============ 频率组件 ============
 
 const FrequencySelector: React.FC<{
-  value?: { mode: string; value: string };
-  onChange?: (val: { mode: string; value: string }) => void;
+  value?: any;
+  onChange?: (val: any) => void;
 }> = function ({ value, onChange }) {
   const mode = value?.mode || 'hour';
   const val = value?.value || '';
+  const dateRange = value?.dateRange || null;
+  const customRules = value?.customRules || [];
 
   const handleModeChange = useCallback(function (e: any) {
     const newMode = e.target.value;
     const defaults: Record<string, string> = {
-      hour: '2', day: '08:00',
+      hour: '2', day: '08:00', custom: ''
     };
-    onChange?.({ mode: newMode, value: defaults[newMode] || '' });
-  }, [onChange]);
+    onChange?.({
+      mode: newMode,
+      value: defaults[newMode] || '',
+      dateRange: newMode === 'custom' ? null : dateRange,
+      customRules: newMode === 'custom' ? (customRules.length > 0 ? customRules : [{
+        id: Math.random().toString(36).slice(2, 9),
+        mode: 'hour',
+        value: '2',
+        dateRange: null,
+      }]) : customRules
+    });
+  }, [onChange, dateRange, customRules]);
 
   const handleValueChange = useCallback(function (v: any) {
-    onChange?.({ mode, value: typeof v === 'string' ? v : String(v) });
-  }, [mode, onChange]);
+    onChange?.({ ...value, value: typeof v === 'string' ? v : String(v) });
+  }, [value, onChange]);
+
+  const handleDateRangeChange = useCallback(function (range: any) {
+    onChange?.({ ...value, dateRange: range });
+  }, [value, onChange]);
+
+  const handleRuleChange = useCallback(function (id: string, field: string, val: any) {
+    const updated = customRules.map((r: any) => {
+      if (r.id === id) {
+        let newVal = val;
+        if (field === 'value' && typeof val !== 'string' && val !== undefined && val !== null) {
+          newVal = String(val);
+        }
+        return { ...r, [field]: newVal };
+      }
+      return r;
+    });
+    onChange?.({ ...value, customRules: updated });
+  }, [value, customRules, onChange]);
+
+  const handleAddRule = useCallback(function () {
+    const newRule = {
+      id: Math.random().toString(36).slice(2, 9),
+      mode: 'hour' as const,
+      value: '2',
+      dateRange: null,
+    };
+    onChange?.({ ...value, customRules: [...customRules, newRule] });
+  }, [value, customRules, onChange]);
+
+  const handleRemoveRule = useCallback(function (id: string) {
+    const updated = customRules.filter((r: any) => r.id !== id);
+    onChange?.({ ...value, customRules: updated });
+  }, [value, customRules, onChange]);
 
   return (
-    <div className="ct-freq-selector">
+    <div className="ct-freq-selector" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <Radio.Group value={mode} onChange={handleModeChange} buttonStyle="solid" size="small">
         <Radio.Button value="hour">每X小时</Radio.Button>
         <Radio.Button value="day">每天</Radio.Button>
+        <Radio.Button value="custom">自定义</Radio.Button>
       </Radio.Group>
-      <div className="ct-freq-value">
-        {mode === 'hour' && (
-          <Space.Compact>
-            <span className="ct-freq-label">每</span>
-            <InputNumber min={1} max={24} value={parseInt(val) || 2} onChange={handleValueChange} style={{ width: 70 }} size="small" />
-            <span className="ct-freq-label">小时</span>
-          </Space.Compact>
-        )}
-        {mode === 'day' && (
-          <Space.Compact>
-            <span className="ct-freq-label">每天</span>
-            <TimePicker value={val ? dayjs(val, 'HH:mm') : undefined} onChange={function (_, timeStr) { handleValueChange(timeStr); }} format="HH:mm" size="small" style={{ width: 110 }} />
-          </Space.Compact>
-        )}
-      </div>
+      
+      {mode !== 'custom' && (
+        <div className="ct-freq-normal" style={{ border: '1px solid #f0f0f0', padding: 12, borderRadius: 6, backgroundColor: '#fafafa' }}>
+          <div className="ct-freq-value" style={{ marginBottom: 12 }}>
+            {mode === 'hour' && (
+              <Space size={4}>
+                <span className="ct-freq-label" style={{ color: 'rgba(0,0,0,0.65)' }}>每</span>
+                <InputNumber min={1} max={24} value={parseInt(val) || 2} onChange={handleValueChange} style={{ width: 70 }} size="small" />
+                <span className="ct-freq-label" style={{ color: 'rgba(0,0,0,0.65)' }}>小时采集一次</span>
+              </Space>
+            )}
+            {mode === 'day' && (
+              <Space size={4}>
+                <span className="ct-freq-label" style={{ color: 'rgba(0,0,0,0.65)' }}>每天</span>
+                <Select value={val || '08:00'} onChange={handleValueChange} options={HOUR_OPTIONS} size="small" style={{ width: 90 }} />
+                <span className="ct-freq-label" style={{ color: 'rgba(0,0,0,0.65)' }}>采集一次</span>
+              </Space>
+            )}
+          </div>
+          <div>
+            <div style={{ marginBottom: 4, color: 'rgba(0,0,0,0.65)', fontSize: 13 }}>时间范围:</div>
+            <DatePicker.RangePicker
+              value={dateRange}
+              onChange={handleDateRangeChange}
+              disabledDate={function (current) {
+                return current && current < dayjs().startOf('day');
+              }}
+              placeholder={['开始日期', '结束日期']}
+              style={{ width: '100%' }}
+              size="small"
+            />
+          </div>
+        </div>
+      )}
+
+      {mode === 'custom' && (
+        <div className="ct-freq-custom-container" style={{ border: '1px solid #f0f0f0', padding: 12, borderRadius: 6, backgroundColor: '#fafafa' }}>
+          <div style={{ marginBottom: 8, fontSize: 12, color: 'rgba(0,0,0,0.45)' }}>
+            可按不同的时间段，配置不同的采集频率（小时级或每天级）：
+          </div>
+          <div className="ct-freq-custom-rules" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {customRules.map((rule: any, idx: number) => (
+              <div key={rule.id} className="ct-custom-rule-row" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '8px 0', borderBottom: idx < customRules.length - 1 ? '1px dashed #e8e8e8' : 'none' }}>
+                <DatePicker.RangePicker
+                  value={rule.dateRange}
+                  onChange={(range) => handleRuleChange(rule.id, 'dateRange', range)}
+                  disabledDate={function (current) {
+                    return current && current < dayjs().startOf('day');
+                  }}
+                  placeholder={['开始日期', '结束日期']}
+                  style={{ width: 220 }}
+                  size="small"
+                />
+                
+                <Select
+                  value={rule.mode}
+                  onChange={(m) => {
+                    handleRuleChange(rule.id, 'mode', m);
+                    handleRuleChange(rule.id, 'value', m === 'day' ? '08:00' : '2');
+                  }}
+                  size="small"
+                  style={{ width: 95 }}
+                >
+                  <Select.Option value="hour">每X小时</Select.Option>
+                  <Select.Option value="day">每天</Select.Option>
+                </Select>
+
+                {rule.mode === 'hour' ? (
+                  <Space size={2}>
+                    <span style={{ fontSize: 12, color: 'rgba(0,0,0,0.65)' }}>每</span>
+                    <InputNumber min={1} max={24} value={parseInt(rule.value) || 2} onChange={(v) => handleRuleChange(rule.id, 'value', v)} style={{ width: 55 }} size="small" />
+                    <span style={{ fontSize: 12, color: 'rgba(0,0,0,0.65)' }}>小时更新一次</span>
+                  </Space>
+                ) : (
+                  <Space size={2}>
+                    <span style={{ fontSize: 12, color: 'rgba(0,0,0,0.65)' }}>每天</span>
+                    <Select value={rule.value || '08:00'} onChange={(v) => handleRuleChange(rule.id, 'value', v)} options={HOUR_OPTIONS} size="small" style={{ width: 85 }} />
+                    <span style={{ fontSize: 12, color: 'rgba(0,0,0,0.65)' }}>更新一次</span>
+                  </Space>
+                )}
+
+                {customRules.length > 1 && (
+                  <Button type="link" danger size="small" onClick={() => handleRemoveRule(rule.id)} style={{ padding: '0 4px', height: 'auto' }}>
+                    删除
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+          <Button type="dashed" size="small" block onClick={handleAddRule} icon={<PlusOutlined />} style={{ marginTop: 10 }}>
+            添加自定义规则
+          </Button>
+        </div>
+      )}
     </div>
   );
-};
+}
 
 // ============ 专题/重点源 - 目标平台选项 ============
 
@@ -141,56 +320,102 @@ const QuotaEstimatePanel: React.FC<{
   scopeLabel: string;
   platformPageConfig: Record<string, string>;
   linkCount?: number;
-  frequency?: { mode: string; value: string };
+  frequency?: { mode: string; value: string; dateRange?: any; customRules?: any[] };
   platformCounts?: Record<string, number>;
-}> = function ({ scopeLabel, platformPageConfig, linkCount, frequency, platformCounts }) {
+  taskType?: string;
+  platforms?: string[];
+}> = function ({ scopeLabel, platformPageConfig, linkCount, frequency, platformCounts, taskType, platforms }) {
   const [loading, setLoading] = useState(false);
   const [postData, setPostData] = useState(0);
   const [estimatedQuota, setEstimatedQuota] = useState(0);
 
-  // 将 platformPageConfig 对象和 frequency/platformCounts 序列化，用于触发重算
-  var configKey = JSON.stringify(platformPageConfig) + '_' + linkCount + '_' + JSON.stringify(frequency);
+  // 将 platformPageConfig 对象和 frequency/platformCounts/platforms 序列化，用于触发重算
+  var configKey = JSON.stringify(platformPageConfig) + '_' + linkCount + '_' + JSON.stringify(frequency) + '_' + JSON.stringify(platforms);
 
   // 计算消耗额度
   var calculateQuota = useCallback(function () {
+    // 取得每日抓取轮数
+    var tPerDay = 12; // 默认每2小时
+    if (frequency) {
+      if (frequency.mode === 'hour') {
+        var h = parseInt(frequency.value, 10) || 2;
+        tPerDay = Math.ceil(24 / h);
+      } else if (frequency.mode === 'day') {
+        tPerDay = 1;
+      } else if (frequency.mode === 'custom' && frequency.customRules && frequency.customRules.length > 0) {
+        var totalRounds = 0;
+        var minStart: any = null;
+        var maxEnd: any = null;
+        
+        frequency.customRules.forEach(function (rule: any) {
+          if (rule.dateRange && rule.dateRange[0] && rule.dateRange[1]) {
+            var start = rule.dateRange[0];
+            var end = rule.dateRange[1];
+            var days = end.diff(start, 'day') + 1;
+            
+            if (!minStart || start.isBefore(minStart)) minStart = start;
+            if (!maxEnd || end.isAfter(maxEnd)) maxEnd = end;
+            
+            var rPerDay = 1;
+            if (rule.mode === 'hour') {
+              var h = parseInt(rule.value, 10) || 2;
+              rPerDay = Math.ceil(24 / h);
+            }
+            totalRounds += days * rPerDay;
+          }
+        });
+        
+        var totalDays = 1;
+        if (minStart && maxEnd) {
+          totalDays = maxEnd.diff(minStart, 'day') + 1;
+        }
+        tPerDay = Math.ceil(totalRounds / totalDays);
+      }
+    }
+
     if (scopeLabel === '链接' && linkCount) {
       // 链接计算逻辑：链接总数 * 每天抓取轮数 * 页数系数
-      var timesPerDay = 12; // 默认每2小时
-      if (frequency) {
-        if (frequency.mode === 'hour') {
-          var h = parseInt(frequency.value, 10) || 2;
-          timesPerDay = Math.ceil(24 / h);
-        } else {
-          timesPerDay = 1;
-        }
-      }
       var totalQuota = 0;
       if (Object.keys(platformPageConfig).length === 0) {
         // 互动量更新，每个链接每轮次更新消耗 1 次额度
-        totalQuota = linkCount * timesPerDay;
+        totalQuota = linkCount * tPerDay;
       } else {
         for (var platform in platformPageConfig) {
           var pages = platformPageConfig[platform];
           var multiplier = PAGE_MULTIPLIER[pages] || 1;
-          // 取得该平台的链接条数
           var platLinkCount = (platformCounts && platformCounts[platform]) || Math.ceil(linkCount / Math.max(1, Object.keys(platformPageConfig).length));
-          totalQuota += platLinkCount * timesPerDay * multiplier;
+          totalQuota += platLinkCount * tPerDay * multiplier;
         }
       }
       return { posts: linkCount, quota: totalQuota };
     } else {
-      // 专题/重点源原有计算逻辑
-      var posts = Math.floor(Math.random() * 4001) + 1000;
-      var median = Math.floor(Math.random() * 151) + 50;
-      var totalQuota = 0;
-      for (var platform in platformPageConfig) {
-        var pages = platformPageConfig[platform];
-        var multiplier = PAGE_MULTIPLIER[pages] || 1;
-        totalQuota += median * multiplier;
+      // 专题/重点源计算逻辑
+      if (taskType === 'interaction') {
+        // 互动量更新
+        var totalQuota = 0;
+        var posts = 0;
+        var plist = platforms || [];
+        if (plist.length > 0) {
+          plist.forEach(function () {
+            posts += 250; // 每个平台设定平均 250 篇帖子
+          });
+          totalQuota = posts * tPerDay;
+        }
+        return { posts, quota: totalQuota };
+      } else {
+        // 评论区采集
+        var posts = 1850;
+        var median = 80;
+        var totalQuota = 0;
+        for (var platform in platformPageConfig) {
+          var pages = platformPageConfig[platform];
+          var multiplier = PAGE_MULTIPLIER[pages] || 1;
+          totalQuota += median * multiplier * tPerDay;
+        }
+        return { posts, quota: totalQuota };
       }
-      return { posts, quota: totalQuota };
     }
-  }, [configKey, scopeLabel, linkCount, frequency, platformCounts]);
+  }, [configKey, scopeLabel, linkCount, frequency, platformCounts, platformPageConfig, taskType, platforms]);
 
   // 初始化 + 选项变更时重新计算
   useEffect(function () {
@@ -214,8 +439,36 @@ const QuotaEstimatePanel: React.FC<{
     if (frequency.mode === 'hour') {
       var h = parseInt(frequency.value, 10) || 2;
       timesPerDay = Math.ceil(24 / h);
-    } else {
+    } else if (frequency.mode === 'day') {
       timesPerDay = 1;
+    } else if (frequency.mode === 'custom' && frequency.customRules && frequency.customRules.length > 0) {
+      var totalRounds = 0;
+      var minStart: any = null;
+      var maxEnd: any = null;
+      
+      frequency.customRules.forEach(function (rule: any) {
+        if (rule.dateRange && rule.dateRange[0] && rule.dateRange[1]) {
+          var start = rule.dateRange[0];
+          var end = rule.dateRange[1];
+          var days = end.diff(start, 'day') + 1;
+          
+          if (!minStart || start.isBefore(minStart)) minStart = start;
+          if (!maxEnd || end.isAfter(maxEnd)) maxEnd = end;
+          
+          var rPerDay = 1;
+          if (rule.mode === 'hour') {
+            var h = parseInt(rule.value, 10) || 2;
+            rPerDay = Math.ceil(24 / h);
+          }
+          totalRounds += days * rPerDay;
+        }
+      });
+      
+      var totalDays = 1;
+      if (minStart && maxEnd) {
+        totalDays = (maxEnd as any).diff(minStart, 'day') + 1;
+      }
+      timesPerDay = Math.ceil(totalRounds / totalDays);
     }
   }
 
@@ -241,7 +494,7 @@ const QuotaEstimatePanel: React.FC<{
                 </span>
               ) : (
                 <span className="ct-quota-info-text">
-                  该{scopeLabel}近7天累计收录 <strong>{postData.toLocaleString()}</strong> 条帖子，基于各平台采集页数配置，当前配置预计：
+                  该{scopeLabel}近7天累计收录 <strong>{postData.toLocaleString()}</strong> 条帖子，每天进行 <strong>{timesPerDay}</strong> 轮次抓取，基于{taskType === 'interaction' ? '各平台互动量更新配置' : '各平台评论采集页数配置'}，当前配置预计：
                 </span>
               )}
             </div>
@@ -319,10 +572,10 @@ const PlatformCheckboxGroup: React.FC<any> = function (props: any) {
 const TaskFormContent: React.FC<{
   form: any;
   scopeType: ScopeType;
-  frequency: { mode: string; value: string };
+  frequency: { mode: string; value: string; dateRange?: any; customRules?: any[] };
   submitting: boolean;
   onScopeTypeChange: (v: ScopeType) => void;
-  onFrequencyChange: (v: { mode: string; value: string }) => void;
+  onFrequencyChange: (v: any) => void;
   shakeTrackDays: boolean;
   onShakeTrackDays: (v: boolean) => void;
   isEditMode: boolean;
@@ -340,6 +593,8 @@ const TaskFormContent: React.FC<{
   setLinkText: (v: string) => void;
   linkPlatforms: string[];
   setLinkPlatforms: React.Dispatch<React.SetStateAction<string[]>>;
+  linksTableData: any[];
+  setLinksTableData: React.Dispatch<React.SetStateAction<any[]>>;
 }> = function ({
   form,
   scopeType,
@@ -363,9 +618,72 @@ const TaskFormContent: React.FC<{
   linkText,
   setLinkText,
   linkPlatforms,
-  setLinkPlatforms
+  setLinkPlatforms,
+  linksTableData,
+  setLinksTableData
 }) {
   const [trackDaysError, setTrackDaysError] = useState(false);
+  const [editingId, setEditingId] = useState<string>('');
+  const [editingLinkValue, setEditingLinkValue] = useState<string>('');
+
+  const syncPlatforms = useCallback((data: any[]) => {
+    const validLinks = data.filter(function (r) { return r.status === 'valid'; });
+    const platformsSet = Array.from(new Set(validLinks.map(function (item) { return item.platform; })));
+    setLinkPlatforms(platformsSet);
+    form.setFieldValue('platforms', platformsSet);
+    
+    setLinkPlatformPages(function (prev) {
+      var nextPages = { ...prev };
+      platformsSet.forEach(function (p) {
+        if (!nextPages[p]) {
+          nextPages[p] = '1';
+        }
+      });
+      return nextPages;
+    });
+    
+    setValidateResult({
+      validCount: validLinks.length,
+      platforms: platformsSet,
+      platformCounts: data.reduce(function (acc, curr) {
+        if (curr.status === 'valid') {
+          acc[curr.platform] = (acc[curr.platform] || 0) + 1;
+        }
+        return acc;
+      }, {} as Record<string, number>),
+      invalidList: data.filter(function (r) { return r.status === 'invalid'; }).map(function (r) { return r.link; }),
+    });
+  }, [form, setLinkPlatforms, setLinkPlatformPages, setValidateResult]);
+
+  const handleSaveEditing = useCallback((id: string) => {
+    if (editingLinkValue.trim()) {
+      const newValidatedItem = validateSingleLink(editingLinkValue);
+      setLinksTableData(function (prev) {
+        const next = prev.map(function (item) {
+          if (item.id === id) {
+            return {
+              ...item,
+              link: newValidatedItem.link,
+              platform: newValidatedItem.platform,
+              status: newValidatedItem.status
+            };
+          }
+          return item;
+        });
+        setTimeout(function () { syncPlatforms(next); }, 0);
+        return next;
+      });
+    }
+    setEditingId('');
+  }, [editingLinkValue, setLinksTableData, syncPlatforms]);
+
+  const handleDeleteLink = useCallback((id: string) => {
+    setLinksTableData(function (prev) {
+      const next = prev.filter(function (item) { return item.id !== id; });
+      setTimeout(function () { syncPlatforms(next); }, 0);
+      return next;
+    });
+  }, [setLinksTableData, syncPlatforms]);
 
   const trackDaysValue = Form.useWatch('track_days', form);
   const taskTypeValue = Form.useWatch('task_type', form);
@@ -478,54 +796,28 @@ const TaskFormContent: React.FC<{
         return;
       }
 
-      const urlPattern = /^https?:\/\/.+/i;
-      const invalidLinks: string[] = [];
-      parsedLinks.forEach(function (item) {
-        if (!urlPattern.test(item.link)) {
-          invalidLinks.push(item.link);
-        }
+      var newItems = rawLines.map(validateSingleLink);
+      setLinksTableData(function (prev) {
+        var next = [...prev, ...newItems];
+        var seen = new Set();
+        var unique = next.filter(function (item) {
+          var k = item.link;
+          return seen.has(k) ? false : seen.add(k);
+        });
+        setTimeout(function () { syncPlatforms(unique); }, 0);
+        return unique;
       });
 
-      if (invalidLinks.length > 0) {
-        message.error(`文件有效性校验失败：检测到 ${invalidLinks.length} 条非法链接（如：${invalidLinks.slice(0, 2).join(', ')}），已中断导入`);
-        return;
-      }
-
-      const importedText = rawLines.join('\n');
-      const nextText = linkText.trim() ? linkText + '\n' + importedText : importedText;
-      setLinkText(nextText);
-
-      const currentList = form.getFieldValue('link_list') || [];
-      form.setFieldsValue({
-        link_list: [...currentList, ...parsedLinks]
-      });
-
-      message.success(`导入成功，共解析并导入 ${parsedLinks.length} 条有效链接`);
+      message.success(`导入成功，已在下方表格载入 ${parsedLinks.length} 条链接`);
       e.target.value = '';
     };
 
     reader.readAsText(file);
-  }, [linkText, form]);
+  }, [form, setLinksTableData, syncPlatforms]);
 
   const handleLinkTextChange = useCallback(function (e: React.ChangeEvent<HTMLTextAreaElement>) {
-    const text = e.target.value;
-    setLinkText(text);
-    if (validateResult) {
-      setValidateResult(null);
-      setLinkValidation('idle');
-    }
-    
-    const lines = text.split('\n').map(function (l) { return l.trim(); }).filter(Boolean);
-    const list = lines.map(function (line) {
-      const existing = (form.getFieldValue('link_list') || []).find(function (item: any) { return item.link === line; });
-      return {
-        link: line,
-        title: existing?.title || '',
-        topic: existing?.topic || ''
-      };
-    });
-    form.setFieldsValue({ link_list: list });
-  }, [form, validateResult]);
+    setLinkText(e.target.value);
+  }, [setLinkText]);
 
   return (
     <Form
@@ -562,15 +854,7 @@ const TaskFormContent: React.FC<{
           <FrequencySelector value={frequency} onChange={onFrequencyChange} />
         </Form.Item>
 
-        <Form.Item label="时间范围" name="date_range" rules={[{ required: true, message: '请选择任务采集的时间范围' }]}>
-          <DatePicker.RangePicker
-            style={{ width: '100%' }}
-            disabledDate={function (current) {
-              return current && current < dayjs().startOf('day');
-            }}
-            placeholder={['开始日期', '结束日期']}
-          />
-        </Form.Item>
+
       </div>
 
       {/* ---- Section 2: 任务对象 ---- */}
@@ -698,11 +982,14 @@ const TaskFormContent: React.FC<{
               </div>
             )}
 
-            {/* 额度预估看板（仅评论区采集时显示） */}
-            {taskTypeValue === 'comment' && (
+            {/* 额度预估看板 */}
+            {scopePlatforms.length > 0 && (
               <QuotaEstimatePanel
                 scopeLabel={scopeLabel}
-                platformPageConfig={scopePlatformPages}
+                platformPageConfig={taskTypeValue === 'comment' ? scopePlatformPages : {}}
+                frequency={frequency}
+                taskType={taskTypeValue}
+                platforms={scopePlatforms}
               />
             )}
           </div>
@@ -749,119 +1036,114 @@ const TaskFormContent: React.FC<{
                     </Button>
                   </Space>
                   <Button
-                    type="link"
+                    type="primary"
                     size="small"
-                    className="ct-link-validate-btn"
-                    disabled={linkValidation === 'loading' || !linkText.trim()}
+                    disabled={!linkText.trim()}
                     onClick={function () {
-                      setValidateResult(null);
-                      setLinkValidation('loading');
-                      setTimeout(function () {
-                        var lines = linkText.split('\n').map(function (l) { return l.trim(); }).filter(Boolean);
-                        var urlPattern = /^https?:\/\/.+/i;
-                        var validLines: string[] = [];
-                        var invalidList: string[] = [];
-                        var platformSet = new Set<string>();
-                        var platformCounts: Record<string, number> = {};
-                        // 平台关键词识别
-                        var platformKeywords: Record<string, string[]> = {
-                          '抖音': ['douyin', 'iesdouyin'],
-                          '微博': ['weibo'],
-                          '小红书': ['xiaohongshu', 'xhslink'],
-                          '快手': ['kuaishou', 'v.kuaishou'],
-                          'B站': ['bilibili', 'b23.tv'],
-                          '知乎': ['zhihu'],
-                        };
-                        lines.forEach(function (line) {
-                          if (urlPattern.test(line)) {
-                            validLines.push(line);
-                            // 识别平台
-                            var lowerLine = line.toLowerCase();
-                            var matched = false;
-                            for (var platform in platformKeywords) {
-                              var keywords = platformKeywords[platform];
-                              if (keywords.some(function (kw) { return lowerLine.includes(kw); })) {
-                                platformSet.add(platform);
-                                platformCounts[platform] = (platformCounts[platform] || 0) + 1;
-                                matched = true;
-                                break;
-                              }
-                            }
-                            if (!matched) {
-                              platformSet.add('其他');
-                              platformCounts['其他'] = (platformCounts['其他'] || 0) + 1;
-                            }
-                          } else {
-                            invalidList.push(line);
-                          }
+                      var lines = linkText.split('\n').map(function (l) { return l.trim(); }).filter(Boolean);
+                      var newItems = lines.map(validateSingleLink);
+                      setLinksTableData(function (prev) {
+                        var next = [...prev, ...newItems];
+                        var seen = new Set();
+                        var unique = next.filter(function (item) {
+                          var k = item.link;
+                          return seen.has(k) ? false : seen.add(k);
                         });
-
-                        const detectedPlatforms = Array.from(platformSet);
-                        // 把解析得到的平台同步写入表单，以触发下方的评论区采集页数及额度看板展示
-                        form.setFieldValue('platforms', detectedPlatforms);
-
-                        // 同步平台状态
-                        setLinkPlatforms(detectedPlatforms);
-
-                        // 显式给 linkPlatformPages 设置默认值 "1"（前1页）
-                        setLinkPlatformPages(function (prev) {
-                          var nextPages = { ...prev };
-                          detectedPlatforms.forEach(function (p) {
-                            if (!nextPages[p]) {
-                              nextPages[p] = '1';
-                            }
-                          });
-                          return nextPages;
-                        });
-
-                        setValidateResult({
-                          validCount: validLines.length,
-                          platforms: detectedPlatforms,
-                          platformCounts: platformCounts,
-                          invalidList: invalidList,
-                        });
-                        setLinkValidation(invalidList.length === 0 ? 'success' : 'error');
-                      }, 1000);
+                        setTimeout(function () { syncPlatforms(unique); }, 0);
+                        return unique;
+                      });
+                      setLinkText('');
                     }}
+                    style={{ backgroundColor: '#1890FF', borderColor: '#1890FF' }}
                   >
-                    {linkValidation === 'loading' && <><LoadingOutlined style={{ marginRight: 4 }} />校验中...</>}
-                    {linkValidation === 'success' && <><CheckCircleOutlined style={{ marginRight: 4 }} />校验通过</>}
-                    {(linkValidation === 'idle' || linkValidation === 'error') && '链接校验'}
+                    解析并导入
                   </Button>
                 </div>
               </div>
-              {/* 校验结果区 */}
-              {validateResult && linkValidation === 'success' && (
-                <div className="ct-link-validate-result ct-link-validate-result--success" style={{ display: 'block', padding: '12px 14px' }}>
-                  <div style={{ marginBottom: 6 }}>
-                    <CheckCircleOutlined style={{ marginRight: 6, color: '#52C41A' }} />
-                    已识别到 <strong>{validateResult.validCount}</strong> 条有效链接，其中：
-                  </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', paddingLeft: 18 }}>
-                    {Object.entries(validateResult.platformCounts || {}).map(function ([platform, count]) {
-                      return (
-                        <Tag color="blue" key={platform} style={{ margin: 0 }}>
-                          {platform}：{count as any} 条
-                        </Tag>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-              {validateResult && linkValidation === 'error' && (
-                <div className="ct-link-validate-result ct-link-validate-result--error">
-                  <span>
-                    已识别 {validateResult.validCount} 条有效链接，无法识别以下内容：
-                  </span>
-                  <div className="ct-link-validate-error-list">
-                    {validateResult.invalidList.map(function (item: any, idx: any) {
-                      return <span key={idx} className="ct-link-validate-error-item">{item}</span>;
-                    })}
-                  </div>
-                  <span>将在提交后自动剔除</span>
-                </div>
-              )}
             </Form.Item>
+
+            {linksTableData.length > 0 && (
+              <div className="ct-link-table-wrapper" style={{ marginTop: 16, marginBottom: 16 }}>
+                <div style={{ marginBottom: 8, fontSize: 13, fontWeight: 'bold', color: 'rgba(0,0,0,0.65)' }}>已导入链接明细：</div>
+                <Table
+                  dataSource={linksTableData}
+                  rowKey="id"
+                  size="small"
+                  pagination={{ pageSize: 5, size: 'small', showSizeChanger: false }}
+                  columns={[
+                    {
+                      title: '链接',
+                      dataIndex: 'link',
+                      key: 'link',
+                      ellipsis: true,
+                      render: function (text: string, record: any) {
+                        if (editingId === record.id) {
+                          return (
+                            <Input
+                              value={editingLinkValue}
+                              onChange={function (e) { setEditingLinkValue(e.target.value); }}
+                              onBlur={function () { handleSaveEditing(record.id); }}
+                              autoFocus
+                              size="small"
+                              style={{ width: '100%' }}
+                            />
+                          );
+                        }
+                        return <span style={{ fontSize: 12, wordBreak: 'break-all' }}>{text}</span>;
+                      }
+                    },
+                    {
+                      title: '平台',
+                      dataIndex: 'platform',
+                      key: 'platform',
+                      width: 90,
+                      render: function (platform: string) {
+                        return <Tag color={platform === '其他' ? 'default' : 'blue'} style={{ margin: 0 }}>{platform}</Tag>;
+                      }
+                    },
+                    {
+                      title: '有效性',
+                      dataIndex: 'status',
+                      key: 'status',
+                      width: 90,
+                      render: function (status: string) {
+                        return status === 'valid' ? (
+                          <Badge status="success" text="有效" />
+                        ) : (
+                          <Badge status="error" text="无效" />
+                        );
+                      }
+                    },
+                    {
+                      title: '操作',
+                      key: 'action',
+                      width: 100,
+                      render: function (_: any, record: any) {
+                        return (
+                          <Space size={8}>
+                            <a 
+                              onClick={function () { 
+                                setEditingId(record.id); 
+                                setEditingLinkValue(record.link); 
+                              }}
+                              style={{ fontSize: 13 }}
+                            >
+                              修改
+                            </a>
+                            <a 
+                              onClick={function () { handleDeleteLink(record.id); }} 
+                              style={{ color: '#ff4d4f', fontSize: 13 }}
+                            >
+                              删除
+                            </a>
+                          </Space>
+                        );
+                      }
+                    }
+                  ]}
+                />
+              </div>
+            )}
 
             {/* 评论区采集时，按平台配置采集页数 */}
             {taskTypeValue === 'comment' && linkPlatforms && linkPlatforms.length > 0 && (
@@ -899,6 +1181,8 @@ const TaskFormContent: React.FC<{
                 linkCount={validateResult?.validCount || 0}
                 frequency={frequency}
                 platformCounts={validateResult?.platformCounts}
+                taskType={taskTypeValue}
+                platforms={linkPlatforms}
               />
             )}
           </div>
@@ -915,9 +1199,16 @@ const CollectTaskDrawer: React.FC<CollectTaskDrawerProps> = function ({ open, ti
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
   const [drawerScopeType, setDrawerScopeType] = useState<ScopeType>('topic');
-  const [drawerFrequency, setDrawerFrequency] = useState<{ mode: string; value: string }>({
+  const [drawerFrequency, setDrawerFrequency] = useState<{
+    mode: string;
+    value: string;
+    dateRange?: any;
+    customRules?: any[];
+  }>({
     mode: 'hour',
     value: '2',
+    dateRange: null,
+    customRules: [],
   });
   const [shakeTrackDays, setShakeTrackDays] = useState(false);
 
@@ -929,6 +1220,7 @@ const CollectTaskDrawer: React.FC<CollectTaskDrawerProps> = function ({ open, ti
   const [linkValidation, setLinkValidation] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [validateResult, setValidateResult] = useState<{ validCount: number; platforms: string[]; platformCounts: Record<string, number>; invalidList: string[] } | null>(null);
   const [linkPlatforms, setLinkPlatforms] = useState<string[]>([]);
+  const [linksTableData, setLinksTableData] = useState<any[]>([]);
 
   // open 变为 true 时，如果有 initialValues 则填充
   useEffect(function () {
@@ -959,15 +1251,57 @@ const CollectTaskDrawer: React.FC<CollectTaskDrawerProps> = function ({ open, ti
           if (initialValues.link_list !== undefined) valuesToSet.link_list = initialValues.link_list;
           if (initialValues.related_topic !== undefined) valuesToSet.related_topic = initialValues.related_topic;
           if (initialValues.related_source !== undefined) valuesToSet.related_source = initialValues.related_source;
-          if (initialValues.start_date && initialValues.end_date) {
-            valuesToSet.date_range = [dayjs(initialValues.start_date), dayjs(initialValues.end_date)];
+          // 回显链接表格数据
+          if (initialValues.link_list && initialValues.link_list.length > 0) {
+            var initialLinks = initialValues.link_list.map(function (item: any) {
+              return validateSingleLink(item.link);
+            });
+            setLinksTableData(initialLinks);
+            
+            var platformsSet = Array.from(new Set(initialLinks.map(function (item) { return item.platform; })));
+            setValidateResult({
+              validCount: initialLinks.length,
+              platforms: platformsSet,
+              platformCounts: initialLinks.reduce(function (acc, curr) {
+                if (curr.status === 'valid') {
+                  acc[curr.platform] = (acc[curr.platform] || 0) + 1;
+                }
+                return acc;
+              }, {} as Record<string, number>),
+              invalidList: [],
+            });
+          } else {
+            setLinksTableData([]);
           }
+
+          // 回显频率与时间范围
+          var freqMode = initialValues.frequency_mode || 'hour';
+          var freqVal = initialValues.frequency_value || '2';
+          var customRules = initialValues.frequency_custom_rules || [];
+          var dateRange = null;
+          if (initialValues.start_date && initialValues.end_date) {
+            dateRange = [dayjs(initialValues.start_date), dayjs(initialValues.end_date)];
+          }
+
+          setDrawerFrequency({
+            mode: freqMode,
+            value: freqVal,
+            dateRange: dateRange,
+            customRules: customRules.map(function (rule: any) {
+              return {
+                id: rule.id || Math.random().toString(36).slice(2, 9),
+                dateRange: rule.start_date && rule.end_date ? [dayjs(rule.start_date), dayjs(rule.end_date)] : null,
+                mode: rule.mode || 'hour',
+                value: rule.value || (rule.mode === 'day' ? '08:00' : '2'),
+              };
+            }),
+          });
           form.setFieldsValue(valuesToSet);
         }, 100);
       } else {
         // 无 initialValues 时重置
         setDrawerScopeType('topic');
-        setDrawerFrequency({ mode: 'hour', value: '2' });
+        setDrawerFrequency({ mode: 'hour', value: '2', dateRange: null, customRules: [] });
         setScopePlatforms([]);
         setScopePlatformPages({});
         setLinkPlatformPages({});
@@ -975,6 +1309,7 @@ const CollectTaskDrawer: React.FC<CollectTaskDrawerProps> = function ({ open, ti
         setValidateResult(null);
         setLinkValidation('idle');
         setLinkPlatforms([]);
+        setLinksTableData([]);
         setTimeout(function () {
           form.resetFields();
         }, 0);
@@ -983,7 +1318,7 @@ const CollectTaskDrawer: React.FC<CollectTaskDrawerProps> = function ({ open, ti
       // open 变为 false 时重置
       form.resetFields();
       setDrawerScopeType('topic');
-      setDrawerFrequency({ mode: 'hour', value: '2' });
+      setDrawerFrequency({ mode: 'hour', value: '2', dateRange: null, customRules: [] });
       setScopePlatforms([]);
       setScopePlatformPages({});
       setLinkPlatformPages({});
@@ -991,6 +1326,7 @@ const CollectTaskDrawer: React.FC<CollectTaskDrawerProps> = function ({ open, ti
       setValidateResult(null);
       setLinkValidation('idle');
       setLinkPlatforms([]);
+      setLinksTableData([]);
     }
   }, [open, initialValues, form]);
 
@@ -1009,41 +1345,110 @@ const CollectTaskDrawer: React.FC<CollectTaskDrawerProps> = function ({ open, ti
         message.error('请检查追踪天数，允许范围 0-7 天');
         return;
       }
+    } else {
+      var validLinks = linksTableData.filter(function (item) { return item.status === 'valid'; });
+      if (validLinks.length === 0) {
+        message.error('请在下方表格中录入或修改至少一条有效链接');
+        return;
+      }
     }
+
+    // 先检查频率与时间范围的有效性
+    if (drawerFrequency.mode !== 'custom') {
+      if (!drawerFrequency.dateRange || !drawerFrequency.dateRange[0] || !drawerFrequency.dateRange[1]) {
+        message.error('请选择任务采集的时间范围');
+        return;
+      }
+    } else {
+      if (!drawerFrequency.customRules || drawerFrequency.customRules.length === 0) {
+        message.error('请至少添加一条自定义频次规则');
+        return;
+      }
+      for (var i = 0; i < drawerFrequency.customRules.length; i++) {
+        var rule = drawerFrequency.customRules[i];
+        if (!rule.dateRange || !rule.dateRange[0] || !rule.dateRange[1]) {
+          message.error('请完善自定义规则第 ' + (i + 1) + ' 行的时间范围');
+          return;
+        }
+        if (!rule.value) {
+          message.error('请完善自定义规则第 ' + (i + 1) + ' 行的频次数值');
+          return;
+        }
+      }
+    }
+
     form.validateFields().then(function (values) {
       setSubmitting(true);
       setTimeout(function () {
         setSubmitting(false);
         // 如果是链接类型，根据已识别的 platforms 状态写入
         let finalPlatforms = values.platforms || [];
+        let finalLinkList = values.link_list || [];
         if (values.scope_type === 'other') {
           finalPlatforms = linkPlatforms.length > 0 ? linkPlatforms : ['链接'];
+          finalLinkList = linksTableData.filter(function (item) { return item.status === 'valid'; }).map(function (item) {
+            return { link: item.link, title: '', topic: '' };
+          });
         }
 
         const pageConfig = values.scope_type === 'other' ? linkPlatformPages : scopePlatformPages;
 
         let startStr = '';
         let endStr = '';
-        if (values.date_range && values.date_range[0] && values.date_range[1]) {
-          startStr = values.date_range[0].format('YYYY-MM-DD');
-          endStr = values.date_range[1].format('YYYY-MM-DD');
+        let finalFrequencyText = '';
+        let finalCustomRules: any[] = [];
+
+        if (drawerFrequency.mode === 'custom') {
+          finalCustomRules = (drawerFrequency.customRules || []).map(function (r) {
+            var sDate = r.dateRange && r.dateRange[0] ? r.dateRange[0].format('YYYY-MM-DD') : '';
+            var eDate = r.dateRange && r.dateRange[1] ? r.dateRange[1].format('YYYY-MM-DD') : '';
+            return {
+              id: r.id,
+              start_date: sDate,
+              end_date: eDate,
+              mode: r.mode,
+              value: r.value,
+            };
+          });
+
+          // 任务的时间跨度
+          var startDates = finalCustomRules.map(function (r) { return r.start_date; }).filter(Boolean);
+          var endDates = finalCustomRules.map(function (r) { return r.end_date; }).filter(Boolean);
+          if (startDates.length > 0) {
+            startDates.sort();
+            startStr = startDates[0];
+          }
+          if (endDates.length > 0) {
+            endDates.sort();
+            endStr = endDates[endDates.length - 1];
+          }
+
+          finalFrequencyText = '自定义 (' + finalCustomRules.length + '条规则)';
+        } else {
+          if (drawerFrequency.dateRange && drawerFrequency.dateRange[0] && drawerFrequency.dateRange[1]) {
+            startStr = drawerFrequency.dateRange[0].format('YYYY-MM-DD');
+            endStr = drawerFrequency.dateRange[1].format('YYYY-MM-DD');
+          }
+          finalFrequencyText = drawerFrequency.mode === 'hour' ? '每' + drawerFrequency.value + '小时' : '每天' + drawerFrequency.value;
         }
 
         // 回传表单 values
         onSubmit?.({
           ...values,
+          link_list: finalLinkList,
           platforms: finalPlatforms,
           platform_pages: pageConfig,
           start_date: startStr,
           end_date: endStr,
-          frequency: drawerFrequency.mode === 'hour' ? `每${drawerFrequency.value}小时` : `每天${drawerFrequency.value}`,
+          frequency: finalFrequencyText,
           frequency_mode: drawerFrequency.mode,
-          frequency_value: drawerFrequency.value,
+          frequency_value: drawerFrequency.mode === 'custom' ? '' : drawerFrequency.value,
+          frequency_custom_rules: finalCustomRules,
         });
         onClose();
       }, 1000);
     });
-  }, [form, onSubmit, onClose, drawerFrequency, linkPlatformPages, scopePlatformPages, linkPlatforms]);
+  }, [form, onSubmit, onClose, drawerFrequency, linkPlatformPages, scopePlatformPages, linkPlatforms, linksTableData]);
 
   return (
     <Drawer
@@ -1093,6 +1498,8 @@ const CollectTaskDrawer: React.FC<CollectTaskDrawerProps> = function ({ open, ti
         setLinkText={setLinkText}
         linkPlatforms={linkPlatforms}
         setLinkPlatforms={setLinkPlatforms}
+        linksTableData={linksTableData}
+        setLinksTableData={setLinksTableData}
       />
     </Drawer>
   );

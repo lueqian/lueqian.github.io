@@ -84,14 +84,12 @@ const CONSUMPTION_DATA: ConsumptionData[] = [
     value: '12,450',
     unit: '次',
     theme: 'green',
-    trend: { value: '较昨天增加 120 次', direction: 'up' },
   },
   {
     label: '本月累计消耗',
     value: '345,600',
     unit: '次',
     theme: 'yellow',
-    trend: { value: '较上个月减少 1,200 次', direction: 'down' },
   },
 ];
 
