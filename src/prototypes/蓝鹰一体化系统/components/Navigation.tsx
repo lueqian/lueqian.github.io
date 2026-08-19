@@ -15,6 +15,7 @@ import {
   GlobalOutlined,
   ApartmentOutlined,
   EditOutlined,
+  CameraOutlined,
 } from '@ant-design/icons';
 
 export interface NavigationProps {
@@ -42,6 +43,7 @@ const menuItems: MenuItem[] = [
   { key: 'people-database', label: '人员库', icon: <UsergroupAddOutlined /> },
   { key: 'stability-maintenance', label: '稳情库', icon: <MessageOutlined /> },
   { key: 'publications-management', label: '刊物管理', icon: <BookOutlined /> },
+  { key: 'link-collection', label: '截图取证', icon: <CameraOutlined /> },
   { key: 'internet-data-screen', label: '互联网大屏', icon: <GlobalOutlined /> },
   { key: 'intranet-data-screen', label: '内网大屏', icon: <ApartmentOutlined /> },
 ];

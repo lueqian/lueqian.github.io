@@ -18,6 +18,7 @@ import InternetDataScreen from './pages/InternetDataScreen';
 import IntranetDataScreen from './pages/IntranetDataScreen';
 import ManualReport from './pages/ManualReport';
 import DutyRosterModal from './components/DutyRosterModal';
+import LinkCollection from './pages/LinkCollection';
 
 export type PageKey =
   | 'police-opinion-joint'
@@ -32,7 +33,8 @@ export type PageKey =
   | 'stability-maintenance'
   | 'publications-management'
   | 'internet-data-screen'
-  | 'intranet-data-screen';
+  | 'intranet-data-screen'
+  | 'link-collection';
 
 export interface AxureProps {
   onEvent?: (eventName: string, data?: string) => void;
@@ -89,6 +91,8 @@ const BlueEagleIntegratedSystem = forwardRef<AxureHandle, AxureProps>(function B
         return <InternetDataScreen onNavigate={handleMenuSelect} onSwitch={handleMenuSelect} />;
       case 'intranet-data-screen':
         return <IntranetDataScreen onNavigate={handleMenuSelect} onSwitch={handleMenuSelect} />;
+      case 'link-collection':
+        return <LinkCollection />;
       default:
         return <PoliceOpinionJoint />;
     }
