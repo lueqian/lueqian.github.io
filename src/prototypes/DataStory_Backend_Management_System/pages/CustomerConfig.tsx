@@ -12,6 +12,7 @@ import {
   SearchOutlined,
   RedoOutlined,
   DownloadOutlined,
+  SettingOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import * as XLSX from 'xlsx';
@@ -354,6 +355,25 @@ function generateTaskData(): TaskRecord[] {
 
 const TASK_DATA = generateTaskData();
 
+const PLATFORMS_BY_CATEGORY = [
+  {
+    category: '社交社区',
+    list: ['小红书', '微博', '知乎', '百度贴吧', 'Twitter/X', 'Facebook', 'Instagram']
+  },
+  {
+    category: '视频影音',
+    list: ['抖音', '快手', '西瓜视频', 'B站', '腾讯视频', '爱奇艺', '优酷', 'YouTube']
+  },
+  {
+    category: '资讯媒体',
+    list: ['今日头条', '网易新闻', '腾讯新闻', '新浪新闻', '搜狐新闻', '凤凰网', '人民网', '新华网']
+  },
+  {
+    category: '私域及专业',
+    list: ['微信公众号', '小红书专业版']
+  }
+];
+
 /** ── 采集任务额度（次）子 Tab 内容 ── */
 const CollectTaskQuotaTab: React.FC<{
   collectTaskEnabled: boolean;
@@ -372,38 +392,73 @@ const CollectTaskQuotaTab: React.FC<{
   const [formDate, setFormDate] = useState('');
 
   // ── 采集平台管理 ──
-  const platforms = ['小红书', '抖音', '微博', '今日头条', 'B站', '知乎'];
-  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([...platforms]);
-  const [platformFactors, setPlatformFactors] = useState<Record<string, { interaction: string; comment: string }>>({
-    '小红书': { interaction: '17.00', comment: '17.00' },
-    '抖音': { interaction: '1.00', comment: '2.00' },
-    '微博': { interaction: '1.00', comment: '2.00' },
-    '今日头条': { interaction: '1.00', comment: '2.00' },
-    'B站': { interaction: '1.00', comment: '2.00' },
-    '知乎': { interaction: '1.00', comment: '2.00' },
+  const platforms = [
+    '小红书', '抖音', '微博', '今日头条', 'B站', '知乎',
+    '微信公众号', '百度贴吧', '快手', '西瓜视频', '腾讯视频',
+    '爱奇艺', '优酷', '网易新闻', '腾讯新闻', '新浪新闻',
+    '搜狐新闻', '凤凰网', '人民网', '新华网', '小红书专业版',
+    'Twitter/X', 'Facebook', 'Instagram', 'YouTube'
+  ];
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([
+    '小红书', '抖音', '微博', '今日头条', 'B站', '知乎'
+  ]);
+  const [platformFactors, setPlatformFactors] = useState<Record<string, { interaction: string; comment: string }>>(() => {
+    const defaults: Record<string, { interaction: string; comment: string }> = {
+      '小红书': { interaction: '17.00', comment: '17.00' },
+      '抖音': { interaction: '1.00', comment: '2.00' },
+      '微博': { interaction: '1.00', comment: '2.00' },
+      '今日头条': { interaction: '1.00', comment: '2.00' },
+      'B站': { interaction: '1.00', comment: '2.00' },
+      '知乎': { interaction: '1.00', comment: '2.00' },
+    };
+    platforms.forEach(p => {
+      if (!defaults[p]) {
+        defaults[p] = { interaction: '1.00', comment: '1.00' };
+      }
+    });
+    return defaults;
   });
 
-  const togglePlatform = (p: string) => {
-    setSelectedPlatforms((prev) =>
+  // ── 信源计费配置弹窗状态 ──
+  const [showPricingModal, setShowPricingModal] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [tempSelectedPlatforms, setTempSelectedPlatforms] = useState<string[]>([]);
+  const [tempPlatformFactors, setTempPlatformFactors] = useState<Record<string, { interaction: string; comment: string }>>({});
+
+  const toggleTempPlatform = (p: string) => {
+    setTempSelectedPlatforms((prev) =>
       prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]
     );
   };
 
-  const toggleAllPlatforms = () => {
-    if (selectedPlatforms.length === platforms.length) {
-      setSelectedPlatforms([]);
+  const toggleAllTempPlatforms = () => {
+    if (tempSelectedPlatforms.length === platforms.length) {
+      setTempSelectedPlatforms([]);
     } else {
-      setSelectedPlatforms([...platforms]);
+      setTempSelectedPlatforms([...platforms]);
     }
   };
 
-  const updateFactor = (platform: string, field: 'interaction' | 'comment', value: string) => {
-    // 限制 0~100 的两位小数
-    const clamped = value === '' ? '' : Math.min(100, Math.max(0, parseFloat(value) || 0)).toFixed(2);
-    setPlatformFactors((prev) => ({
+  const updateTempFactor = (platform: string, field: 'interaction' | 'comment', value: string) => {
+    setTempPlatformFactors((prev) => ({
       ...prev,
-      [platform]: { ...prev[platform], [field]: clamped },
+      [platform]: { ...prev[platform], [field]: value },
     }));
+  };
+
+  const handleSavePricing = () => {
+    const normalizedFactors = { ...tempPlatformFactors };
+    platforms.forEach((p) => {
+      const interVal = normalizedFactors[p]?.interaction;
+      const commVal = normalizedFactors[p]?.comment;
+      normalizedFactors[p] = {
+        interaction: interVal === '' || interVal == null ? '1.00' : Math.min(100, Math.max(0, parseFloat(interVal) || 0)).toFixed(2),
+        comment: commVal === '' || commVal == null ? '1.00' : Math.min(100, Math.max(0, parseFloat(commVal) || 0)).toFixed(2),
+      };
+    });
+    setSelectedPlatforms([...tempSelectedPlatforms]);
+    setPlatformFactors(normalizedFactors);
+    setShowPricingModal(false);
   };
 
   // ── 模拟额度包数据 ──
@@ -709,69 +764,46 @@ const CollectTaskQuotaTab: React.FC<{
       <div className="platform-mgmt-section" style={{ marginTop: '24px' }}>
         <div className="platform-mgmt-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span className="platform-mgmt-title">信源计费规则</span>
-          <label
-            className={`checkbox-item ${selectedPlatforms.length === platforms.length ? 'checkbox-checked' : ''}`}
-            onClick={toggleAllPlatforms}
-            style={{ margin: 0, padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--border-light)', cursor: 'pointer' }}
+          <button
+            className="btn-add-pkg"
+            onClick={() => {
+              setTempSelectedPlatforms([...selectedPlatforms]);
+              setTempPlatformFactors({ ...platformFactors });
+              setDropdownOpen(false);
+              setShowPricingModal(true);
+            }}
           >
-            <span className="checkbox-box" style={{ marginRight: '6px' }}>
-              {selectedPlatforms.length === platforms.length && <span className="checkbox-tick">✓</span>}
-            </span>
-            <span style={{ fontSize: '13px', fontWeight: 'normal', color: 'var(--text-main)' }}>全选所有平台</span>
-          </label>
+            <SettingOutlined style={{ marginRight: '4px' }} /> 配置规则
+          </button>
         </div>
 
-        {/* 平台卡片列表 */}
-        <div className="platform-card-list" style={{ marginTop: '16px' }}>
-          {platforms.map((p) => {
-            const isChecked = selectedPlatforms.includes(p);
-            return (
-              <div key={p} className={`platform-card ${isChecked ? '' : 'platform-card-disabled'}`}>
-                {/* 平台复选框勾选 */}
-                <label
-                  className={`checkbox-item ${isChecked ? 'checkbox-checked' : ''}`}
-                  onClick={() => togglePlatform(p)}
-                  style={{ margin: 0, padding: 0, border: 'none', background: 'transparent', display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}
-                >
-                  <span className="checkbox-box" style={{ marginRight: '8px' }}>
-                    {isChecked && <span className="checkbox-tick">✓</span>}
-                  </span>
-                  <span className={`platform-card-name ${isChecked && p === '小红书' ? 'platform-name-blue' : ''}`}>{p}</span>
-                </label>
-
-                <div className="platform-card-fields">
-                  <div className="platform-card-field">
-                    <label className="platform-card-label">互动量更新单次费用</label>
-                    <input
-                      type="number"
-                      className="platform-card-input"
-                      min="0"
-                      max="100"
-                      step="0.01"
-                      disabled={!isChecked}
-                      value={platformFactors[p]?.interaction ?? '1.00'}
-                      onChange={(e) => updateFactor(p, 'interaction', e.target.value)}
-                    />
-                    <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>元</span>
-                  </div>
-                  <div className="platform-card-field">
-                    <label className="platform-card-label">评论区采集单次费用</label>
-                    <input
-                      type="number"
-                      className="platform-card-input"
-                      min="0"
-                      max="100"
-                      step="0.01"
-                      disabled={!isChecked}
-                      value={platformFactors[p]?.comment ?? '1.00'}
-                      onChange={(e) => updateFactor(p, 'comment', e.target.value)}
-                    />
-                    <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>元</span>
-                  </div>
-                </div>
+        <div className="platform-summary-container" style={{ marginTop: '16px', background: '#fafafa', border: '1px solid #f0f0f0', borderRadius: '8px', padding: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+            <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+              已启用计费规则的信源平台（共 <strong style={{ color: '#1890ff' }}>{selectedPlatforms.length}</strong>/{platforms.length} 个）：
+            </span>
+            {selectedPlatforms.length > 0 && (
+              <span style={{ fontSize: '12px', color: '#8c8c8c' }}>已启用平台列表及其单价</span>
+            )}
+          </div>
+          <div className="platform-summary-tags" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', maxHeight: '180px', overflowY: 'auto' }}>
+            {selectedPlatforms.length === 0 ? (
+              <div style={{ padding: '24px 0', fontStyle: 'italic', textAlign: 'center', width: '100%', color: '#bfbfbf', fontSize: '13px' }}>
+                暂无已启用的信源计费规则，请点击右上角进行配置。
               </div>
-            );
-          })}
+            ) : (
+              selectedPlatforms.map((p) => (
+                <div key={p} className="platform-summary-tag" style={{ background: '#f0f5ff', border: '1px solid #adc6ff', borderRadius: '4px', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
+                  <span style={{ fontWeight: 'bold', color: '#2f54eb' }}>{p}</span>
+                  <span style={{ height: '10px', width: '1px', background: '#adc6ff' }}></span>
+                  <span style={{ color: 'var(--text-main)' }}>
+                    互动: <strong style={{ color: '#2f54eb' }}>{platformFactors[p]?.interaction ?? '1.00'}</strong> 元 | 
+                    评论: <strong style={{ color: '#2f54eb' }}>{platformFactors[p]?.comment ?? '1.00'}</strong> 元
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </div>
 
@@ -1224,6 +1256,254 @@ const CollectTaskQuotaTab: React.FC<{
             <div className="modal-footer">
               <button className="btn-modal-cancel" onClick={() => setShowDeleteConfirm(false)}>取消</button>
               <button className="btn-modal-danger" onClick={handleDeletePackage}>删除</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════ 信源计费规则配置弹窗 ═══════ */}
+      {showPricingModal && (
+        <div className="modal-overlay" onClick={() => setShowPricingModal(false)}>
+          <div className="modal-container" style={{ maxWidth: '800px', width: '90%' }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">信源计费规则配置</span>
+              <CloseOutlined className="modal-close" onClick={() => setShowPricingModal(false)} />
+            </div>
+            <div className="modal-body">
+              {/* 分类多选级联下拉框区域 */}
+              <div className="modal-form-row" style={{ position: 'relative', margin: 0 }}>
+                <label className="modal-label" style={{ marginBottom: '8px' }}>选择配置平台</label>
+                
+                {/* 下拉触发器 */}
+                <div 
+                  className="custom-select-trigger" 
+                  onClick={() => setDropdownOpen(!dropdownOpen)}
+                  style={{ 
+                    width: '100%', 
+                    minHeight: '36px', 
+                    border: '1px solid var(--border-light)', 
+                    borderRadius: '4px', 
+                    padding: '6px 12px', 
+                    backgroundColor: '#ffffff', 
+                    cursor: 'pointer', 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: '6px'
+                  }}
+                >
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', flex: 1 }}>
+                    {tempSelectedPlatforms.length === 0 ? (
+                      <span style={{ color: '#bfbfbf', fontSize: '13px' }}>点击展开选择计费平台...</span>
+                    ) : (
+                      tempSelectedPlatforms.map(p => (
+                        <span 
+                          key={p} 
+                          style={{ 
+                            background: '#f5f5f5', 
+                            border: '1px solid #d9d9d9', 
+                            borderRadius: '2px', 
+                            padding: '1px 6px', 
+                            fontSize: '11px', 
+                            color: '#595959', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: '4px' 
+                          }}
+                        >
+                          {p}
+                          <span 
+                            style={{ color: '#ff4d4f', cursor: 'pointer', fontWeight: 'bold' }} 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleTempPlatform(p);
+                            }}
+                          >
+                            ×
+                          </span>
+                        </span>
+                      ))
+                    )}
+                  </div>
+                  <span style={{ color: '#bfbfbf', fontSize: '12px', transform: dropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', marginLeft: '8px' }}>▼</span>
+                </div>
+
+                {/* 下拉展开面板的外部透明关闭遮罩层 */}
+                {dropdownOpen && (
+                  <div 
+                    style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999, background: 'transparent' }} 
+                    onClick={() => setDropdownOpen(false)} 
+                  />
+                )}
+
+                {/* 下拉分类多选面板 */}
+                {dropdownOpen && (
+                  <div 
+                    className="custom-select-dropdown-panel"
+                    style={{ 
+                      position: 'absolute', 
+                      top: '100%', 
+                      left: 0, 
+                      right: 0, 
+                      marginTop: '4px', 
+                      background: '#ffffff', 
+                      border: '1px solid #d9d9d9', 
+                      borderRadius: '4px', 
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)', 
+                      zIndex: 1000, 
+                      padding: '16px',
+                      maxHeight: '260px',
+                      overflowY: 'auto'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f0f0f0', paddingBottom: '8px', marginBottom: '12px' }}>
+                      <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary)' }}>按分类选择平台（点击可多选）</span>
+                      <label
+                        className={`checkbox-item ${tempSelectedPlatforms.length === platforms.length ? 'checkbox-checked' : ''}`}
+                        onClick={toggleAllTempPlatforms}
+                        style={{ margin: 0, padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--border-light)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', transform: 'scale(0.9)' }}
+                      >
+                        <span className="checkbox-box" style={{ marginRight: '4px' }}>
+                          {tempSelectedPlatforms.length === platforms.length && <span className="checkbox-tick">✓</span>}
+                        </span>
+                        <span style={{ fontSize: '12px', color: 'var(--text-main)' }}>全选所有平台</span>
+                      </label>
+                    </div>
+
+                    {PLATFORMS_BY_CATEGORY.map(cat => (
+                      <div key={cat.category} style={{ marginBottom: '12px' }}>
+                        <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#8c8c8c', marginBottom: '6px' }}>{cat.category}</div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                          {cat.list.map(p => {
+                            const isSelected = tempSelectedPlatforms.includes(p);
+                            return (
+                              <span
+                                key={p}
+                                onClick={() => toggleTempPlatform(p)}
+                                style={{
+                                  padding: '4px 10px',
+                                  borderRadius: '4px',
+                                  fontSize: '12px',
+                                  cursor: 'pointer',
+                                  border: isSelected ? '1px solid #1890ff' : '1px solid #d9d9d9',
+                                  background: isSelected ? '#e6f7ff' : '#fafafa',
+                                  color: isSelected ? '#1890ff' : 'var(--text-main)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  userSelect: 'none',
+                                  transition: 'all 0.1s'
+                                }}
+                              >
+                                {isSelected && <span style={{ marginRight: '4px', fontWeight: 'bold' }}>✓</span>}
+                                {p}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* 下方关联显示已选中平台的规则配置区域 */}
+              <div style={{ marginTop: '24px' }}>
+                <div style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-main)', marginBottom: '12px', borderBottom: '1px solid #f0f0f0', paddingBottom: '8px' }}>
+                  规则详情配置
+                </div>
+                
+                <div 
+                  style={{ 
+                    maxHeight: '300px', 
+                    overflowY: 'auto', 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    gap: '12px',
+                    paddingRight: '6px'
+                  }}
+                >
+                  {tempSelectedPlatforms.length === 0 ? (
+                    <div style={{ padding: '40px 0', fontStyle: 'italic', textAlign: 'center', color: '#bfbfbf', fontSize: '13px', border: '1px dashed #d9d9d9', borderRadius: '4px' }}>
+                      暂无已启用的信源计费规则，请在上方选择平台以展开计费配置。
+                    </div>
+                  ) : (
+                    tempSelectedPlatforms.map(p => (
+                      <div 
+                        key={p} 
+                        style={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'space-between', 
+                          padding: '10px 16px', 
+                          background: '#fafafa', 
+                          borderRadius: '6px', 
+                          border: '1px solid #f0f0f0' 
+                        }}
+                      >
+                        {/* 平台名 */}
+                        <div style={{ width: '130px', fontWeight: 'bold', color: 'var(--text-main)', fontSize: '13px' }}>
+                          {p}
+                        </div>
+
+                        {/* 输入框同行并排 */}
+                        <div style={{ display: 'flex', gap: '16px', flex: 1 }}>
+                          {/* 互动量费用 */}
+                          <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+                            <span style={{ fontSize: '12px', color: 'var(--text-secondary)', marginRight: '8px', whiteSpace: 'nowrap' }}>
+                              互动量单次费用:
+                            </span>
+                            <div className="modal-control modal-input-group" style={{ flex: 1, margin: 0 }}>
+                              <input
+                                className="modal-input modal-input-group-inner"
+                                type="number"
+                                min="0"
+                                max="100"
+                                step="0.01"
+                                placeholder="1.00"
+                                value={tempPlatformFactors[p]?.interaction ?? ''}
+                                onChange={(e) => updateTempFactor(p, 'interaction', e.target.value)}
+                              />
+                              <span className="modal-input-addon">元</span>
+                            </div>
+                          </div>
+
+                          {/* 评论区采集费用 */}
+                          <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+                            <span style={{ fontSize: '12px', color: 'var(--text-secondary)', marginRight: '8px', whiteSpace: 'nowrap' }}>
+                              评论区采集费用:
+                            </span>
+                            <div className="modal-control modal-input-group" style={{ flex: 1, margin: 0 }}>
+                              <input
+                                className="modal-input modal-input-group-inner"
+                                type="number"
+                                min="0"
+                                max="100"
+                                step="0.01"
+                                placeholder="1.00"
+                                value={tempPlatformFactors[p]?.comment ?? ''}
+                                onChange={(e) => updateTempFactor(p, 'comment', e.target.value)}
+                              />
+                              <span className="modal-input-addon">元</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            <div className="modal-footer" style={{ borderTop: '1px solid #f0f0f0', padding: '12px 16px', display: 'flex', justifyContent: 'flex-end', gap: '8px', margin: 0 }}>
+              <button className="btn-modal-cancel" style={{ margin: 0 }} onClick={() => setShowPricingModal(false)}>取消</button>
+              <button
+                className="btn-modal-confirm"
+                style={{ margin: 0 }}
+                onClick={handleSavePricing}
+              >
+                确定
+              </button>
             </div>
           </div>
         </div>
