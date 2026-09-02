@@ -1018,7 +1018,7 @@ const TaskDetailView: React.FC<{
       title: '采集批次',
       dataIndex: 'batch_name',
       key: 'batch_name',
-      width: 130,
+      width: 140,
       render: function (v: string) {
         return <strong style={{ color: 'rgba(0,0,0,0.85)' }}>{v}</strong>;
       },
@@ -1027,13 +1027,13 @@ const TaskDetailView: React.FC<{
       title: '执行时间',
       dataIndex: 'collected_at',
       key: 'collected_at',
-      width: 150,
+      width: 170,
     },
     {
       title: '采集状态',
       dataIndex: 'status',
       key: 'status',
-      width: 110,
+      width: 120,
       render: function () {
         return <Badge status="success" text="全部成功" />;
       },
@@ -1042,29 +1042,16 @@ const TaskDetailView: React.FC<{
       title: '抓取有效链接数',
       dataIndex: 'link_count',
       key: 'link_count',
-      width: 130,
+      width: 150,
       render: function (v: number) {
         return <span>{v} 条链接</span>;
-      },
-    },
-    {
-      title: task.task_type === 'interaction' ? '本次抓取新增互动量' : '本次抓取有效评论数',
-      dataIndex: 'increment_count',
-      key: 'increment_count',
-      width: 180,
-      render: function (v: number) {
-        return (
-          <span style={{ fontWeight: 600, color: '#52C41A' }}>
-            +{v} {task.task_type === 'interaction' ? '次' : '条'}
-          </span>
-        );
       },
     },
     {
       title: '本次消耗额度',
       dataIndex: 'quota_consumed',
       key: 'quota_consumed',
-      width: 120,
+      width: 140,
       render: function (v: number) {
         return <span style={{ color: '#1890FF', fontWeight: 500 }}>{v} 次额度</span>;
       },
@@ -1072,7 +1059,7 @@ const TaskDetailView: React.FC<{
     {
       title: '操作',
       key: 'action',
-      width: 80,
+      width: 90,
       render: function (_: any, record: BatchCollectRecord) {
         return <a className="ct-action-link" onClick={function () { openBatchDetail(record); }}>详情</a>;
       },
@@ -1244,8 +1231,8 @@ const TaskDetailView: React.FC<{
               rowKey="id"
               columns={batchColumns}
               dataSource={batchRecords}
-              pagination={{ pageSize: 10, showSizeChanger: false }}
-              size="small"
+              pagination={{ pageSize: 10, showSizeChanger: false, showTotal: function (total) { return '共 ' + total + ' 个批次'; } }}
+              size="middle"
             />
           </div>
         )}
