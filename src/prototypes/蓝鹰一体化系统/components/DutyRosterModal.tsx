@@ -24,31 +24,32 @@ const mainDeptPosts = [
   {
     postName: '指挥调度岗',
     staff: [
-      { unit: '总2_舆情', name: '王浩', phone: '19802782787' },
-      { unit: '总2_舆情', name: '王杰', phone: '19802782787' },
+      { unit: '总2_舆情', name: '郑江', phone: '13594018403' },
+      { unit: '总2_文职', name: '周熙', phone: '18182318948' },
     ],
   },
   {
     postName: '应急处置岗',
     staff: [
       { unit: '总2_舆情', name: '潘代刚', phone: '13635304311' },
-      { unit: '总2_舆情', name: '张旭', phone: '13635304312' },
+      { unit: '总2_舆情', name: '郑江', phone: '13594018403' },
+      { unit: '总2_舆情', name: '王小虎', phone: '15823743066' },
     ],
   },
   {
     postName: '分析研判岗',
     staff: [
-      { unit: '总2_文职', name: '胡清平', phone: '15023468824' },
-      { unit: '总2_舆情', name: '秦峰', phone: '15086906023' },
+      { unit: '总2_舆情', name: '王小虎', phone: '15823743066' },
+      { unit: '总2_舆情', name: '郑江', phone: '13594018403' },
     ],
   },
   {
     postName: '材料汇编岗',
     staff: [
-      { unit: '总2_文职', name: '胡婧悦', phone: '15310399665' },
-      { unit: '总2_文职', name: '冷欣', phone: '18223954199' },
-      { unit: '总2_文职', name: '朱洁莹', phone: '15095981633' },
-      { unit: '总2_文职', name: '肖春燕', phone: '13193094862' },
+      { unit: '总2_文职', name: '刘依雯', phone: '13594108516' },
+      { unit: '总2_文职', name: '童星', phone: '15922730171' },
+      { unit: '总2_文职', name: '贾舒雯', phone: '16623536193' },
+      { unit: '总2_文职', name: '李雪晶', phone: '13883940516' },
     ],
   },
   {
@@ -60,126 +61,147 @@ const mainDeptPosts = [
   },
 ];
 
-// 区县 & 其它单位在岗数据
+// 区县 & 其它单位在岗数据 (采用真实区县名单与高辨识度人员配置)
 const districtUnitsData = [
+  {
+    district: '北碚区',
+    dutyPhone: '023-68862110',
+    staff: [
+      { name: '刘倩', role: '值班民警', phone: '15922750874' },
+    ],
+  },
+  {
+    district: '铜梁区',
+    dutyPhone: '023-45698110',
+    staff: [
+      { name: '尹波', role: '值班民警', phone: '17784733625' },
+    ],
+  },
+  {
+    district: '秀山县',
+    dutyPhone: '023-76662110',
+    staff: [
+      { name: '李静思', role: '总队派驻', phone: '18696980022' },
+      { name: '彭俊', role: '联络员', phone: '13527397760' },
+      { name: '杨稳', role: '值班民警', phone: '13452227315' },
+    ],
+  },
+  {
+    district: '丰都县',
+    dutyPhone: '023-70702110',
+    staff: [
+      { name: '邓志华', role: '值班民警', phone: '13594564888' },
+      { name: '丰都网安', role: '联络员', phone: '13658496266' },
+      { name: '刘军军', role: '值班民警', phone: '17782063796' },
+    ],
+  },
+  {
+    district: '梁平区',
+    dutyPhone: '023-53222110',
+    staff: [
+      { name: '梁平值班', role: '值班室', phone: '18290241668' },
+    ],
+  },
+  {
+    district: '长寿区',
+    dutyPhone: '023-40402110',
+    staff: [
+      { name: '江静怡', role: '值班民警', phone: '13657683166' },
+    ],
+  },
+  {
+    district: '涪陵区',
+    dutyPhone: '023-72222110',
+    staff: [
+      { name: '涪陵值班', role: '总队派驻', phone: '18680932692' },
+      { name: '颜星', role: '联络员', phone: '13908810000' },
+    ],
+  },
+  {
+    district: '万州区',
+    dutyPhone: '023-58122110',
+    staff: [
+      { name: '邓维刚', role: '值班长', phone: '15823712606' },
+      { name: '何金', role: '联络员', phone: '13908809000' },
+    ],
+  },
+  {
+    district: '九龙坡区',
+    dutyPhone: '023-68812110',
+    staff: [
+      { name: '九龙坡陈恒', role: '总队派驻', phone: '15123340637' },
+      { name: '严丽君', role: '联络员', phone: '13908806000' },
+    ],
+  },
+  {
+    district: '南岸区',
+    dutyPhone: '023-62802110',
+    staff: [
+      { name: '杨兰', role: '值班民警', phone: '13708303326' },
+      { name: '南岸党锐', role: '联络员', phone: '13908805000' },
+    ],
+  },
+  {
+    district: '彭水县',
+    dutyPhone: '023-78442110',
+    staff: [
+      { name: '彭水值班', role: '值班室', phone: '13983842865' },
+    ],
+  },
+  {
+    district: '綦江区',
+    dutyPhone: '023-48662110',
+    staff: [
+      { name: '何妮', role: '值班长', phone: '13368085359' },
+      { name: '王丽娜', role: '联络员', phone: '15095900907' },
+    ],
+  },
   {
     district: '渝北区',
     dutyPhone: '023-63955555',
     staff: [
-      { role: '总队派驻', phone: '13896227093' },
-      { role: '联络员', phone: '13906227903' },
+      { name: '张志刚', role: '总队派驻', phone: '13896227093' },
+      { name: '李晓敏', role: '联络员', phone: '13906227903' },
     ],
   },
   {
     district: '渝中区',
     dutyPhone: '023-63912345',
     staff: [
-      { role: '渝中王俊', phone: '17783011399' },
-      { role: '联络员', phone: '13883102244' },
+      { name: '渝中王俊', role: '值班长', phone: '17783011399' },
+      { name: '周小波', role: '联络员', phone: '13883102244' },
     ],
   },
   {
     district: '大足区',
     dutyPhone: '023-88020000',
     staff: [
-      { role: '大足口区', phone: '16602886803' },
-      { role: '联络员', phone: '13908802000' },
+      { name: '大足网安', role: '总队派驻', phone: '16602886803' },
+      { name: '唐磊', role: '联络员', phone: '13908802000' },
     ],
   },
   {
     district: '合川区',
     dutyPhone: '023-88030000',
     staff: [
-      { role: '合川网安', phone: '13694144574' },
-      { role: '联络员', phone: '13908803000' },
-    ],
-  },
-  {
-    district: '淮安区',
-    dutyPhone: '0517-88040000',
-    staff: [
-      { role: '淮安网巡', phone: '15178996938' },
-      { role: '联络员', phone: '13905174000' },
-    ],
-  },
-  {
-    district: '南岸区',
-    dutyPhone: '023-88050000',
-    staff: [
-      { role: '南岸党锐', phone: '13708303326' },
-      { role: '联络员', phone: '13908805000' },
-    ],
-  },
-  {
-    district: '九龙坡区',
-    dutyPhone: '023-88060000',
-    staff: [
-      { role: '九龙坡陈恒', phone: '15123340637' },
-      { role: '联络员', phone: '13908806000' },
+      { name: '合川网安', role: '总队派驻', phone: '13694144574' },
+      { name: '赵鹏', role: '联络员', phone: '13908803000' },
     ],
   },
   {
     district: '沙坪坝区',
     dutyPhone: '023-88070000',
     staff: [
-      { role: '沙坪坝网安', phone: '13368085359' },
-      { role: '联络员', phone: '13908807000' },
+      { name: '沙坪坝网安', role: '总队派驻', phone: '13368085359' },
+      { name: '陈志强', role: '联络员', phone: '13908807000' },
     ],
   },
   {
     district: '江北区',
     dutyPhone: '023-88080000',
     staff: [
-      { role: '江北黄智惠', phone: '18225058123' },
-      { role: '联络员', phone: '13908808000' },
-    ],
-  },
-  {
-    district: '万州区',
-    dutyPhone: '023-88090000',
-    staff: [
-      { role: '万州区邓维刚', phone: '15823712606' },
-      { role: '联络员', phone: '13908809000' },
-    ],
-  },
-  {
-    district: '涪陵区',
-    dutyPhone: '023-88100000',
-    staff: [
-      { role: '涪陵区颜星', phone: '18680932692' },
-      { role: '联络员', phone: '13908810000' },
-    ],
-  },
-  {
-    district: '云阳县',
-    dutyPhone: '023-88110000',
-    staff: [
-      { role: '云阳吴令', phone: '15178996938' },
-      { role: '联络员章丁元', phone: '18996699363' },
-    ],
-  },
-  {
-    district: '秀山县',
-    dutyPhone: '023-88120000',
-    staff: [
-      { role: '秀山李静思', phone: '18696980022' },
-      { role: '联络员杨彬', phone: '17508495501' },
-    ],
-  },
-  {
-    district: '巫溪县',
-    dutyPhone: '023-88130000',
-    staff: [
-      { role: '巫溪沈仕智', phone: '13983842865' },
-      { role: '联络员', phone: '13908813000' },
-    ],
-  },
-  {
-    district: '璧山区',
-    dutyPhone: '023-88140000',
-    staff: [
-      { role: '璧山苏畅', phone: '13368085359' },
-      { role: '联络员王伟', phone: '15095900907' },
+      { name: '江北黄智惠', role: '值班长', phone: '18225058123' },
+      { name: '刘小华', role: '联络员', phone: '13908808000' },
     ],
   },
 ];
@@ -246,7 +268,7 @@ const DutyRosterModal: React.FC<DutyRosterModalProps> = ({ open, onClose }) => {
     (d) =>
       d.district.includes(searchQuery) ||
       d.dutyPhone.includes(searchQuery) ||
-      d.staff.some((s) => s.role.includes(searchQuery) || s.phone.includes(searchQuery))
+      d.staff.some((s) => s.name.includes(searchQuery) || (s.role && s.role.includes(searchQuery)) || s.phone.includes(searchQuery))
   );
 
   return (
@@ -254,13 +276,14 @@ const DutyRosterModal: React.FC<DutyRosterModalProps> = ({ open, onClose }) => {
       open={open}
       onCancel={onClose}
       footer={null}
-      width={1340}
-      centered
+      width="100vw"
+      style={{ top: 0, paddingBottom: 0, maxWidth: '100vw', margin: 0 }}
+      centered={false}
       destroyOnClose
-      className={`duty-roster-modal-wrapper ${viewMode === 'board' ? 'dark-theme' : 'light-theme'}`}
+      className={`duty-roster-modal-wrapper fullscreen-roster ${viewMode === 'board' ? 'dark-theme' : 'light-theme'}`}
     >
       <div className={`duty-roster-container ${viewMode === 'board' ? 'dark' : 'light'}`}>
-        {/* 顶部 Header 控制栏 */}
+        {/* 顶部 Header 控制栏 (含值班领导板块) */}
         <div className="duty-roster-header">
           <div className="header-left">
             <span className="roster-title-icon">👮‍♂️</span>
@@ -268,9 +291,73 @@ const DutyRosterModal: React.FC<DutyRosterModalProps> = ({ open, onClose }) => {
             <Tag color={viewMode === 'board' ? 'blue' : 'processing'} className="date-tag">
               2026年07月31日 值班大屏
             </Tag>
+
+            {/* 今日值班领导模块 (高辨识度分体式标签) */}
+            <div className="header-leader-badge">
+              <div className="header-leader-title">
+                <CrownOutlined className="leader-crown-icon" />
+                <span>值班领导：</span>
+              </div>
+
+              {!isEditingLeader ? (
+                <div
+                  className="staff-split-card leader-split-card"
+                  onClick={() => handleContact(leaderObj.value, leaderObj.phone)}
+                  title={`点击呼叫：${leaderObj.value} (${leaderObj.phone})`}
+                >
+                  <div className="split-name-box leader-name-box">
+                    {leaderObj.value}
+                  </div>
+                  <div className="split-phone-box leader-phone-box">
+                    <PhoneOutlined className="split-phone-icon" />
+                    <span className="split-phone-text">{leaderObj.phone}</span>
+                  </div>
+                </div>
+              ) : (
+                <Select
+                  value={currentLeader}
+                  onChange={(val) => {
+                    setCurrentLeader(val);
+                    leaderStore.setDutyLeader(val);
+                    setIsEditingLeader(false);
+                    message.success(`今日值班领导已成功更新为：${val}`);
+                  }}
+                  style={{ width: 140 }}
+                  size="small"
+                  autoFocus
+                >
+                  {leaderOptions.map((opt) => (
+                    <Select.Option key={opt.value} value={opt.value}>
+                      {opt.value}
+                    </Select.Option>
+                  ))}
+                </Select>
+              )}
+
+              <div className="header-leader-actions">
+                <Button
+                  type="link"
+                  size="small"
+                  icon={<SwapOutlined />}
+                  className="header-action-btn"
+                  onClick={() => setIsEditingLeader(!isEditingLeader)}
+                >
+                  {isEditingLeader ? '完成' : '更换'}
+                </Button>
+                <Button
+                  type="link"
+                  size="small"
+                  icon={<PlusOutlined />}
+                  className="header-action-btn"
+                  onClick={() => setAddLeaderVisible(true)}
+                >
+                  新增
+                </Button>
+              </div>
+            </div>
           </div>
 
-          <div className="header-right">
+          <div className="header-right" style={{ display: 'flex', alignItems: 'center', marginRight: 36 }}>
             {/* 视图切换按钮 */}
             <Segmented
               options={[
@@ -281,7 +368,6 @@ const DutyRosterModal: React.FC<DutyRosterModalProps> = ({ open, onClose }) => {
               onChange={(val) => setViewMode(val as 'board' | 'list')}
               className="view-mode-segmented"
             />
-            {/* 关闭按钮提示 */}
           </div>
         </div>
 
@@ -289,90 +375,16 @@ const DutyRosterModal: React.FC<DutyRosterModalProps> = ({ open, onClose }) => {
         {viewMode === 'board' && (
           <div className="dark-dashboard-body">
             <Row gutter={16} style={{ height: '100%' }}>
-              {/* 左侧栏: 本部门 (总队在岗) */}
-              <Col span={8} className="dept-column left-dept-col">
-                {/* 独立的值班领导板块 */}
-                <div className="duty-leader-panel" style={{ marginBottom: 12 }}>
-                  <div className="leader-panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                    <div className="panel-title" style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#f8fafc', fontWeight: 'bold', fontSize: 15 }}>
-                      <CrownOutlined className="leader-crown-icon" style={{ color: '#fbbf24' }} />
-                      <span>值班领导</span>
-                    </div>
-                    <Button
-                      type="link"
-                      size="small"
-                      icon={<PlusOutlined />}
-                      className="add-leader-btn"
-                      onClick={() => setAddLeaderVisible(true)}
-                      style={{ color: '#60a5fa', padding: 0 }}
-                    >
-                      新增领导
-                    </Button>
-                  </div>
-                  <div className="leader-panel-body" style={{ background: '#0a1b38', border: '1px solid #1a3668', borderRadius: 8, padding: 12 }}>
-                    <div className="leader-select-row" style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
-                      <span className="select-label" style={{ color: '#cbd5e1', fontSize: 13 }}>当前值班：</span>
-                      {!isEditingLeader ? (
-                        <span className="leader-name-display" style={{ color: '#38bdf8', fontWeight: 'bold', fontSize: 15 }}>{leaderObj.value}</span>
-                      ) : (
-                        <Select
-                          value={currentLeader}
-                          onChange={(val) => {
-                            setCurrentLeader(val);
-                            leaderStore.setDutyLeader(val);
-                            setIsEditingLeader(false);
-                            message.success(`今日值班领导已成功更新为：${val}`);
-                          }}
-                          style={{ width: 140 }}
-                          size="small"
-                          autoFocus
-                        >
-                          {leaderOptions.map((opt) => (
-                            <Select.Option key={opt.value} value={opt.value}>
-                              {opt.value}
-                            </Select.Option>
-                          ))}
-                        </Select>
-                      )}
-                      <Button
-                        type="link"
-                        size="small"
-                        icon={<SwapOutlined />}
-                        className="edit-leader-btn"
-                        onClick={() => setIsEditingLeader(!isEditingLeader)}
-                        style={{ color: '#60a5fa', marginLeft: 8 }}
-                      >
-                        {isEditingLeader ? '完成' : '更换'}
-                      </Button>
-                    </div>
-
-                    {/* 领导详情卡片 */}
-                    <div
-                      className="leader-badge-card"
-                      onClick={() => handleContact(leaderObj.value, leaderObj.phone)}
-                      style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#133873', border: '1px solid #3b82f6', padding: '8px 12px', borderRadius: 6, cursor: 'pointer' }}
-                    >
-                      <div className="leader-badge-left" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span className="unit-tag" style={{ background: '#2563eb', color: '#fff', fontSize: 11, padding: '2px 6px', borderRadius: 4 }}>{leaderObj.unit}</span>
-                        <span className="leader-person-name" style={{ color: '#fff', fontWeight: 'bold', fontSize: 14 }}>{leaderObj.value}</span>
-                      </div>
-                      <div className="leader-badge-right" style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#60a5fa', fontSize: 13 }}>
-                        <PhoneOutlined />
-                        <span>{leaderObj.phone}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 总队在岗列表卡片 */}
-                <div className="dept-card-panel" style={{ flex: 1 }}>
+              {/* 左侧栏: 本部门 (总队在岗) - 占 1/4 (span=6) */}
+              <Col span={6} className="dept-column left-dept-col">
+                <div className="dept-card-panel">
                   <div className="dept-panel-header">
                     <div className="panel-title">
                       <TeamOutlined className="panel-icon" />
-                      <span>总队</span>
+                      <span>总队在岗</span>
                     </div>
                     <div className="panel-stat-pill">
-                      今日在岗：<strong className="stat-num">21</strong> 人
+                      今日在岗：<strong className="stat-num">19</strong> 人
                     </div>
                   </div>
 
@@ -382,17 +394,24 @@ const DutyRosterModal: React.FC<DutyRosterModalProps> = ({ open, onClose }) => {
                       {mainDeptPosts.map((post) => (
                         <div key={post.postName} className="post-group-card">
                           <div className="post-header-row">
-                            <span className="post-name-tag">{post.postName}</span>
+                            <span className="post-name-title">{post.postName}</span>
+                            <span className="post-count-badge">{post.staff.length} 人</span>
                           </div>
-                          <div className="post-staff-grid">
+                          <div className="post-staff-list">
                             {post.staff.map((st, idx) => (
                               <div
                                 key={idx}
-                                className="staff-pill-card"
+                                className="staff-split-card"
                                 onClick={() => handleContact(st.name, st.phone)}
+                                title={`点击呼叫：${st.name} (${st.phone})`}
                               >
-                                <span className="staff-unit">{st.unit} {st.name}</span>
-                                <span className="staff-phone">{st.phone}</span>
+                                <div className="split-name-box">
+                                  {st.unit ? `${st.unit} ${st.name}` : st.name}
+                                </div>
+                                <div className="split-phone-box">
+                                  <PhoneOutlined className="split-phone-icon" />
+                                  <span className="split-phone-text">{st.phone}</span>
+                                </div>
                               </div>
                             ))}
                           </div>
@@ -403,13 +422,13 @@ const DutyRosterModal: React.FC<DutyRosterModalProps> = ({ open, onClose }) => {
                 </div>
               </Col>
 
-              {/* 右侧栏: 其它部门 & 区县 (区县&其它单位) */}
-              <Col span={16} className="dept-column right-dept-col">
+              {/* 右侧栏: 其它部门 & 区县 (区县&其它单位) - 占 3/4 (span=18) */}
+              <Col span={18} className="dept-column right-dept-col">
                 <div className="dept-card-panel">
                   <div className="dept-panel-header">
                     <div className="panel-title">
                       <TeamOutlined className="panel-icon" />
-                      <span>区县 & 其它单位</span>
+                      <span>区县 & 其它单位在岗</span>
                     </div>
                     <div className="panel-header-actions">
                       <Input
@@ -428,7 +447,7 @@ const DutyRosterModal: React.FC<DutyRosterModalProps> = ({ open, onClose }) => {
                   </div>
 
                   <div className="dept-panel-body">
-                    {/* 区县单位 3 列 Grid 网格矩阵 */}
+                    {/* 区县单位 Grid 网格矩阵 */}
                     <div className="district-cards-grid">
                       {filteredDistricts.map((d) => (
                         <div key={d.district} className="district-card">
@@ -437,19 +456,26 @@ const DutyRosterModal: React.FC<DutyRosterModalProps> = ({ open, onClose }) => {
                             <span
                               className="district-phone"
                               onClick={() => handleContact(`${d.district}值班室`, d.dutyPhone)}
+                              title="点击呼叫值班电话"
                             >
                               值班电话 <span className="phone-highlight">{d.dutyPhone}</span>
                             </span>
                           </div>
-                          <div className="district-staff-row">
+                          <div className="district-staff-list">
                             {d.staff.map((s, sIdx) => (
                               <div
                                 key={sIdx}
-                                className="district-staff-pill"
-                                onClick={() => handleContact(s.role, s.phone)}
+                                className="staff-split-card district-split-card"
+                                onClick={() => handleContact(s.name, s.phone)}
+                                title={`点击呼叫：${s.name}${s.role ? ` (${s.role})` : ''} (${s.phone})`}
                               >
-                                <span className="role-name">{s.role}</span>
-                                <span className="role-phone">{s.phone}</span>
+                                <div className="split-name-box">
+                                  {s.name}
+                                </div>
+                                <div className="split-phone-box">
+                                  <PhoneOutlined className="split-phone-icon" />
+                                  <span className="split-phone-text">{s.phone}</span>
+                                </div>
                               </div>
                             ))}
                           </div>
@@ -529,9 +555,9 @@ const DutyRosterModal: React.FC<DutyRosterModalProps> = ({ open, onClose }) => {
                             <div
                               key={sIdx}
                               className="light-staff-pill"
-                              onClick={() => handleContact(st.role, st.phone)}
+                              onClick={() => handleContact(st.name, st.phone)}
                             >
-                              <span className="unit-label">{st.role}</span>
+                              <span className="unit-label">{st.name}{st.role ? ` (${st.role})` : ''}</span>
                               <span className="phone-label">{st.phone}</span>
                             </div>
                           ))}

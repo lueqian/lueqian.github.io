@@ -599,7 +599,7 @@ const ReviewSummary: React.FC = () => {
 
   const adoptionColumns: ColumnsType<UserAdoptionStat> = [
     {
-      title: '排名',
+      title: '序号',
       dataIndex: 'rank',
       key: 'rank',
       width: 80,

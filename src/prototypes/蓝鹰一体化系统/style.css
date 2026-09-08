@@ -9391,18 +9391,46 @@
 
 /* ==================== 值班表 (Duty Roster Modal) 样式 ==================== */
 
+.duty-roster-modal-wrapper.ant-modal {
+  max-width: 100vw !important;
+  width: 100vw !important;
+  top: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  height: 100vh !important;
+}
+
 .duty-roster-modal-wrapper .ant-modal-content {
   padding: 0 !important;
-  border-radius: 12px !important;
+  border-radius: 0 !important;
   overflow: hidden !important;
+  height: 100vh !important;
+  max-height: 100vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.duty-roster-modal-wrapper .ant-modal-close {
+  top: 14px !important;
+  right: 18px !important;
+}
+
+.duty-roster-modal-wrapper.dark-theme .ant-modal-close {
+  color: #94a3b8 !important;
+}
+
+.duty-roster-modal-wrapper.dark-theme .ant-modal-close:hover {
+  color: #ffffff !important;
+  background-color: rgba(255, 255, 255, 0.1) !important;
 }
 
 .duty-roster-container {
   display: flex;
   flex-direction: column;
-  height: 80vh;
-  max-height: 880px;
-  min-height: 600px;
+  height: 100vh;
+  max-height: 100vh;
+  min-height: 100vh;
+  flex: 1;
 }
 
 /* 顶部 Modal Header */
@@ -9410,8 +9438,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 24px;
+  padding: 12px 24px;
   border-bottom: 1px solid rgba(226, 232, 240, 0.15);
+  flex-shrink: 0;
 }
 
 .duty-roster-container.dark .duty-roster-header {
@@ -9422,6 +9451,137 @@
 .duty-roster-container.light .duty-roster-header {
   background: #ffffff;
   border-bottom-color: #e2e8f0;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+/* 顶部值班领导板块 (紧跟在值班大屏标签右侧) */
+.header-leader-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(15, 44, 89, 0.85);
+  border: 1px solid #1d4ed8;
+  border-radius: 6px;
+  padding: 3px 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  margin-left: 6px;
+}
+
+.duty-roster-container.light .header-leader-badge {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  box-shadow: none;
+}
+
+.header-leader-title {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #cbd5e1;
+  white-space: nowrap;
+}
+
+.duty-roster-container.light .header-leader-title {
+  color: #475569;
+}
+
+.header-leader-info-box,
+.leader-split-card {
+  display: inline-flex;
+  align-items: stretch;
+  height: 26px;
+  background: #061530;
+  border: 1px solid #1677ff;
+  border-radius: 4px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.duty-roster-container.light .header-leader-info-box,
+.duty-roster-container.light .leader-split-card {
+  background: #ffffff;
+  border-color: #93c5fd;
+}
+
+.header-leader-info-box:hover,
+.leader-split-card:hover {
+  border-color: #60a5fa;
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.45);
+}
+
+.leader-name-box,
+.header-leader-unit {
+  background: #1875f0;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+  white-space: nowrap;
+}
+
+.header-leader-name {
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.duty-roster-container.light .header-leader-name {
+  color: #0f172a;
+}
+
+.leader-phone-box,
+.header-leader-phone {
+  flex: 1;
+  background: #081d3d;
+  color: #70a6ff;
+  font-size: 11px;
+  font-family: 'JetBrains Mono', Consolas, Monaco, monospace;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 0 8px;
+  border-left: 1px solid rgba(22, 119, 255, 0.3);
+  letter-spacing: 0.3px;
+}
+
+.duty-roster-container.light .leader-phone-box,
+.duty-roster-container.light .header-leader-phone {
+  background: #f0f7ff;
+  color: #1d4ed8;
+  border-left-color: #bfdbfe;
+}
+
+.header-leader-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.header-action-btn {
+  color: #60a5fa !important;
+  padding: 0 4px !important;
+  font-size: 12px;
+}
+
+.duty-roster-container.light .header-action-btn {
+  color: #2563eb !important;
+}
+
+.header-action-btn:hover {
+  color: #93c5fd !important;
 }
 
 .roster-title-icon {
@@ -9463,7 +9623,7 @@
 .dark-dashboard-body {
   flex: 1;
   background: #040c1a;
-  padding: 16px;
+  padding: 10px 14px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -9478,7 +9638,7 @@
 .dept-card-panel {
   background: #0a1b38;
   border: 1px solid #1a3668;
-  border-radius: 10px;
+  border-radius: 8px;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -9489,17 +9649,17 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 20px;
+  padding: 8px 12px;
   background: #0e244a;
   border-bottom: 1px solid #1a3a70;
-  border-radius: 9px 9px 0 0;
+  border-radius: 7px 7px 0 0;
 }
 
 .panel-title {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 16px;
+  gap: 6px;
+  font-size: 14px;
   font-weight: 700;
   color: #f8fafc;
   letter-spacing: 0.5px;
@@ -9507,32 +9667,32 @@
 
 .panel-icon {
   color: #38bdf8;
-  font-size: 18px;
+  font-size: 16px;
 }
 
 .panel-stat-pill {
   background: rgba(56, 189, 248, 0.12);
   border: 1px solid rgba(56, 189, 248, 0.3);
   color: #94a3b8;
-  padding: 3px 12px;
+  padding: 2px 10px;
   border-radius: 20px;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .stat-num {
   color: #38bdf8;
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 700;
 }
 
 .panel-header-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .district-search-input {
-  width: 180px;
+  width: 170px;
   background: #091730 !important;
   border-color: #1e3a8a !important;
   color: #f8fafc !important;
@@ -9545,11 +9705,11 @@
 
 .dept-panel-body {
   flex: 1;
-  padding: 16px;
+  padding: 8px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 8px;
 }
 
 /* 今日值班领导模块 (可编辑) */
@@ -9646,157 +9806,215 @@
   font-family: monospace;
 }
 
-/* 岗位卡片列表 */
-.post-list-scroll {
+/* ============================================================
+   高辨识度分体式人员卡片 (High-Contrast Split Badge Staff Card)
+   设计规范：
+   - 左侧为高对比鲜明纯色标签背景 (#1875f0)，加粗纯白文字，视觉层级最高
+   - 右侧为深邃暗蓝底色 (#081d3d)，搭配高亮天蓝电话号码与电话图标，清晰易读
+   - 整体紧凑利落，消除多余空白浪费，单卡高度 28px，悬浮微发光
+   ============================================================ */
+
+.staff-split-card {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.post-group-card {
-  background: #091730;
-  border: 1px solid #162e58;
-  border-radius: 8px;
-  padding: 12px 14px;
-}
-
-.post-header-row {
-  margin-bottom: 8px;
-}
-
-.post-name-tag {
-  background: rgba(59, 130, 246, 0.15);
-  border: 1px solid rgba(59, 130, 246, 0.4);
-  color: #93c5fd;
-  font-size: 13px;
-  font-weight: 600;
-  padding: 3px 12px;
+  align-items: stretch;
+  height: 28px;
+  background: #061530;
+  border: 1px solid #1677ff;
   border-radius: 4px;
-  display: inline-block;
-}
-
-.post-staff-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-}
-
-.staff-pill-card {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  background: #0e2954;
-  border: 1px solid #1d4ed8;
-  padding: 6px 10px;
-  border-radius: 5px;
+  overflow: hidden;
   cursor: pointer;
   transition: all 0.15s ease;
   width: 100%;
   box-sizing: border-box;
 }
 
-.staff-pill-card:hover {
-  background: #1e40af;
+.staff-split-card:hover {
   border-color: #60a5fa;
+  box-shadow: 0 0 10px rgba(22, 119, 255, 0.45);
+  transform: translateY(-1px);
 }
 
-.staff-unit {
-  color: #f8fafc;
+.staff-split-card .split-name-box {
+  background: #1875f0;
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+  letter-spacing: 0.3px;
+}
+
+/* 总队岗位的人员名称块 (含单位前缀，如 '总2_舆情 王小虎') */
+.post-staff-list .staff-split-card .split-name-box {
+  flex: 0 0 50%;
+  max-width: 52%;
+  justify-content: center;
+  padding: 0 6px;
+}
+
+/* 区县人员名称块 (纯姓名，如 '李静思') */
+.district-split-card .split-name-box {
+  flex: 0 0 74px;
+  width: 74px;
+  justify-content: center;
+  padding: 0 4px;
+}
+
+.staff-split-card .split-phone-box {
+  flex: 1;
+  background: #081d3d;
+  color: #70a6ff;
+  font-size: 11px;
+  font-family: 'JetBrains Mono', Consolas, Monaco, monospace;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 0 6px;
+  letter-spacing: 0.3px;
+  border-left: 1px solid rgba(22, 119, 255, 0.3);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.staff-split-card .split-phone-icon {
+  font-size: 10px;
+  color: #38bdf8;
+}
+
+.staff-split-card .split-phone-text {
+  color: #85b8ff;
+  font-weight: 500;
+}
+
+.staff-split-card:hover .split-phone-text {
+  color: #ffffff;
+}
+
+/* 浅色主题适配 */
+.duty-roster-container.light .staff-split-card {
+  background: #f8fafc;
+  border-color: #93c5fd;
+}
+
+.duty-roster-container.light .staff-split-card .split-phone-box {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-left-color: #bfdbfe;
+}
+
+.duty-roster-container.light .staff-split-card .split-phone-text {
+  color: #1e40af;
+}
+
+/* 岗位卡片容器 */
+.post-list-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.post-group-card {
+  background: #061733;
+  border: 1px solid #11386e;
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+.post-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  padding-bottom: 2px;
+}
+
+.post-name-title {
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.post-count-badge {
+  color: #8ba4cc;
   font-size: 12px;
   font-weight: 500;
 }
 
-.staff-phone {
-  color: #60a5fa;
-  font-size: 12px;
-  font-family: monospace;
+.post-staff-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-/* 区县 Grid 网格 (3 列矩阵) */
+/* 区县 Grid 网格 (平铺高密度自适应列矩阵) */
 .district-cards-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(215px, 1fr));
+  gap: 8px;
 }
 
 .district-card {
-  background: #091936;
-  border: 1px solid #183566;
-  border-radius: 8px;
-  padding: 12px;
+  background: #061733;
+  border: 1px solid #11386e;
+  border-radius: 6px;
+  padding: 8px 10px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .district-card:hover {
-  border-color: #3b82f6;
-  box-shadow: 0 2px 12px rgba(59, 130, 246, 0.15);
+  border-color: #2563eb;
+  box-shadow: 0 2px 10px rgba(37, 99, 235, 0.25);
 }
 
 .district-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px dashed #1a3668;
-  padding-bottom: 6px;
+  border-bottom: 1px dashed rgba(26, 68, 128, 0.6);
+  padding-bottom: 4px;
 }
 
 .district-name {
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 700;
   color: #ffffff;
   letter-spacing: 0.5px;
 }
 
 .district-phone {
-  font-size: 12px;
-  color: #94a3b8;
+  font-size: 10px;
+  color: #8ba4cc;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+.district-phone:hover {
+  color: #93c5fd;
 }
 
 .phone-highlight {
-  color: #f87171;
-  font-weight: 700;
+  color: #ef4444;
+  font-weight: 600;
   font-family: monospace;
-  margin-left: 4px;
+  margin-left: 3px;
 }
 
-.district-staff-row {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 6px;
-}
-
-.district-staff-pill {
+.district-staff-list {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: #0d2347;
-  border: 1px solid #1e3a8a;
-  padding: 5px 10px;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background 0.15s ease;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.district-staff-pill:hover {
-  background: #1d4ed8;
-}
-
-.role-name {
-  color: #e2e8f0;
-  font-size: 12px;
-}
-
-.role-phone {
-  color: #60a5fa;
-  font-size: 12px;
-  font-family: monospace;
+  flex-direction: column;
+  gap: 4px;
 }
 
 /* ==================== 2. 表格经典简版 (Light Table) ==================== */
