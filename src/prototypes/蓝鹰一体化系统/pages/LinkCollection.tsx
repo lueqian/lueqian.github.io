@@ -35,11 +35,9 @@ import dayjs from 'dayjs';
 import snipasteDouyin from '../assets/Snipaste_2026-08-19_11-28-41.png';
 import snipasteXiaohongshu from '../assets/Snipaste_2026-08-19_11-29-09.png';
 
-// 导入真实的 ZIP 压缩包资产作为物理下载素材（忽略 TS 声明错误）
-// @ts-ignore
-import exportExcelZipUrl from '../assets/export_excel.zip';
-// @ts-ignore
-import exportStdZipUrl from '../assets/export_std.zip';
+// 导入真实的 ZIP 压缩包资产作为物理下载素材（添加 ?url 后缀确保 Vite 始终按静态资源 URL 解析）
+import exportExcelZipUrl from '../assets/export_excel.zip?url';
+import exportStdZipUrl from '../assets/export_std.zip?url';
 
 const { RangePicker } = DatePicker;
 
