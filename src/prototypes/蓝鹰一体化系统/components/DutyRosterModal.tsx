@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Select, Input, Button, Badge, Row, Col, Tag, Tooltip, message, Segmented } from 'antd';
+import { Modal, Select, Input, Button, Badge, Row, Col, Tag, Tooltip, message, Segmented, Form, Cascader } from 'antd';
 import {
   UserOutlined,
   PhoneOutlined,
@@ -10,8 +10,9 @@ import {
   AppstoreOutlined,
   CheckCircleOutlined,
   TeamOutlined,
+  PlusOutlined,
 } from '@ant-design/icons';
-import { leaderStore, LeaderItem } from '../leader-data';
+import { leaderStore, LeaderItem, departmentCascadeOptions } from '../leader-data';
 
 interface DutyRosterModalProps {
   open: boolean;
@@ -184,8 +185,8 @@ const districtUnitsData = [
 ];
 
 const DutyRosterModal: React.FC<DutyRosterModalProps> = ({ open, onClose }) => {
-  // 视图模式: 'dark' 深色科技看板 | 'light' 表格经典简版
-  const [viewMode, setViewMode] = useState<'dark' | 'light'>('dark');
+  // 视图模式: 'board' 看板 | 'list' 列表
+  const [viewMode, setViewMode] = useState<'board' | 'list'>('board');
   // 领导列表 state
   const [leaders, setLeaders] = useState<LeaderItem[]>([]);
   // 当前值班领导
@@ -193,6 +194,10 @@ const DutyRosterModal: React.FC<DutyRosterModalProps> = ({ open, onClose }) => {
   const [isEditingLeader, setIsEditingLeader] = useState(false);
   // 区县搜索
   const [searchQuery, setSearchQuery] = useState('');
+
+  // 新增领导弹窗状态
+  const [addLeaderVisible, setAddLeaderVisible] = useState(false);
+  const [form] = Form.useForm();
 
   useEffect(() => {
     setLeaders(leaderStore.getLeaders());
@@ -252,15 +257,15 @@ const DutyRosterModal: React.FC<DutyRosterModalProps> = ({ open, onClose }) => {
       width={1340}
       centered
       destroyOnClose
-      className={`duty-roster-modal-wrapper ${viewMode === 'dark' ? 'dark-theme' : 'light-theme'}`}
+      className={`duty-roster-modal-wrapper ${viewMode === 'board' ? 'dark-theme' : 'light-theme'}`}
     >
-      <div className={`duty-roster-container ${viewMode}`}>
+      <div className={`duty-roster-container ${viewMode === 'board' ? 'dark' : 'light'}`}>
         {/* 顶部 Header 控制栏 */}
         <div className="duty-roster-header">
           <div className="header-left">
             <span className="roster-title-icon">👮‍♂️</span>
             <h3 className="roster-title">今日值班表</h3>
-            <Tag color={viewMode === 'dark' ? 'blue' : 'processing'} className="date-tag">
+            <Tag color={viewMode === 'board' ? 'blue' : 'processing'} className="date-tag">
               2026年07月31日 值班大屏
             </Tag>
           </div>
@@ -269,24 +274,98 @@ const DutyRosterModal: React.FC<DutyRosterModalProps> = ({ open, onClose }) => {
             {/* 视图切换按钮 */}
             <Segmented
               options={[
-                { value: 'dark', label: '深色看板', icon: <AppstoreOutlined /> },
-                { value: 'light', label: '表格简版', icon: <TableOutlined /> },
+                { value: 'board', label: '看板', icon: <AppstoreOutlined /> },
+                { value: 'list', label: '列表', icon: <TableOutlined /> },
               ]}
               value={viewMode}
-              onChange={(val) => setViewMode(val as 'dark' | 'light')}
+              onChange={(val) => setViewMode(val as 'board' | 'list')}
               className="view-mode-segmented"
             />
             {/* 关闭按钮提示 */}
           </div>
         </div>
 
-        {/* ==================== 1. 深色科技看板视图 (深色主题 预期优化方向) ==================== */}
-        {viewMode === 'dark' && (
+        {/* ==================== 1. 看板视图 ==================== */}
+        {viewMode === 'board' && (
           <div className="dark-dashboard-body">
             <Row gutter={16} style={{ height: '100%' }}>
               {/* 左侧栏: 本部门 (总队在岗) */}
               <Col span={8} className="dept-column left-dept-col">
-                <div className="dept-card-panel">
+                {/* 独立的值班领导板块 */}
+                <div className="duty-leader-panel" style={{ marginBottom: 12 }}>
+                  <div className="leader-panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                    <div className="panel-title" style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#f8fafc', fontWeight: 'bold', fontSize: 15 }}>
+                      <CrownOutlined className="leader-crown-icon" style={{ color: '#fbbf24' }} />
+                      <span>值班领导</span>
+                    </div>
+                    <Button
+                      type="link"
+                      size="small"
+                      icon={<PlusOutlined />}
+                      className="add-leader-btn"
+                      onClick={() => setAddLeaderVisible(true)}
+                      style={{ color: '#60a5fa', padding: 0 }}
+                    >
+                      新增领导
+                    </Button>
+                  </div>
+                  <div className="leader-panel-body" style={{ background: '#0a1b38', border: '1px solid #1a3668', borderRadius: 8, padding: 12 }}>
+                    <div className="leader-select-row" style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
+                      <span className="select-label" style={{ color: '#cbd5e1', fontSize: 13 }}>当前值班：</span>
+                      {!isEditingLeader ? (
+                        <span className="leader-name-display" style={{ color: '#38bdf8', fontWeight: 'bold', fontSize: 15 }}>{leaderObj.value}</span>
+                      ) : (
+                        <Select
+                          value={currentLeader}
+                          onChange={(val) => {
+                            setCurrentLeader(val);
+                            leaderStore.setDutyLeader(val);
+                            setIsEditingLeader(false);
+                            message.success(`今日值班领导已成功更新为：${val}`);
+                          }}
+                          style={{ width: 140 }}
+                          size="small"
+                          autoFocus
+                        >
+                          {leaderOptions.map((opt) => (
+                            <Select.Option key={opt.value} value={opt.value}>
+                              {opt.value}
+                            </Select.Option>
+                          ))}
+                        </Select>
+                      )}
+                      <Button
+                        type="link"
+                        size="small"
+                        icon={<SwapOutlined />}
+                        className="edit-leader-btn"
+                        onClick={() => setIsEditingLeader(!isEditingLeader)}
+                        style={{ color: '#60a5fa', marginLeft: 8 }}
+                      >
+                        {isEditingLeader ? '完成' : '更换'}
+                      </Button>
+                    </div>
+
+                    {/* 领导详情卡片 */}
+                    <div
+                      className="leader-badge-card"
+                      onClick={() => handleContact(leaderObj.value, leaderObj.phone)}
+                      style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#133873', border: '1px solid #3b82f6', padding: '8px 12px', borderRadius: 6, cursor: 'pointer' }}
+                    >
+                      <div className="leader-badge-left" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span className="unit-tag" style={{ background: '#2563eb', color: '#fff', fontSize: 11, padding: '2px 6px', borderRadius: 4 }}>{leaderObj.unit}</span>
+                        <span className="leader-person-name" style={{ color: '#fff', fontWeight: 'bold', fontSize: 14 }}>{leaderObj.value}</span>
+                      </div>
+                      <div className="leader-badge-right" style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#60a5fa', fontSize: 13 }}>
+                        <PhoneOutlined />
+                        <span>{leaderObj.phone}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 总队在岗列表卡片 */}
+                <div className="dept-card-panel" style={{ flex: 1 }}>
                   <div className="dept-panel-header">
                     <div className="panel-title">
                       <TeamOutlined className="panel-icon" />
@@ -298,62 +377,6 @@ const DutyRosterModal: React.FC<DutyRosterModalProps> = ({ open, onClose }) => {
                   </div>
 
                   <div className="dept-panel-body">
-                    {/* 今日值班领导模块 (可编辑) */}
-                    <div className="duty-leader-box">
-                      <div className="leader-title-bar">
-                        <div className="leader-label">
-                          <CrownOutlined className="leader-crown-icon" />
-                          <span>今日值班领导：</span>
-                          {!isEditingLeader ? (
-                            <span className="leader-name-display">{leaderObj.value}</span>
-                          ) : (
-                            <Select
-                              value={currentLeader}
-                              onChange={(val) => {
-                                setCurrentLeader(val);
-                                leaderStore.setDutyLeader(val);
-                                setIsEditingLeader(false);
-                                message.success(`今日值班领导已成功更新为：${val}`);
-                              }}
-                              style={{ width: 140 }}
-                              size="small"
-                              autoFocus
-                            >
-                              {leaderOptions.map((opt) => (
-                                <Select.Option key={opt.value} value={opt.value}>
-                                  {opt.value}
-                                </Select.Option>
-                              ))}
-                            </Select>
-                          )}
-                        </div>
-                        <Button
-                          type="link"
-                          size="small"
-                          icon={<SwapOutlined />}
-                          className="edit-leader-btn"
-                          onClick={() => setIsEditingLeader(!isEditingLeader)}
-                        >
-                          {isEditingLeader ? '完成' : '更换领导'}
-                        </Button>
-                      </div>
-
-                      {/* 领导详情卡片 */}
-                      <div
-                        className="leader-badge-card"
-                        onClick={() => handleContact(leaderObj.value, leaderObj.phone)}
-                      >
-                        <div className="leader-badge-left">
-                          <span className="unit-tag">{leaderObj.unit}</span>
-                          <span className="leader-person-name">{leaderObj.value}</span>
-                        </div>
-                        <div className="leader-badge-right">
-                          <PhoneOutlined className="phone-icon" />
-                          <span className="phone-num">{leaderObj.phone}</span>
-                        </div>
-                      </div>
-                    </div>
-
                     {/* 各岗位陈列列表 */}
                     <div className="post-list-scroll">
                       {mainDeptPosts.map((post) => (
@@ -440,8 +463,8 @@ const DutyRosterModal: React.FC<DutyRosterModalProps> = ({ open, onClose }) => {
           </div>
         )}
 
-        {/* ==================== 2. 表格经典简版视图 (浅色主题 现有功能复刻) ==================== */}
-        {viewMode === 'light' && (
+        {/* ==================== 2. 列表视图 ==================== */}
+        {viewMode === 'list' && (
           <div className="light-table-body">
             {/* 总队在岗 */}
             <div className="light-section-card">
@@ -522,6 +545,82 @@ const DutyRosterModal: React.FC<DutyRosterModalProps> = ({ open, onClose }) => {
           </div>
         )}
       </div>
+
+      {/* 新增领导模态框 */}
+      <Modal
+        title="新增领导信息"
+        open={addLeaderVisible}
+        onOk={async () => {
+          try {
+            const values = await form.validateFields();
+            const newLd = leaderStore.addLeader({
+              name: values.name,
+              policeId: values.policeId,
+              phone: values.phone,
+              department: values.department,
+              unit: values.department ? values.department[values.department.length - 1] : '总队',
+            });
+            // 自动设为当前值班领导
+            setCurrentLeader(newLd.name);
+            leaderStore.setDutyLeader(newLd.name);
+            setAddLeaderVisible(false);
+            form.resetFields();
+            message.success(`成功新增领导并设为今日值班领导：${values.name}`);
+          } catch (err) {
+            // 校验失败
+          }
+        }}
+        onCancel={() => {
+          setAddLeaderVisible(false);
+          form.resetFields();
+        }}
+        destroyOnClose
+        width={460}
+        okText="确认新增"
+        cancelText="取消"
+      >
+        <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
+          <Form.Item
+            name="name"
+            label="领导姓名"
+            rules={[{ required: true, message: '请输入领导姓名' }]}
+          >
+            <Input placeholder="请输入姓名（如：李广正）" />
+          </Form.Item>
+
+          <Form.Item
+            name="policeId"
+            label="警号"
+            rules={[{ required: true, message: '请输入警号' }]}
+          >
+            <Input placeholder="请输入警号（如：POL-023001）" />
+          </Form.Item>
+
+          <Form.Item
+            name="phone"
+            label="联系方式"
+            rules={[
+              { required: true, message: '请输入联系电话' },
+              { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的11位手机号码' },
+            ]}
+          >
+            <Input placeholder="请输入手机号码（如：13908312345）" />
+          </Form.Item>
+
+          <Form.Item
+            name="department"
+            label="所在部门"
+            rules={[{ required: true, message: '请选择所在部门' }]}
+          >
+            <Cascader
+              options={departmentCascadeOptions}
+              placeholder="请选择所在部门"
+              expandTrigger="hover"
+              style={{ width: '100%' }}
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
     </Modal>
   );
 };

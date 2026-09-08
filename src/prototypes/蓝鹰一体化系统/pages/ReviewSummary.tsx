@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Button, Select, DatePicker, Table, Tabs, Tooltip } from 'antd';
+import { Button, Select, DatePicker, Table, Tabs, Tooltip, Input, message } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
 import {
   SearchOutlined,
   EyeOutlined,
@@ -18,6 +19,8 @@ import {
   UserOutlined,
   CaretDownOutlined,
   TeamOutlined,
+  DownloadOutlined,
+  InfoCircleOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import * as echarts from 'echarts';
@@ -76,10 +79,107 @@ const bestUsersData = [
   { key: '5', name: '陈思远', reportNum: 0, submitNum: 0, rate: '0.00%' },
 ];
 
+// 人员上报采纳统计数据类型与模拟数据
+interface UserAdoptionStat {
+  key: string;
+  userName: string;
+  deptName: string;
+  reportCount: number;
+  adoptedCount: number;
+  adoptionRate: number;
+}
+
+const userAdoptionData: UserAdoptionStat[] = [
+  { key: '1', userName: '张建国', deptName: '清溪分局', reportCount: 28, adoptedCount: 24, adoptionRate: 85.71 },
+  { key: '2', userName: '李志强', deptName: '虎门大队', reportCount: 40, adoptedCount: 32, adoptionRate: 80.00 },
+  { key: '3', userName: '王晓燕', deptName: '麻涌所', reportCount: 15, adoptedCount: 11, adoptionRate: 73.33 },
+  { key: '4', userName: '刘鹏飞', deptName: '长安分局', reportCount: 35, adoptedCount: 25, adoptionRate: 71.43 },
+  { key: '5', userName: '陈思明', deptName: '东城中队', reportCount: 18, adoptedCount: 12, adoptionRate: 66.67 },
+  { key: '6', userName: '黄振华', deptName: '万江分局', reportCount: 22, adoptedCount: 14, adoptionRate: 63.64 },
+  { key: '7', userName: '赵文博', deptName: '常平所', reportCount: 30, adoptedCount: 18, adoptionRate: 60.00 },
+  { key: '8', userName: '周晓峰', deptName: '道滘中队', reportCount: 16, adoptedCount: 9, adoptionRate: 56.25 },
+  { key: '9', userName: '孙立平', deptName: '桥头分局', reportCount: 25, adoptedCount: 13, adoptionRate: 52.00 },
+  { key: '10', userName: '郭德纲', deptName: '塘厦分局', reportCount: 12, adoptedCount: 6, adoptionRate: 50.00 },
+  { key: '11', userName: '梁广生', deptName: '凤岗所', reportCount: 20, adoptedCount: 8, adoptionRate: 40.00 },
+  { key: '12', userName: '郑海涛', deptName: '樟木头所', reportCount: 10, adoptedCount: 3, adoptionRate: 30.00 },
+];
+
+// 人员上报采纳统计筛选配置
+const ADOPTION_DEPARTMENT_OPTIONS = [
+  { value: 'all', label: '全部部门' },
+  { value: '清溪分局', label: '清溪分局' },
+  { value: '虎门大队', label: '虎门大队' },
+  { value: '麻涌所', label: '麻涌所' },
+  { value: '长安分局', label: '长安分局' },
+  { value: '东城中队', label: '东城中队' },
+  { value: '万江分局', label: '万江分局' },
+  { value: '常平所', label: '常平所' },
+  { value: '道滘中队', label: '道滘中队' },
+  { value: '桥头分局', label: '桥头分局' },
+  { value: '塘厦分局', label: '塘厦分局' },
+  { value: '凤岗所', label: '凤岗所' },
+  { value: '樟木头所', label: '樟木头所' },
+];
+
+const ADOPTION_RANGE_PRESETS: {
+  label: string;
+  value: [dayjs.Dayjs, dayjs.Dayjs];
+}[] = [
+  { label: '最近7天', value: [dayjs().subtract(7, 'day'), dayjs()] },
+  { label: '最近30天', value: [dayjs().subtract(30, 'day'), dayjs()] },
+  { label: '本月', value: [dayjs().startOf('month'), dayjs().endOf('month')] },
+];
+
 const ReviewSummary: React.FC = () => {
   const [activeTab, setActiveTab] = useState('1');
   const [timeRange, setTimeRange] = useState<'week' | 'month' | 'year'>('month');
   const [selectedMetric, setSelectedMetric] = useState<keyof DistrictData>('score');
+
+  // 人员上报采纳统计相关状态与筛选控制
+  const [adoptionPage, setAdoptionPage] = useState(1);
+  const [adoptionPageSize, setAdoptionPageSize] = useState(10);
+  const [tempRange, setTempRange] = useState<[dayjs.Dayjs, dayjs.Dayjs]>([
+    dayjs().subtract(7, 'day'),
+    dayjs(),
+  ]);
+  const [tempDept, setTempDept] = useState<string | undefined>(undefined);
+  const [tempName, setTempName] = useState<string>('');
+
+  // 实际生效的筛选条件（性能规避：仅在点击「查询」或「重置」时刷新数据）
+  const [appliedDept, setAppliedDept] = useState<string | undefined>(undefined);
+  const [appliedName, setAppliedName] = useState<string>('');
+
+  const handleQueryAdoption = (overrideName?: string) => {
+    const finalName = typeof overrideName === 'string' ? overrideName : tempName;
+    setAppliedDept(tempDept);
+    setAppliedName(finalName);
+    setAdoptionPage(1);
+    message.success('已根据筛选条件刷新数据');
+  };
+
+  const handleResetAdoption = () => {
+    const defaultRange: [dayjs.Dayjs, dayjs.Dayjs] = [dayjs().subtract(7, 'day'), dayjs()];
+    setTempRange(defaultRange);
+    setTempDept(undefined);
+    setTempName('');
+    setAppliedDept(undefined);
+    setAppliedName('');
+    setAdoptionPage(1);
+    message.info('已重置筛选条件');
+  };
+
+  const filteredAdoptionData = React.useMemo(() => {
+    let list = [...userAdoptionData];
+    if (appliedDept && appliedDept !== 'all') {
+      list = list.filter((item) => item.deptName.includes(appliedDept));
+    }
+    if (appliedName && appliedName.trim()) {
+      const q = appliedName.trim().toLowerCase();
+      list = list.filter((item) => item.userName.toLowerCase().includes(q));
+    }
+    // 重新按默认的「被采纳率 降序」排序展示
+    return list.sort((a, b) => b.adoptionRate - a.adoptionRate);
+  }, [appliedDept, appliedName]);
 
   const reportChartRef = useRef<HTMLDivElement>(null);
   const commandChartRef = useRef<HTMLDivElement>(null);
@@ -497,6 +597,88 @@ const ReviewSummary: React.FC = () => {
     },
   ];
 
+  const adoptionColumns: ColumnsType<UserAdoptionStat> = [
+    {
+      title: '排名',
+      dataIndex: 'rank',
+      key: 'rank',
+      width: 80,
+      align: 'center',
+      render: (_: any, __: UserAdoptionStat, index: number) => {
+        const rank = (adoptionPage - 1) * adoptionPageSize + index + 1;
+        let rankClass = 'rank-number';
+        if (rank === 1) rankClass += ' r-1';
+        else if (rank === 2) rankClass += ' r-2';
+        else if (rank === 3) rankClass += ' r-3';
+        return <span className={rankClass}>{rank}</span>;
+      },
+    },
+    {
+      title: '姓名',
+      dataIndex: 'userName',
+      key: 'userName',
+      align: 'left',
+      render: (text: string) => <span style={{ fontWeight: 500, color: '#1e293b' }}>{text}</span>,
+    },
+    {
+      title: '部门',
+      dataIndex: 'deptName',
+      key: 'deptName',
+      align: 'left',
+      render: (text: string) => <span style={{ color: '#475569' }}>{text}</span>,
+    },
+    {
+      title: (
+        <span className="th-cell-right">
+          上报数
+          <Tooltip title="所选时间范围内，该账号主动上报的信息总量">
+            <InfoCircleOutlined className="th-tip-icon" />
+          </Tooltip>
+        </span>
+      ),
+      dataIndex: 'reportCount',
+      key: 'reportCount',
+      align: 'right',
+      sorter: (a, b) => a.reportCount - b.reportCount,
+      render: (val: number) => <span style={{ fontWeight: 500 }}>{val}</span>,
+    },
+    {
+      title: (
+        <span className="th-cell-right">
+          被采纳数
+          <Tooltip title="所选时间范围内，该账号上报且已下达指令的独立信息数量（单条信息被多次下达指令去重计为1次）">
+            <InfoCircleOutlined className="th-tip-icon" />
+          </Tooltip>
+        </span>
+      ),
+      dataIndex: 'adoptedCount',
+      key: 'adoptedCount',
+      align: 'right',
+      sorter: (a, b) => a.adoptedCount - b.adoptedCount,
+      render: (val: number) => <span style={{ fontWeight: 500, color: '#10b981' }}>{val}</span>,
+    },
+    {
+      title: (
+        <span className="th-cell-right">
+          被采纳率
+          <Tooltip title="计算公式：被采纳数 / 上报数 × 100%。上报数为 0 时展示 0.00%">
+            <InfoCircleOutlined className="th-tip-icon" />
+          </Tooltip>
+        </span>
+      ),
+      dataIndex: 'adoptionRate',
+      key: 'adoptionRate',
+      align: 'right',
+      defaultSortOrder: 'descend',
+      sorter: (a, b) => a.adoptionRate - b.adoptionRate,
+      render: (val: number) => (
+        <span style={{ fontWeight: 600, color: '#2563eb' }}>
+          {val ? `${val.toFixed(2)}%` : '0.00%'}
+        </span>
+      ),
+    },
+  ];
+
   return (
     <div className="review-summary-container">
       {/* 顶部检索区 */}
@@ -758,6 +940,106 @@ const ReviewSummary: React.FC = () => {
             onChange={setActiveTab}
             items={tabItems}
             className="leaderboard-tabs"
+          />
+        </div>
+      </section>
+
+      {/* 新增：人员上报采纳统计模块 */}
+      <section className="summary-row-adoption">
+        <div className="user-adoption-panel">
+          <div className="panel-header-with-filter">
+            <div className="section-title" style={{ marginBottom: 0 }}>
+              <span className="title-vertical-bar" />
+              <div className="title-with-tip">
+                <h3>人员上报采纳统计</h3>
+                <Tooltip title="统计周期内，上报信息被下达指令视为被采纳。被采纳率 = 被采纳数 / 上报数 × 100%">
+                  <QuestionCircleOutlined className="info-icon" />
+                </Tooltip>
+              </div>
+            </div>
+            <div className="panel-actions">
+              <Button
+                icon={<DownloadOutlined />}
+                onClick={() => message.success('已成功导出人员上报采纳统计报表 (Excel)')}
+              >
+                导出 Excel
+              </Button>
+            </div>
+          </div>
+
+          {/* 新增 Filter Bar 筛选工具栏 */}
+          <div className="user-adoption-filter-bar">
+            <div className="filter-group-left">
+              <div className="adoption-filter-item">
+                <span className="filter-label">时间范围</span>
+                <RangePicker
+                  presets={ADOPTION_RANGE_PRESETS}
+                  value={tempRange}
+                  onChange={(dates) => setTempRange(dates as [dayjs.Dayjs, dayjs.Dayjs])}
+                  style={{ width: 250 }}
+                />
+              </div>
+              <div className="adoption-filter-item">
+                <span className="filter-label">部门</span>
+                <Select
+                  placeholder="选择部门"
+                  allowClear
+                  value={tempDept}
+                  onChange={(val) => setTempDept(val)}
+                  options={ADOPTION_DEPARTMENT_OPTIONS}
+                  style={{ width: 140 }}
+                />
+              </div>
+              <div className="adoption-filter-item">
+                <span className="filter-label">姓名</span>
+                <Input.Search
+                  placeholder="请输入姓名搜索"
+                  allowClear
+                  value={tempName}
+                  onChange={(e) => setTempName(e.target.value)}
+                  onSearch={(val) => handleQueryAdoption(val)}
+                  style={{ width: 170 }}
+                />
+              </div>
+              <div className="filter-btns">
+                <Button type="primary" onClick={() => handleQueryAdoption()}>
+                  查询
+                </Button>
+                <Button onClick={handleResetAdoption}>
+                  重置
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <Table<UserAdoptionStat>
+            dataSource={filteredAdoptionData}
+            columns={adoptionColumns}
+            rowKey="key"
+            size="middle"
+            className="user-adoption-table"
+            pagination={{
+              current: adoptionPage,
+              pageSize: adoptionPageSize,
+              defaultPageSize: 10,
+              pageSizeOptions: ['10', '20', '50'],
+              showSizeChanger: true,
+              showTotal: (total) => `共 ${total} 条`,
+              onChange: (page, size) => {
+                setAdoptionPage(page);
+                setAdoptionPageSize(size);
+              },
+            }}
+            onChange={(pagination, _filters, _sorter, extra) => {
+              if (extra.action === 'sort') {
+                setAdoptionPage(1);
+              } else if (pagination.current) {
+                setAdoptionPage(pagination.current);
+              }
+              if (pagination.pageSize) {
+                setAdoptionPageSize(pagination.pageSize);
+              }
+            }}
           />
         </div>
       </section>
