@@ -17,13 +17,17 @@ interface AppSiderProps {
 }
 
 export const AppSider: React.FC<AppSiderProps> = ({ collapsed, onToggleCollapse }) => {
-  const { activeNav, setActiveNav } = useAppStore();
+  const { activeNav, setActiveNav, currentPost } = useAppStore();
+
+  const isShuyangPost = currentPost === 'district_shuyang_post' || currentPost === 'district_susong_post';
 
   const menuItems: { key: MainNavType; label: string; icon: React.ReactNode }[] = [
     { key: 'source_control', label: '源头防控', icon: <SafetyCertificateOutlined className="text-base" /> },
     { key: 'monitor_warning', label: '监测预警', icon: <RadarChartOutlined className="text-base" /> },
     { key: 'emergency_response', label: '应急处置', icon: <FileDoneOutlined className="text-base" /> },
-    { key: 'situation_awareness', label: '态势感知', icon: <LineChartOutlined className="text-base" /> }
+    ...(!isShuyangPost
+      ? [{ key: 'situation_awareness' as MainNavType, label: '态势感知', icon: <LineChartOutlined className="text-base" /> }]
+      : [])
   ];
 
   return (

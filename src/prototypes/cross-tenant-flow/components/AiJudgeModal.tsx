@@ -38,24 +38,54 @@ export const AiJudgeModal: React.FC = () => {
     currentPost,
     approveAndSyncProvince,
     saveLocalOnly,
-    dispatchInstruction
+    dispatchProvinceInstruction
   } = useAppStore();
 
+  const isProvincePost = currentPost === 'province_post';
+  const isMunicipalPost = currentPost === 'municipal_post';
+
   const [activeTab, setActiveTab] = useState('judge');
-  const [levelVal, setLevelVal] = useState<string>('二级 (高)');
-  const [opinionTypeVal, setOpinionTypeVal] = useState<string>('公共安全事故');
-  const [targetDistrict, setTargetDistrict] = useState<string>('忠县公安局');
+  const [levelVal, setLevelVal] = useState<string>('一级 (特急)');
+  const [opinionTypeVal, setOpinionTypeVal] = useState<string>('涉稳舆情');
   const [manualOpinionText, setManualOpinionText] = useState('');
-  const [localUnitDirectives, setLocalUnitDirectives] = useState<string[]>(['信息编报']);
-  const [districtDirectives, setDistrictDirectives] = useState<string[]>(['线下核实', '属地落实']);
+
+  // 省厅指令下发专用状态与配置项
+  const [dispatchPanelOpen, setDispatchPanelOpen] = useState(false);
+  const [targetUnit, setTargetUnit] = useState<string>('苏州市公安局');
+  const [directives, setDirectives] = useState<string[]>([
+    '线下核实',
+    '属地删帖',
+    '落地查人',
+    '情况反馈'
+  ]);
+  const [timeLimit, setTimeLimit] = useState<string>('24小时内');
+  const [directiveRemark, setDirectiveRemark] = useState<string>(
+    '请苏州市局迅速安排核查当事人具体动向，防止二次煽动炒作，处置进展及时回传。'
+  );
 
   useEffect(() => {
     if (currentAiOpinion) {
       setManualOpinionText(
-        `经市局网安支队会同相关部门研判定性：该事件属于${currentAiOpinion.categoryTag || '公共安全'}类舆情，建议属地落实线下核查与官方澄清，防范二次舆论发酵。`
+        currentAiOpinion.manualOpinion ||
+        `经省厅网安总队综合研判：该事件属于涉重点企事业单位的不实谣言，请属地迅速组织落地核实并督促辟谣。`
       );
+      if (currentAiOpinion.levelText) {
+        setLevelVal(currentAiOpinion.levelText);
+      }
+      if (currentAiOpinion.categoryTag) {
+        setOpinionTypeVal(currentAiOpinion.categoryTag);
+      }
+      if (currentAiOpinion.region?.includes('苏州') || currentAiOpinion.sourceUnitTag?.includes('苏州')) {
+        setTargetUnit('苏州市公安局');
+      }
+      // 省厅账号进入默认激活指令下达视图
+      if (isProvincePost) {
+        setDispatchPanelOpen(true);
+      } else {
+        setDispatchPanelOpen(false);
+      }
     }
-  }, [currentAiOpinion]);
+  }, [currentAiOpinion, isProvincePost]);
 
   if (!currentAiOpinion) return null;
 
@@ -63,12 +93,6 @@ export const AiJudgeModal: React.FC = () => {
     navigator.clipboard?.writeText(manualOpinionText);
     message.success('已复制人工研判意见内容');
   };
-
-  const handleDispatch = () => {
-    dispatchInstruction(targetDistrict, currentAiOpinion.title);
-  };
-
-  const isMunicipalPost = currentPost === 'municipal_post';
 
   return (
     <Modal
@@ -119,10 +143,10 @@ export const AiJudgeModal: React.FC = () => {
               size="small"
               className="w-28 text-xs"
               options={[
-                { value: '渝北区', label: '渝北区' },
-                { value: '垫江县', label: '垫江县' },
-                { value: '梁平区', label: '梁平区' },
-                { value: '忠县', label: '忠县' }
+                { value: '姑苏区', label: '姑苏区' },
+                { value: '江宁区', label: '江宁区' },
+                { value: '沭阳县', label: '沭阳县' },
+                { value: '昆山市', label: '昆山市' }
               ]}
             />
           </div>
@@ -258,221 +282,281 @@ export const AiJudgeModal: React.FC = () => {
           <div className="flex items-center justify-between border-b border-slate-200 pb-1">
             <div className="flex items-center gap-6 text-xs font-semibold">
               <span
-                onClick={() => setActiveTab('judge')}
-                className={`cursor-pointer pb-2 ${activeTab === 'judge' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500'}`}
+                onClick={() => {
+                  setActiveTab('judge');
+                  setDispatchPanelOpen(false);
+                }}
+                className={`cursor-pointer pb-2 ${activeTab === 'judge' && !dispatchPanelOpen ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
               >
                 分析研判
               </span>
               <span
-                onClick={() => setActiveTab('process')}
-                className={`cursor-pointer pb-2 ${activeTab === 'process' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500'}`}
+                onClick={() => {
+                  setActiveTab('process');
+                  setDispatchPanelOpen(false);
+                }}
+                className={`cursor-pointer pb-2 ${activeTab === 'process' && !dispatchPanelOpen ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
               >
                 处置过程
               </span>
               <span
-                onClick={() => setActiveTab('detail')}
-                className={`cursor-pointer pb-2 ${activeTab === 'detail' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500'}`}
+                onClick={() => {
+                  setActiveTab('detail');
+                  setDispatchPanelOpen(false);
+                }}
+                className={`cursor-pointer pb-2 ${activeTab === 'detail' && !dispatchPanelOpen ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
               >
                 处置详情
               </span>
             </div>
 
+            {/* 蓝色边框操作按钮【下达处置指令】 */}
             <Button
-              type="default"
+              type={dispatchPanelOpen ? 'primary' : 'default'}
               size="small"
               icon={<SendOutlined />}
-              onClick={handleDispatch}
-              className="!text-xs !text-blue-600 !border-blue-500 hover:!bg-blue-50"
+              onClick={() => setDispatchPanelOpen(!dispatchPanelOpen)}
+              className={`!text-xs ${
+                dispatchPanelOpen
+                  ? '!bg-blue-600 !text-white shadow-2xs'
+                  : '!text-blue-600 !border-blue-500 hover:!bg-blue-50'
+              }`}
             >
               下达处置指令
             </Button>
           </div>
 
-          {/* 分析研判等级与分类 */}
-          <div>
-            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 mb-2">
-              <span className="w-1 h-3.5 bg-blue-600 rounded-xs" />
-              <span>分析研判</span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 text-xs">
-              <div className="flex items-center gap-2">
-                <span className="text-slate-500">等级:</span>
-                <Select
-                  value={levelVal}
-                  onChange={setLevelVal}
-                  size="small"
-                  className="w-full"
-                  options={[
-                    { value: '一级 (特急)', label: '一级 (特急)' },
-                    { value: '二级 (高)', label: '二级 (高)' },
-                    { value: '三级 (中)', label: '三级 (中)' },
-                    { value: '四级 (低)', label: '四级 (低)' }
-                  ]}
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-slate-500">舆情类型:</span>
-                <Select
-                  value={opinionTypeVal}
-                  onChange={setOpinionTypeVal}
-                  size="small"
-                  className="w-full"
-                  options={[
-                    { value: '公共安全事故', label: '公共安全事故' },
-                    { value: '涉警维权舆情', label: '涉警维权舆情' },
-                    { value: '涉校园学生安全', label: '涉校园学生安全' },
-                    { value: '涉企涉经济纠纷', label: '涉企涉经济纠纷' }
-                  ]}
-                />
-              </div>
-            </div>
-
-            <div className="mt-2">
-              <span className="bg-blue-50 text-blue-600 text-[10px] px-2 py-0.5 rounded border border-blue-200">
-                AI 初研 1
-              </span>
-            </div>
-          </div>
-
-          {/* 人工研判意见 */}
-          <div>
-            <div className="text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
-              <span>人工研判意见</span>
-              <span
-                onClick={handleCopyText}
-                className="text-blue-600 font-normal cursor-pointer hover:underline flex items-center gap-1 text-[11px]"
-              >
-                <CopyOutlined /> 一键复制
-              </span>
-            </div>
-            <TextArea
-              rows={3}
-              value={manualOpinionText}
-              onChange={(e) => setManualOpinionText(e.target.value)}
-              placeholder="请输入人工研判意见"
-              className="text-xs"
-            />
-          </div>
-
-          {/* 下一步指令下达 */}
-          <div className="space-y-3 pt-1">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
-              <span className="w-1.5 h-1.5 bg-blue-600 rounded-full" />
-              <span>下一步指令下达</span>
-            </div>
-
-            <div className="text-xs text-slate-500 font-medium">常用指令</div>
-
-            {/* 本单位指令 */}
-            <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-md text-xs space-y-2">
-              <div className="font-semibold text-slate-700 flex items-center gap-1">
-                <span className="w-1 h-3 bg-blue-500 rounded-xs" />
-                <span>本单位指令</span>
-              </div>
-              <Checkbox.Group
-                value={localUnitDirectives}
-                onChange={(vals) => setLocalUnitDirectives(vals as string[])}
-                className="grid grid-cols-4 gap-1 text-xs"
-              >
-                <Checkbox value="通报六支队及法制">通报六支队及法制</Checkbox>
-                <Checkbox value="领导研判">领导研判</Checkbox>
-                <Checkbox value="信息编报">信息编报</Checkbox>
-                <Checkbox value="通报网信">通报网信</Checkbox>
-                <Checkbox value="通报警种">通报警种</Checkbox>
-                <Checkbox value="总队落查">总队落查</Checkbox>
-                <Checkbox value="协调删帖">协调删帖</Checkbox>
-                <Checkbox value="协调限流">协调限流</Checkbox>
-              </Checkbox.Group>
-              <div className="text-[11px] text-blue-600 hover:underline cursor-pointer">
-                补充指令内容 填写
-              </div>
-            </div>
-
-            {/* 执行单位指令 */}
-            <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-md text-xs space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="font-semibold text-slate-700 flex items-center gap-1">
-                  <span className="w-1 h-3 bg-blue-500 rounded-xs" />
-                  <span>执行单位指令</span>
+          {dispatchPanelOpen ? (
+            /* 省厅专属指令下发配置面板 */
+            <div className="p-3.5 bg-blue-50/40 border border-blue-200 rounded-lg space-y-3.5">
+              <div className="flex items-center justify-between pb-2 border-b border-blue-100">
+                <div className="flex items-center gap-2">
+                  <span className="w-1.5 h-3.5 bg-blue-600 rounded-xs" />
+                  <span className="text-xs font-bold text-slate-800">
+                    省厅实战指挥派单 · 下达处置指令
+                  </span>
                 </div>
+                <span className="text-[11px] text-blue-600 bg-blue-100/60 px-2 py-0.5 rounded font-mono font-medium">
+                  任务单号: ZL20260911001
+                </span>
+              </div>
+
+              {/* 1. 执行目标单位 */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <span className="text-rose-500 mr-1">*</span>执行目标单位:
+                </label>
                 <Select
-                  value={targetDistrict}
-                  onChange={setTargetDistrict}
-                  size="small"
-                  className="w-36 text-xs"
+                  value={targetUnit}
+                  onChange={setTargetUnit}
+                  size="middle"
+                  className="w-full text-xs"
                   options={[
-                    { value: '忠县公安局', label: '忠县公安局' },
-                    { value: '渝北区分局', label: '渝北区分局' },
-                    { value: '垫江县公安局', label: '垫江县公安局' },
-                    { value: '梁平区分局', label: '梁平区分局' }
+                    { value: '苏州市公安局', label: '苏州市公安局 (来源上报单位)' },
+                    { value: '南京市公安局', label: '南京市公安局' },
+                    { value: '无锡市公安局', label: '无锡市公安局' },
+                    { value: '常州市公安局', label: '常州市公安局' },
+                    { value: '南通市公安局', label: '南通市公安局' },
+                    { value: '宿迁市公安局', label: '宿迁市公安局' }
                   ]}
                 />
               </div>
 
-              <Checkbox.Group
-                value={districtDirectives}
-                onChange={(vals) => setDistrictDirectives(vals as string[])}
-                className="grid grid-cols-3 gap-1 text-xs"
-              >
-                <Checkbox value="持续监测">持续监测</Checkbox>
-                <Checkbox value="线下核实">线下核实</Checkbox>
-                <Checkbox value="属地删帖">属地删帖</Checkbox>
-                <Checkbox value="平台举报">平台举报</Checkbox>
-                <Checkbox value="属地落实">属地落实</Checkbox>
-              </Checkbox.Group>
-              <div className="text-[11px] text-blue-600 hover:underline cursor-pointer">
-                补充指令内容 填写
+              {/* 2. 处置要求 */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  <span className="text-rose-500 mr-1">*</span>处置要求:
+                </label>
+                <Checkbox.Group
+                  value={directives}
+                  onChange={(vals) => setDirectives(vals as string[])}
+                  className="grid grid-cols-2 gap-2 text-xs bg-white p-2.5 rounded border border-blue-100"
+                >
+                  <Checkbox value="线下核实">
+                    <span className="font-medium text-slate-700">线下核实</span>
+                  </Checkbox>
+                  <Checkbox value="属地删帖">
+                    <span className="font-medium text-slate-700">属地删帖</span>
+                  </Checkbox>
+                  <Checkbox value="落地查人">
+                    <span className="font-medium text-slate-700">落地查人</span>
+                  </Checkbox>
+                  <Checkbox value="情况反馈">
+                    <span className="font-medium text-slate-700">情况反馈</span>
+                  </Checkbox>
+                </Checkbox.Group>
+              </div>
+
+              {/* 3. 处置时限 */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <span className="text-rose-500 mr-1">*</span>处置时限:
+                </label>
+                <Select
+                  value={timeLimit}
+                  onChange={setTimeLimit}
+                  size="middle"
+                  className="w-full text-xs"
+                  options={[
+                    { value: '2小时内', label: '2小时内 (特急处置)' },
+                    { value: '6小时内', label: '6小时内 (紧急处置)' },
+                    { value: '24小时内', label: '24小时内' },
+                    { value: '48小时内', label: '48小时内' }
+                  ]}
+                />
+              </div>
+
+              {/* 4. 补充批示意见 */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <span className="text-rose-500 mr-1">*</span>补充批示意见:
+                </label>
+                <TextArea
+                  rows={3}
+                  value={directiveRemark}
+                  onChange={(e) => setDirectiveRemark(e.target.value)}
+                  placeholder="请输入领导补充批示意见..."
+                  className="text-xs"
+                />
               </div>
             </div>
-          </div>
+          ) : (
+            /* 常规研判表单 */
+            <>
+              {/* 分析研判等级与分类 */}
+              <div>
+                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 mb-2">
+                  <span className="w-1 h-3.5 bg-blue-600 rounded-xs" />
+                  <span>分析研判</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-500 whitespace-nowrap">等级:</span>
+                    <Select
+                      value={levelVal}
+                      onChange={setLevelVal}
+                      size="small"
+                      className="w-full text-xs"
+                      options={[
+                        { value: '一级 (特急)', label: '一级 (特急)' },
+                        { value: '二级 (高)', label: '二级 (高)' },
+                        { value: '三级 (中)', label: '三级 (中)' },
+                        { value: '四级 (低)', label: '四级 (低)' }
+                      ]}
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-500 whitespace-nowrap">舆情类型:</span>
+                    <Select
+                      value={opinionTypeVal}
+                      onChange={setOpinionTypeVal}
+                      size="small"
+                      className="w-full text-xs"
+                      options={[
+                        { value: '涉稳舆情', label: '涉稳舆情' },
+                        { value: '公共安全事故', label: '公共安全事故' },
+                        { value: '涉警维权舆情', label: '涉警维权舆情' },
+                        { value: '涉企涉经济纠纷', label: '涉企涉经济纠纷' }
+                      ]}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 人工研判意见 */}
+              <div>
+                <div className="text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
+                  <span>人工研判意见</span>
+                  <span
+                    onClick={handleCopyText}
+                    className="text-blue-600 font-normal cursor-pointer hover:underline flex items-center gap-1 text-[11px]"
+                  >
+                    <CopyOutlined /> 一键复制
+                  </span>
+                </div>
+                <TextArea
+                  rows={4}
+                  value={manualOpinionText}
+                  onChange={(e) => setManualOpinionText(e.target.value)}
+                  placeholder="请输入人工研判意见"
+                  className="text-xs"
+                />
+              </div>
+            </>
+          )}
         </div>
       </div>
 
-      {/* 弹窗底栏按钮操作区 */}
+      {/* 弹窗底栏操作栏 */}
       <div className="flex items-center justify-between pt-4 mt-4 border-t border-slate-200">
-        <div className="text-xs text-slate-400">
-          当前岗位：<strong className="text-slate-600">{currentPost === 'municipal_post' ? '池州网安支队-审核岗' : currentPost === 'district_post' ? '池州贵池分局-经办岗' : '省厅网安总队-指挥岗'}</strong>
+        <div className="text-xs text-slate-500">
+          当前操作岗位：
+          <strong className="text-blue-600 font-medium ml-1">
+            {isProvincePost
+              ? '省厅网安总队 - 指挥岗 (公安内网版)'
+              : '市局网安支队 - 审核岗 (互联网独立版)'}
+          </strong>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* 若处于市局审核岗，内嵌“审核通过并报送省厅”和“仅本地留存” */}
-          {isMunicipalPost && (
+        <div className="flex items-center gap-2.5">
+          <Button onClick={closeAiJudgeModal} className="!text-xs !h-8 !px-3 text-slate-600">
+            取消
+          </Button>
+
+          {/* 若为省厅岗位或处于指令面板中，提供【确认下达指令】 */}
+          {isProvincePost || dispatchPanelOpen ? (
+            <Button
+              type="primary"
+              icon={<SendOutlined />}
+              onClick={() => {
+                dispatchProvinceInstruction(
+                  currentAiOpinion.id,
+                  targetUnit,
+                  directives,
+                  timeLimit,
+                  directiveRemark
+                );
+              }}
+              className="!bg-blue-600 hover:!bg-blue-500 !text-xs !h-8 !px-5 shadow-sm font-semibold tracking-wide"
+            >
+              确认下达指令
+            </Button>
+          ) : (
+            /* 市局审核岗按钮组 */
             <>
               <Button
                 type="default"
                 onClick={() => saveLocalOnly(currentAiOpinion.id)}
-                className="!text-xs text-slate-600 hover:text-slate-800"
+                className="!bg-white !border-slate-300 hover:!border-slate-400 !text-slate-700 !text-xs !h-8 !px-3 font-medium"
               >
-                仅本地留存
+                仅保留地市自办
               </Button>
+
               <Button
                 type="primary"
                 icon={<CheckCircleOutlined />}
-                onClick={() =>
-                  approveAndSyncProvince(currentAiOpinion.id, manualOpinionText, '市局定稿核准同步')
-                }
-                className="!bg-emerald-600 hover:!bg-emerald-500 !text-xs"
+                onClick={() => {
+                  const starsMap: Record<string, number> = {
+                    '一级 (特急)': 5,
+                    '二级 (高)': 4,
+                    '三级 (中)': 3,
+                    '四级 (低)': 2
+                  };
+                  approveAndSyncProvince(
+                    currentAiOpinion.id,
+                    manualOpinionText,
+                    '市局审核通过并同步省厅',
+                    levelVal,
+                    starsMap[levelVal] || 4
+                  );
+                }}
+                className="!bg-blue-600 hover:!bg-blue-500 !text-xs !h-8 !px-4 shadow-sm font-semibold tracking-wide"
               >
-                审核通过并报送省厅
+                审核通过并同步省厅
               </Button>
             </>
           )}
-
-          <Button onClick={closeAiJudgeModal} className="!text-xs">
-            取消
-          </Button>
-
-          <Button
-            type="primary"
-            onClick={() => {
-              message.success('已完成人工研判并保存记录');
-              closeAiJudgeModal();
-            }}
-            className="!bg-blue-600 hover:!bg-blue-500 !text-xs"
-          >
-            完成研判
-          </Button>
         </div>
       </div>
     </Modal>

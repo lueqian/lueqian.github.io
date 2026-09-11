@@ -34,11 +34,35 @@ export const GlobalHeader: React.FC = () => {
 
   return (
     <header className="w-full h-[52px] bg-white border-b border-[#e5e7eb] px-5 flex items-center justify-between select-none z-30 sticky top-0 shadow-2xs">
-      {/* 左侧：当前模块面包屑路径 */}
-      <div className="flex items-center gap-1.5 text-xs text-slate-500">
-        <span className="text-slate-400 font-medium">{breadcrumbs[0]}</span>
-        <RightOutlined className="text-[10px] text-slate-300" />
-        <span className="text-slate-800 font-semibold">{breadcrumbs[1]}</span>
+      {/* 左侧：当前模块面包屑路径与网络环境 */}
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5 text-xs text-slate-500">
+          <span className="text-slate-400 font-medium">{breadcrumbs[0]}</span>
+          <RightOutlined className="text-[10px] text-slate-300" />
+          <span className="text-slate-800 font-semibold">{breadcrumbs[1]}</span>
+        </div>
+
+        {/* 网络环境标识 */}
+        <span
+          className={`px-2.5 py-0.5 rounded-full text-xs font-semibold flex items-center gap-1.5 ${
+            currentPost === 'province_post' || currentPost === 'district_shuyang_post' || currentPost === 'district_susong_post'
+              ? 'bg-emerald-50 text-emerald-700 border border-emerald-300'
+              : 'bg-blue-50 text-blue-700 border border-blue-200'
+          }`}
+        >
+          <span
+            className={`w-1.5 h-1.5 rounded-full ${
+              currentPost === 'province_post' || currentPost === 'district_shuyang_post' || currentPost === 'district_susong_post'
+                ? 'bg-emerald-500'
+                : 'bg-blue-500'
+            }`}
+          />
+          {currentPost === 'province_post'
+            ? '公安内网端'
+            : currentPost === 'district_shuyang_post' || currentPost === 'district_susong_post'
+            ? '公安内网端 (省厅统建主系统)'
+            : '互联网端'}
+        </span>
       </div>
 
       {/* 中右侧：搜索区与政务人员控制区 */}
@@ -70,24 +94,33 @@ export const GlobalHeader: React.FC = () => {
 
         {/* 用户与岗位 */}
         <div className="flex items-center gap-4 text-xs text-slate-600">
-          <span className="text-slate-700 font-medium">欢迎 王浩！</span>
+          <span className="text-slate-700 font-medium">
+            欢迎 {currentPost === 'municipal_post' ? '李警官' : currentPost === 'province_post' ? '陈总指挥' : (currentPost === 'district_shuyang_post' || currentPost === 'district_susong_post') ? '王警官' : '张警官'}！
+          </span>
 
           <span className="text-blue-600 hover:underline cursor-pointer">修改密码</span>
 
           <span className="text-blue-600 hover:underline cursor-pointer">值班表</span>
 
           {/* 角色模拟切换下拉框 */}
-          <div className="flex items-center gap-1">
-            <span className="text-slate-500 whitespace-nowrap">岗位:</span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-slate-500 whitespace-nowrap">岗位切换:</span>
             <Select
-              value={currentPost}
+              value={
+                currentPost === 'district_guichi_post'
+                  ? 'district_gusu_post'
+                  : currentPost === 'district_susong_post'
+                  ? 'district_shuyang_post'
+                  : currentPost
+              }
               onChange={(val) => switchPost(val as PostType)}
               size="small"
-              className="w-44 text-xs"
+              className="w-64 text-xs"
               options={[
-                { value: 'district_post', label: '池州贵池分局-经办岗' },
-                { value: 'municipal_post', label: '池州网安支队-审核岗' },
-                { value: 'province_post', label: '省厅网安总队-指挥岗' }
+                { value: 'municipal_post', label: '市局网安支队 - 审核岗 (内网协同视角)' },
+                { value: 'province_post', label: '省厅网安总队 - 指挥岗 (公安内网版)' },
+                { value: 'district_gusu_post', label: '姑苏分局网安大队 - 经办岗 (互联网独立版)' },
+                { value: 'district_shuyang_post', label: '沭阳县局网安大队 - 经办岗 (公安内网未采购版)' }
               ]}
             />
           </div>

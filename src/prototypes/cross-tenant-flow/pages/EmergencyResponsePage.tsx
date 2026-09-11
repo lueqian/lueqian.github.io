@@ -28,22 +28,35 @@ const { RangePicker } = DatePicker;
 export const EmergencyResponsePage: React.FC = () => {
   const { disposalTasks, openAiJudgeModal, opinions, assignToDistrict } = useAppStore();
   const [filterCollapsed, setFilterCollapsed] = useState(false);
-  const [activeSubTab, setActiveSubTab] = useState('processed');
+  const [activeSubTab, setActiveSubTab] = useState('pending');
   const [autoAlert, setAutoAlert] = useState(true);
   const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [progressModalOpen, setProgressModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<DisposalTaskItem | null>(null);
-  const [selectedDistrict, setSelectedDistrict] = useState('忠县公安局');
+  const [selectedDistrict, setSelectedDistrict] = useState('姑苏分局');
+  const [assignDirectives, setAssignDirectives] = useState<string[]>(['线下核实', '属地删帖']);
+  const [cityRemark, setCityRemark] = useState<string>(
+    '请姑苏分局网安大队迅速会同责任所队实地核查，严格落实24小时反馈机制，并强化涉事重点人动态管控。'
+  );
 
   const handleOpenAssignModal = (task: DisposalTaskItem) => {
     setSelectedTask(task);
+    setSelectedDistrict('姑苏分局');
+    setAssignDirectives(['线下核实', '属地删帖']);
+    setCityRemark('请姑苏分局网安大队迅速会同责任所队实地核查，严格落实24小时反馈机制，并强化涉事重点人动态管控。');
     setAssignModalOpen(true);
   };
 
   const handleConfirmAssign = () => {
     if (selectedTask) {
-      assignToDistrict(selectedTask.id, selectedDistrict);
+      assignToDistrict(selectedTask.id, selectedDistrict, assignDirectives, cityRemark);
       setAssignModalOpen(false);
     }
+  };
+
+  const handleOpenProgressModal = (task: DisposalTaskItem) => {
+    setSelectedTask(task);
+    setProgressModalOpen(true);
   };
 
   return (
@@ -205,7 +218,8 @@ export const EmergencyResponsePage: React.FC = () => {
         {/* 二级状态 Tab 栏 */}
         <div className="flex items-center gap-4 text-xs overflow-x-auto border-t border-slate-100 pt-2 font-medium">
           {[
-            { key: 'pending', label: '待处理' },
+            { key: 'pending', label: '待处理(3)' },
+            { key: 'assigned', label: '已转派(1)' },
             { key: 'processed', label: '已处理(186)' },
             { key: 'compile', label: '信息编报(90)' },
             { key: 'monitor', label: '持续监测(189)' },
@@ -236,7 +250,12 @@ export const EmergencyResponsePage: React.FC = () => {
 
       {/* 处置任务列表大卡片 */}
       <div className="space-y-3">
-        {disposalTasks.map((task) => (
+        {(activeSubTab === 'pending'
+          ? disposalTasks.filter((t) => t.assignedStatus !== '已转派' || t.id === 'dt-prov-1')
+          : activeSubTab === 'assigned'
+          ? disposalTasks.filter((t) => t.assignedStatus === '已转派')
+          : disposalTasks
+        ).map((task) => (
           <div
             key={task.id}
             className="bg-white border border-[#e5e7eb] rounded-lg p-4 shadow-2xs hover:border-blue-300 transition-all text-xs space-y-3 relative"
@@ -255,12 +274,22 @@ export const EmergencyResponsePage: React.FC = () => {
                     <span className="text-[10px] px-2 py-0.5 rounded font-medium bg-[#efe8ff] text-[#7c3aed] border border-[#ddd6fe]">
                       AI 非热敏
                     </span>
-                    <span className="text-[10px] px-2 py-0.5 rounded font-medium bg-[#eef6ff] text-blue-600 border border-[#d4e8ff]">
-                      {task.status}
-                    </span>
-                    {task.assignedToDistrict && (
-                      <span className="text-[10px] px-2 py-0.5 rounded font-medium bg-emerald-50 text-emerald-700 border border-emerald-300">
-                        已转派: {task.assignedToDistrict}
+
+                    {/* 省厅督办指令醒目标签 */}
+                    {task.isProvinceSupervised && (
+                      <span className="text-[10px] px-2.5 py-0.5 rounded font-bold bg-purple-600 text-white shadow-2xs tracking-wide">
+                        [省厅督办指令]
+                      </span>
+                    )}
+
+                    {/* 待处置 / 已转派 标签动态流转 */}
+                    {task.assignedStatus === '已转派' ? (
+                      <span className="text-[10px] px-2 py-0.5 rounded font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                        [已转派：{task.assignedToDistrict || '姑苏分局'}办理中]
+                      </span>
+                    ) : (
+                      <span className="text-[10px] px-2 py-0.5 rounded font-bold bg-amber-500 text-white shadow-2xs">
+                        [待处置]
                       </span>
                     )}
                   </div>
@@ -317,7 +346,7 @@ export const EmergencyResponsePage: React.FC = () => {
                 </div>
               </div>
 
-              {/* 右侧大字号紫色舆情指数色块 */}
+              {/* 右侧大字号紫色舆情指数色块（如 42.5） */}
               <div className="w-28 bg-[#f2ebf9] rounded-md border border-[#e8d7fa] flex flex-col items-center justify-center p-3 text-center flex-shrink-0">
                 <div className="text-2xl font-bold text-[#722ed1] font-sans">{task.opinionIndex.toFixed(1)}</div>
                 <div className="text-[11px] text-[#722ed1] mt-0.5 font-medium">舆情指数</div>
@@ -342,13 +371,26 @@ export const EmergencyResponsePage: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-3 text-xs">
-                {/* 下达区县 */}
-                <button
-                  onClick={() => handleOpenAssignModal(task)}
-                  className="text-blue-600 hover:text-blue-700 font-semibold cursor-pointer flex items-center gap-1 border border-blue-300 hover:border-blue-500 bg-blue-50/50 px-2 py-0.5 rounded"
-                >
-                  <ShareAltOutlined /> 下达区县
-                </button>
+                {/* 核心操作：二次指派区县 或 查看进展 */}
+                {task.assignedStatus === '已转派' ? (
+                  <Button
+                    size="small"
+                    onClick={() => handleOpenProgressModal(task)}
+                    className="!text-xs !text-emerald-700 !border-emerald-300 hover:!bg-emerald-50 font-medium"
+                  >
+                    查看进展
+                  </Button>
+                ) : (
+                  <Button
+                    type="primary"
+                    size="small"
+                    icon={<ShareAltOutlined />}
+                    onClick={() => handleOpenAssignModal(task)}
+                    className="!bg-blue-600 hover:!bg-blue-500 !text-xs font-semibold shadow-2xs"
+                  >
+                    二次指派区县
+                  </Button>
+                )}
 
                 <span className="text-blue-600 hover:underline cursor-pointer">信息详情</span>
 
@@ -389,46 +431,156 @@ export const EmergencyResponsePage: React.FC = () => {
         </div>
       </div>
 
-      {/* 下达区县弹窗 */}
+      {/* 二次指派区县 Modal 弹窗 */}
       <Modal
         title={
           <div className="flex items-center gap-2 text-slate-800 font-bold">
             <ShareAltOutlined className="text-blue-600" />
-            <span>市局任务向下转派至区县承办</span>
+            <span>市局转派省厅指令至下属区县</span>
           </div>
         }
         open={assignModalOpen}
         onCancel={() => setAssignModalOpen(false)}
-        onOk={handleConfirmAssign}
-        okText="确认下达区县"
-        cancelText="取消"
-        okButtonProps={{ className: '!bg-blue-600' }}
+        footer={
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+            <Button onClick={() => setAssignModalOpen(false)} className="!text-xs">
+              取消
+            </Button>
+            <Button
+              type="primary"
+              onClick={handleConfirmAssign}
+              className="!bg-blue-600 hover:!bg-blue-500 !text-xs font-semibold"
+            >
+              确认派发至区县
+            </Button>
+          </div>
+        }
+        width={560}
       >
-        <div className="space-y-3 py-2 text-xs">
+        <div className="space-y-3.5 py-2 text-xs">
+          {/* 任务简要信息 */}
           <div className="p-2.5 bg-slate-50 rounded border border-slate-200">
             <div className="font-bold text-slate-800">{selectedTask?.title}</div>
-            <div className="text-slate-500 mt-1">指令编号：{selectedTask?.instructionCode}</div>
+            <div className="text-slate-500 mt-1 flex items-center gap-4">
+              <span>指令编号：<strong className="text-slate-700 font-mono">{selectedTask?.instructionCode}</strong></span>
+              <span>舆情指数：<strong className="text-purple-600 font-mono">{selectedTask?.opinionIndex}</strong></span>
+            </div>
           </div>
 
+          {/* 原指令来源 */}
+          <div className="p-2.5 bg-blue-50/50 rounded border border-blue-100 flex items-center justify-between">
+            <span className="text-slate-600 font-medium">原指令来源:</span>
+            <span className="text-blue-700 font-semibold bg-white px-2 py-0.5 rounded border border-blue-200">
+              {selectedTask?.provinceSourceNote || '省厅网安总队 (要求 24 小时内办结)'}
+            </span>
+          </div>
+
+          {/* 指派下辖单位 */}
           <div>
             <label className="block text-slate-700 font-semibold mb-1">
-              选择受令承办区县公安局：
+              <span className="text-rose-500 mr-1">*</span>指派下辖单位:
             </label>
             <Select
               value={selectedDistrict}
               onChange={setSelectedDistrict}
+              size="middle"
               className="w-full text-xs"
               options={[
-                { value: '忠县公安局', label: '忠县公安局' },
-                { value: '渝北区分局', label: '渝北区分局' },
-                { value: '垫江县公安局', label: '垫江县公安局' },
-                { value: '梁平区分局', label: '梁平区分局' }
+                { value: '姑苏分局', label: '姑苏分局 (事发责任辖区)' },
+                { value: '工业园区分局', label: '工业园区分局' },
+                { value: '高新区分局', label: '高新区分局' },
+                { value: '吴中分局', label: '吴中分局' },
+                { value: '相城分局', label: '相城分局' }
               ]}
             />
           </div>
 
-          <div className="text-[11px] text-slate-500">
-            下达后，该任务将直达区县工作台，区县线下核实后回传处置结论，全链路状态实时向上汇聚。
+          {/* 指令动作 */}
+          <div>
+            <label className="block text-slate-700 font-semibold mb-1.5">
+              <span className="text-rose-500 mr-1">*</span>指令动作 (已继承省厅要求):
+            </label>
+            <Checkbox.Group
+              value={assignDirectives}
+              onChange={(vals) => setAssignDirectives(vals as string[])}
+              className="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-2.5 rounded border border-slate-200"
+            >
+              <Checkbox value="线下核实">
+                <span className="font-medium text-slate-700">线下核实</span>
+                <span className="text-slate-400 text-[11px] ml-0.5">(继承省厅)</span>
+              </Checkbox>
+              <Checkbox value="属地删帖">
+                <span className="font-medium text-slate-700">属地删帖</span>
+                <span className="text-slate-400 text-[11px] ml-0.5">(继承省厅)</span>
+              </Checkbox>
+              <Checkbox value="重点人管控">
+                <span className="font-semibold text-blue-700">重点人管控</span>
+                <span className="text-blue-500 text-[11px] ml-0.5">(市局追加)</span>
+              </Checkbox>
+              <Checkbox value="情况回传">
+                <span className="font-medium text-slate-700">情况回传</span>
+                <span className="text-slate-400 text-[11px] ml-0.5">(24h节点)</span>
+              </Checkbox>
+            </Checkbox.Group>
+          </div>
+
+          {/* 市局批示 */}
+          <div>
+            <label className="block text-slate-700 font-semibold mb-1">
+              市局批示:
+            </label>
+            <Input.TextArea
+              rows={3}
+              value={cityRemark}
+              onChange={(e) => setCityRemark(e.target.value)}
+              placeholder="请输入市局追加的指导批示意见..."
+              className="text-xs"
+            />
+          </div>
+
+          <div className="text-[11px] text-slate-500 bg-slate-50 p-2 rounded">
+            💡 确认派发后，该督办指令将直达姑苏分局内网工作台，区县接单核实并回传结论。
+          </div>
+        </div>
+      </Modal>
+
+      {/* 查看进展 Modal 弹窗 */}
+      <Modal
+        title={
+          <div className="flex items-center gap-2 text-slate-800 font-bold">
+            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            <span>区县承办流转进展穿透追踪</span>
+          </div>
+        }
+        open={progressModalOpen}
+        onCancel={() => setProgressModalOpen(false)}
+        footer={[
+          <Button key="close" type="primary" onClick={() => setProgressModalOpen(false)} className="!bg-blue-600 !text-xs">
+            关闭
+          </Button>
+        ]}
+        width={500}
+      >
+        <div className="space-y-3 py-2 text-xs text-slate-600 leading-relaxed">
+          <div className="p-3 bg-emerald-50/60 border border-emerald-200 rounded-md">
+            <div className="font-bold text-emerald-800 mb-1">当前状态：区县办理中 (实地核查中)</div>
+            <div className="text-slate-600">承办单位：苏州市公安局姑苏分局网安大队</div>
+            <div className="text-slate-600">承办民警：张警官 (民警警号: 062145)</div>
+          </div>
+
+          <div className="border-l-2 border-blue-500 pl-3 ml-1 space-y-2">
+            <div>
+              <div className="font-bold text-slate-800">17:40 - 省厅网安总队</div>
+              <div className="text-slate-500">下发实战督办指令单 (任务编号: ZL20260911001)</div>
+            </div>
+            <div>
+              <div className="font-bold text-slate-800">17:48 - 市局网安支队</div>
+              <div className="text-slate-500">已转派至【姑苏分局】，并追加【重点人管控】指令动作</div>
+            </div>
+            <div>
+              <div className="font-bold text-emerald-700">17:52 - 姑苏分局网安大队</div>
+              <div className="text-slate-500">值班民警张警官已签收，正在联合责任经侦及观前派出所开展实地走访</div>
+            </div>
           </div>
         </div>
       </Modal>

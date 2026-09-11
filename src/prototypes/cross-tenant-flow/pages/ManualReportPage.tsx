@@ -38,14 +38,14 @@ export const ManualReportPage: React.FC = () => {
     form.setFieldsValue({
       theme: '抖音热传某老旧小区外墙脱落砸中车辆虚惊视频',
       occurTime: null,
-      region: '渝北区',
-      author: '山城民生速递',
+      region: '姑苏区',
+      author: '苏南民生速递',
       authorPlatformId: 'dy_8829103',
       sourcePlatform: '抖音app',
       commentCount: '128',
       forwardCount: '45',
       likeCount: '1205',
-      initialOpinion: '视频拍摄渝北区某小区外墙局部轻微掉灰，博主夸大宣传为“严重坍塌”，目前暂无伤亡。建议属地物业及街道核查并通报。'
+      initialOpinion: '视频拍摄姑苏区某小区外墙局部轻微掉灰，博主夸大宣传为“严重坍塌”，目前暂无伤亡。建议属地物业及街道核查并通报。'
     });
     message.success('已自动解析并提取链接中的主题、作者及热度数据！');
   };
@@ -95,7 +95,7 @@ export const ManualReportPage: React.FC = () => {
             collector: '王浩',
             collectUnit: '网安 / 总公司 / 总2_...',
             taskType: '日常上报',
-            region: '渝北区',
+            region: '姑苏区',
             sourcePlatform: '抖音app'
           }}
         >
@@ -147,11 +147,11 @@ export const ManualReportPage: React.FC = () => {
                 className="mb-4"
               >
                 <Select placeholder="请选择" className="text-xs">
-                  <Option value="渝北区">渝北区</Option>
-                  <Option value="垫江县">垫江县</Option>
-                  <Option value="梁平区">梁平区</Option>
-                  <Option value="忠县">忠县</Option>
-                  <Option value="酉阳县">酉阳县</Option>
+                  <Option value="姑苏区">姑苏区</Option>
+                  <Option value="江宁区">江宁区</Option>
+                  <Option value="沭阳县">沭阳县</Option>
+                  <Option value="昆山市">昆山市</Option>
+                  <Option value="相城区">相城区</Option>
                 </Select>
               </Form.Item>
             </Col>
@@ -178,8 +178,8 @@ export const ManualReportPage: React.FC = () => {
               >
                 <Select placeholder="网安 / 总公司 / 总2_..." className="text-xs">
                   <Option value="网安 / 总公司 / 总2_...">网安 / 总公司 / 总2_...</Option>
-                  <Option value="渝北区分局网安大队">渝北区分局网安大队</Option>
-                  <Option value="垫江县公安局网安大队">垫江县公安局网安大队</Option>
+                  <Option value="姑苏区分局网安大队">姑苏区分局网安大队</Option>
+                  <Option value="江宁区分局网安大队">江宁区分局网安大队</Option>
                 </Select>
               </Form.Item>
             </Col>
@@ -276,9 +276,9 @@ export const ManualReportPage: React.FC = () => {
             <Col span={8}>
               <Form.Item label={<span className="text-xs text-slate-700">通报区县:</span>} name="notifyDistrict" className="mb-4">
                 <Select placeholder="请选择" className="text-xs">
-                  <Option value="渝北区">渝北区</Option>
-                  <Option value="垫江县">垫江县</Option>
-                  <Option value="梁平区">梁平区</Option>
+                  <Option value="姑苏区">姑苏区</Option>
+                  <Option value="江宁区">江宁区</Option>
+                  <Option value="沭阳县">沭阳县</Option>
                 </Select>
               </Form.Item>
             </Col>
