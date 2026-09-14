@@ -112,6 +112,24 @@ type CommentHistoryRecord = {
   content: string;
 };
 
+type CommentViewMode = 'grouped' | 'flat';
+
+interface AggregatedPostCommentItem {
+  id: string;
+  url: string;
+  title: string;
+  source: string;
+  author: string;
+  commentCount: number;
+  latestCommentTime: string;
+  comments: Array<{
+    id: string;
+    user: string;
+    content: string;
+    publish_time: string;
+  }>;
+}
+
 // ============ 常量 ============
 
 const PLATFORMS = ['小红书', '抖音', '小红书', '今日头条', '快手', 'B站', '知乎', '百度贴吧'];
@@ -1002,15 +1020,75 @@ const TaskDetailView: React.FC<{
 
   const [batchDrawerOpen, setBatchDrawerOpen] = useState(false);
   const [selectedBatch, setSelectedBatch] = useState<BatchCollectRecord | null>(null);
+  const [commentViewMode, setCommentViewMode] = useState<CommentViewMode>('grouped');
+  const [expandedRowKeys, setExpandedRowKeys] = useState<React.Key[]>([]);
+
+  const rawBatchComments = useMemo(function () {
+    return selectedBatch ? getBatchCommentRecords(task, selectedBatch) : [];
+  }, [task, selectedBatch]);
+
+  const aggregatedBatchComments = useMemo<AggregatedPostCommentItem[]>(function () {
+    if (!rawBatchComments.length) return [];
+    const map = new Map<string, AggregatedPostCommentItem>();
+
+    rawBatchComments.forEach(function (record, index) {
+      const key = record.link;
+      const commentUser = '用户_' + record.platform + '_' + String((index % 6) + 1).padStart(2, '0');
+      const commentItem = {
+        id: record.id,
+        user: commentUser,
+        content: record.content,
+        publish_time: record.publish_time,
+      };
+
+      if (!map.has(key)) {
+        map.set(key, {
+          id: 'agg_post_' + record.id,
+          url: record.link,
+          title: record.title,
+          source: record.platform,
+          author: record.author,
+          commentCount: 1,
+          latestCommentTime: record.publish_time,
+          comments: [commentItem],
+        });
+      } else {
+        const existing = map.get(key)!;
+        existing.commentCount += 1;
+        existing.comments.push(commentItem);
+        if (dayjs(record.publish_time).isAfter(dayjs(existing.latestCommentTime))) {
+          existing.latestCommentTime = record.publish_time;
+        }
+      }
+    });
+
+    return Array.from(map.values());
+  }, [rawBatchComments]);
+
+  const allAggregatedKeys = useMemo(function () {
+    return aggregatedBatchComments.map(function (item) { return item.id; });
+  }, [aggregatedBatchComments]);
+
+  const isAllExpanded = aggregatedBatchComments.length > 0 && expandedRowKeys.length === aggregatedBatchComments.length;
+
+  const handleToggleExpandAll = useCallback(function () {
+    if (isAllExpanded) {
+      setExpandedRowKeys([]);
+    } else {
+      setExpandedRowKeys(allAggregatedKeys);
+    }
+  }, [isAllExpanded, allAggregatedKeys]);
 
   const openBatchDetail = useCallback(function (record: BatchCollectRecord) {
     setSelectedBatch(record);
+    setExpandedRowKeys([]);
     setBatchDrawerOpen(true);
   }, []);
 
   const closeBatchDetail = useCallback(function () {
     setBatchDrawerOpen(false);
     setSelectedBatch(null);
+    setExpandedRowKeys([]);
   }, []);
 
   const batchColumns = [
@@ -1173,6 +1251,88 @@ const TaskDetailView: React.FC<{
     },
   ];
 
+  const aggregatedColumns = [
+    {
+      title: '网帖信息',
+      dataIndex: 'title',
+      key: 'title',
+      width: 320,
+      render: function (title: string, record: AggregatedPostCommentItem) {
+        return (
+          <div>
+            <div
+              style={{
+                fontSize: 13,
+                fontWeight: 500,
+                color: 'rgba(0,0,0,0.85)',
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+                lineHeight: 1.4,
+                marginBottom: 4,
+              }}
+              title={title}
+            >
+              {title}
+            </div>
+            <a
+              href={record.url}
+              target="_blank"
+              rel="noreferrer"
+              style={{ fontSize: 12, color: '#1890ff', display: 'inline-flex', alignItems: 'center' }}
+            >
+              查看网帖 ↗
+            </a>
+          </div>
+        );
+      },
+    },
+    {
+      title: '平台信源',
+      dataIndex: 'source',
+      key: 'source',
+      width: 100,
+      render: function (source: string) {
+        const colorMap: Record<string, string> = {
+          '微博': 'red',
+          '抖音': 'cyan',
+          '小红书': 'magenta',
+          '今日头条': 'orange',
+          '快手': 'volcano',
+          'B站': 'blue',
+          '知乎': 'geekblue',
+        };
+        return <Tag color={colorMap[source] || 'blue'} style={{ margin: 0 }}>{source}</Tag>;
+      },
+    },
+    {
+      title: '发帖作者',
+      dataIndex: 'author',
+      key: 'author',
+      width: 130,
+      ellipsis: true,
+    },
+    {
+      title: '抓取评论数',
+      dataIndex: 'commentCount',
+      key: 'commentCount',
+      width: 110,
+      render: function (count: number) {
+        return <Badge count={count} style={{ backgroundColor: '#108ee9' }} overflowCount={999} />;
+      },
+    },
+    {
+      title: '最新发评时间',
+      dataIndex: 'latestCommentTime',
+      key: 'latestCommentTime',
+      width: 150,
+      render: function (time: string) {
+        return <span style={{ fontSize: 12, color: 'rgba(0,0,0,0.65)' }}>{time}</span>;
+      },
+    },
+  ];
+
   return (
     <div className="ct-detail-view">
       <div className="ct-form-header">
@@ -1250,26 +1410,113 @@ const TaskDetailView: React.FC<{
       >
         {selectedBatch && (
           <div className="ct-link-drawer-content">
-            <div className="ct-link-drawer-summary" style={{ marginBottom: 16, paddingBottom: 16, borderBottom: '1px dashed #f0f0f0' }}>
-              <Space size={16} style={{ marginBottom: 8 }}>
-                <span style={{ fontSize: 16, fontWeight: 'bold', color: 'rgba(0,0,0,0.85)' }}>{selectedBatch.batch_name}</span>
-                <Badge status="success" text="采集状态：执行成功" />
-              </Space>
+            <div className="ct-link-drawer-summary" style={{ marginBottom: 16, paddingBottom: 16, borderBottom: '1px dashed #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <Space size={16} wrap>
-                  <Tag>采集执行时间：{selectedBatch.collected_at}</Tag>
+                <Space size={16} style={{ marginBottom: 6 }}>
+                  <span style={{ fontSize: 16, fontWeight: 'bold', color: 'rgba(0,0,0,0.85)' }}>{selectedBatch.batch_name}</span>
+                  <Badge status="success" text="采集状态：执行成功" />
                 </Space>
+                <div>
+                  <Space size={16} wrap>
+                    <Tag>采集执行时间：{selectedBatch.collected_at}</Tag>
+                  </Space>
+                </div>
               </div>
+              {task.task_type === 'comment' && (
+                <Space size={10} align="center">
+                  {commentViewMode === 'grouped' && (
+                    <Button
+                      className="text-xs text-slate-600 hover:text-blue-600"
+                      onClick={handleToggleExpandAll}
+                      size="small"
+                    >
+                      {isAllExpanded ? '全部收起' : '全部展开'}
+                    </Button>
+                  )}
+                  <Radio.Group
+                    value={commentViewMode}
+                    onChange={function (e) { setCommentViewMode(e.target.value); }}
+                    size="small"
+                    buttonStyle="solid"
+                  >
+                    <Radio.Button value="grouped">按网帖聚合</Radio.Button>
+                    <Radio.Button value="flat">按评论平铺</Radio.Button>
+                  </Radio.Group>
+                </Space>
+              )}
             </div>
 
             {task.task_type === 'comment' ? (
-              <Table
-                rowKey="id"
-                columns={batchCommentColumns}
-                dataSource={getBatchCommentRecords(task, selectedBatch)}
-                pagination={{ pageSize: 10, showSizeChanger: false }}
-                size="small"
-              />
+              commentViewMode === 'grouped' ? (
+                <Table
+                  rowKey="id"
+                  columns={aggregatedColumns}
+                  dataSource={aggregatedBatchComments}
+                  pagination={{ pageSize: 10, showSizeChanger: false }}
+                  size="middle"
+                  expandable={{
+                    expandedRowKeys: expandedRowKeys,
+                    onExpandedRowsChange: function (newKeys) {
+                      setExpandedRowKeys(newKeys as React.Key[]);
+                    },
+                    expandedRowRender: function (record: AggregatedPostCommentItem) {
+                      return (
+                        <div className="bg-slate-50" style={{ backgroundColor: '#f8fafc', padding: '12px 16px', borderRadius: 6, margin: '4px 0', border: '1px solid #f1f5f9' }}>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: 'rgba(0,0,0,0.65)', marginBottom: 8 }}>
+                            本帖抓取评论明细（共 {record.comments.length} 条）
+                          </div>
+                          <Table
+                            rowKey="id"
+                            columns={[
+                              {
+                                title: '评论者',
+                                dataIndex: 'user',
+                                key: 'user',
+                                width: 140,
+                                render: function (u: string) {
+                                  return <Tag color="default">{u}</Tag>;
+                                },
+                              },
+                              {
+                                title: '评论内容',
+                                dataIndex: 'content',
+                                key: 'content',
+                                render: function (c: string) {
+                                  return <span style={{ color: 'rgba(0,0,0,0.85)', fontSize: 12 }}>“{c}”</span>;
+                                },
+                              },
+                              {
+                                title: '发评时间',
+                                dataIndex: 'publish_time',
+                                key: 'publish_time',
+                                width: 160,
+                                render: function (t: string) {
+                                  return <span style={{ color: 'rgba(0,0,0,0.45)', fontSize: 12 }}>{t}</span>;
+                                },
+                              },
+                            ]}
+                            dataSource={record.comments}
+                            pagination={false}
+                            size="small"
+                            bordered={false}
+                          />
+                        </div>
+                      );
+                    },
+                    rowExpandable: function (record) {
+                      return Boolean(record.comments && record.comments.length > 0);
+                    },
+                  }}
+                />
+              ) : (
+                <Table
+                  rowKey="id"
+                  columns={batchCommentColumns}
+                  dataSource={rawBatchComments}
+                  pagination={{ pageSize: 10, showSizeChanger: false }}
+                  size="small"
+                />
+              )
             ) : (
               <Table
                 rowKey="id"

@@ -5,8 +5,8 @@
 
 import '../style.css';
 import React, { useState, useCallback, useEffect } from 'react';
-import { Button, Input, Select, Radio, Form, InputNumber, TimePicker, DatePicker, Drawer, Divider, Checkbox, message, Space, Tooltip, Tag, Table, Badge } from 'antd';
-import { DoubleRightOutlined, LoadingOutlined, CheckCircleOutlined, WarningOutlined, PlusOutlined } from '@ant-design/icons';
+import { Button, Input, Select, Radio, Form, InputNumber, TimePicker, DatePicker, Drawer, Divider, Checkbox, message, Space, Tooltip, Tag, Table, Badge, Modal } from 'antd';
+import { DoubleRightOutlined, LoadingOutlined, CheckCircleOutlined, WarningOutlined, PlusOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
 // ============ 类型定义 ============
@@ -36,12 +36,29 @@ export interface CollectTaskDrawerProps {
   };
 }
 
-// ============ 常量 ============
+// ============ 常量与 Mock 映射 ============
 
 const PLATFORMS = ['小红书', '抖音', '小红书', '今日头条', '快手', 'B站', '知乎', '百度贴吧'];
 
+export const mockDataSourceCounts: Record<string, number> = {
+  '汽车行业专题': 24,
+  '科技数码舆情': 0, // 用于模拟 0 条数据的空专题
+  '猫咪日常Bot': 15,
+  '数码测评组': 0,   // 用于模拟 0 条数据的空重点源
+  '消费专题调研': 18,
+  '科技数码专题': 32,
+  '食品安全专题': 12,
+  '教育改革专题': 8,
+  '人民日报': 45,
+  '新华社': 38,
+  '央视新闻': 52,
+  '环球时报': 29,
+  '澎湃新闻': 30,
+};
+
 const TOPIC_OPTIONS = [
   { value: 'topic_001', label: '汽车行业专题' },
+  { value: 'topic_empty', label: '科技数码舆情' },
   { value: 'topic_002', label: '消费专题调研' },
   { value: 'topic_003', label: '科技数码专题' },
   { value: 'topic_004', label: '食品安全专题' },
@@ -49,12 +66,36 @@ const TOPIC_OPTIONS = [
 ];
 
 const SOURCE_OPTIONS = [
+  { value: 'src_cat', label: '猫咪日常Bot' },
+  { value: 'src_empty', label: '数码测评组' },
   { value: 'src_001', label: '人民日报' },
   { value: 'src_002', label: '新华社' },
   { value: 'src_003', label: '央视新闻' },
   { value: 'src_004', label: '环球时报' },
   { value: 'src_005', label: '澎湃新闻' },
 ];
+
+function getDataSourceCount(scopeType: ScopeType, selectedValue?: string): number | null {
+  if (!selectedValue || scopeType === 'other') {
+    return null;
+  }
+  let label = selectedValue;
+  if (scopeType === 'topic') {
+    const found = TOPIC_OPTIONS.find(function (opt) {
+      return opt.value === selectedValue || opt.label === selectedValue;
+    });
+    if (found) label = found.label;
+  } else if (scopeType === 'source') {
+    const found = SOURCE_OPTIONS.find(function (opt) {
+      return opt.value === selectedValue || opt.label === selectedValue;
+    });
+    if (found) label = found.label;
+  }
+  if (Object.prototype.hasOwnProperty.call(mockDataSourceCounts, label)) {
+    return mockDataSourceCounts[label];
+  }
+  return 18;
+}
 
 const LINK_PLATFORM_OPTIONS = [
   { value: '抖音', label: '抖音' },
@@ -595,6 +636,8 @@ const TaskFormContent: React.FC<{
   setLinkPlatforms: React.Dispatch<React.SetStateAction<string[]>>;
   linksTableData: any[];
   setLinksTableData: React.Dispatch<React.SetStateAction<any[]>>;
+  selectedDataCount: number | null;
+  setSelectedDataCount: (v: number | null) => void;
 }> = function ({
   form,
   scopeType,
@@ -620,7 +663,9 @@ const TaskFormContent: React.FC<{
   linkPlatforms,
   setLinkPlatforms,
   linksTableData,
-  setLinksTableData
+  setLinksTableData,
+  selectedDataCount,
+  setSelectedDataCount
 }) {
   const [trackDaysError, setTrackDaysError] = useState(false);
   const [editingId, setEditingId] = useState<string>('');
@@ -703,6 +748,17 @@ const TaskFormContent: React.FC<{
       setTrackDaysError(false);
     }
   }, [trackDaysValue]);
+
+  // 关联专题/重点源数据量动态计算
+  useEffect(function () {
+    if (scopeType === 'topic') {
+      setSelectedDataCount(getDataSourceCount('topic', relatedTopicValue));
+    } else if (scopeType === 'source') {
+      setSelectedDataCount(getDataSourceCount('source', relatedSourceValue));
+    } else {
+      setSelectedDataCount(null);
+    }
+  }, [scopeType, relatedTopicValue, relatedSourceValue, setSelectedDataCount]);
 
   // 当 form 里的 link_list 变化且 linkText 为空时，同步回显链接地址
   const formLinkList = Form.useWatch('link_list', form);
@@ -870,15 +926,47 @@ const TaskFormContent: React.FC<{
         </Form.Item>
 
         {scopeType === 'topic' && (
-          <Form.Item label="关联专题" name="related_topic" rules={[{ required: true, message: '请选择关联专题' }]}>
-            <Select placeholder="请选择关联专题" showSearch optionFilterProp="label" options={TOPIC_OPTIONS} />
-          </Form.Item>
+          <div style={{ marginBottom: 16 }}>
+            <Form.Item label="关联专题" name="related_topic" rules={[{ required: true, message: '请选择关联专题' }]} style={{ marginBottom: 0 }}>
+              <Select placeholder="请选择关联专题" showSearch optionFilterProp="label" options={TOPIC_OPTIONS} />
+            </Form.Item>
+            {selectedDataCount === 0 && (
+              <div
+                className="flex items-center text-xs text-red-500 mt-1.5 bg-transparent"
+                style={{ display: 'flex', alignItems: 'center', fontSize: 12, color: '#ff4d4f', marginTop: 6 }}
+              >
+                <ExclamationCircleOutlined className="text-red-500 mr-1 text-xs" style={{ color: '#ff4d4f', marginRight: 4, fontSize: 12 }} />
+                <span>当前专题/重点源没有数据，请确认是否按照现有配置创建任务。</span>
+              </div>
+            )}
+            {selectedDataCount !== null && selectedDataCount > 0 && (
+              <div className="text-xs text-slate-500 mt-1" style={{ textAlign: 'right' }}>
+                已匹配到 {selectedDataCount} 篇相关网帖
+              </div>
+            )}
+          </div>
         )}
 
         {scopeType === 'source' && (
-          <Form.Item label="关联重点源" name="related_source" rules={[{ required: true, message: '请选择关联重点源' }]}>
-            <Select placeholder="请选择关联重点源" showSearch optionFilterProp="label" options={SOURCE_OPTIONS} />
-          </Form.Item>
+          <div style={{ marginBottom: 16 }}>
+            <Form.Item label="关联重点源" name="related_source" rules={[{ required: true, message: '请选择关联重点源' }]} style={{ marginBottom: 0 }}>
+              <Select placeholder="请选择关联重点源" showSearch optionFilterProp="label" options={SOURCE_OPTIONS} />
+            </Form.Item>
+            {selectedDataCount === 0 && (
+              <div
+                className="flex items-center text-xs text-red-500 mt-1.5 bg-transparent"
+                style={{ display: 'flex', alignItems: 'center', fontSize: 12, color: '#ff4d4f', marginTop: 6 }}
+              >
+                <ExclamationCircleOutlined className="text-red-500 mr-1 text-xs" style={{ color: '#ff4d4f', marginRight: 4, fontSize: 12 }} />
+                <span>当前专题/重点源没有数据，请确认是否按照现有配置创建任务。</span>
+              </div>
+            )}
+            {selectedDataCount !== null && selectedDataCount > 0 && (
+              <div className="text-xs text-slate-500 mt-1" style={{ textAlign: 'right' }}>
+                已匹配到 {selectedDataCount} 篇相关网帖
+              </div>
+            )}
+          </div>
         )}
 
         {/* 专题/重点源 - 二级配置区 */}
@@ -1221,6 +1309,7 @@ const CollectTaskDrawer: React.FC<CollectTaskDrawerProps> = function ({ open, ti
   const [validateResult, setValidateResult] = useState<{ validCount: number; platforms: string[]; platformCounts: Record<string, number>; invalidList: string[] } | null>(null);
   const [linkPlatforms, setLinkPlatforms] = useState<string[]>([]);
   const [linksTableData, setLinksTableData] = useState<any[]>([]);
+  const [selectedDataCount, setSelectedDataCount] = useState<number | null>(null);
 
   // open 变为 true 时，如果有 initialValues 则填充
   useEffect(function () {
@@ -1377,78 +1466,96 @@ const CollectTaskDrawer: React.FC<CollectTaskDrawerProps> = function ({ open, ti
       }
     }
 
-    form.validateFields().then(function (values) {
-      setSubmitting(true);
-      setTimeout(function () {
-        setSubmitting(false);
-        // 如果是链接类型，根据已识别的 platforms 状态写入
-        let finalPlatforms = values.platforms || [];
-        let finalLinkList = values.link_list || [];
-        if (values.scope_type === 'other') {
-          finalPlatforms = linkPlatforms.length > 0 ? linkPlatforms : ['链接'];
-          finalLinkList = linksTableData.filter(function (item) { return item.status === 'valid'; }).map(function (item) {
-            return { link: item.link, title: '', topic: '' };
+    const executeSubmit = function () {
+      form.validateFields().then(function (values) {
+        setSubmitting(true);
+        setTimeout(function () {
+          setSubmitting(false);
+          // 如果是链接类型，根据已识别的 platforms 状态写入
+          let finalPlatforms = values.platforms || [];
+          let finalLinkList = values.link_list || [];
+          if (values.scope_type === 'other') {
+            finalPlatforms = linkPlatforms.length > 0 ? linkPlatforms : ['链接'];
+            finalLinkList = linksTableData.filter(function (item) { return item.status === 'valid'; }).map(function (item) {
+              return { link: item.link, title: '', topic: '' };
+            });
+          }
+
+          const pageConfig = values.scope_type === 'other' ? linkPlatformPages : scopePlatformPages;
+
+          let startStr = '';
+          let endStr = '';
+          let finalFrequencyText = '';
+          let finalCustomRules: any[] = [];
+
+          if (drawerFrequency.mode === 'custom') {
+            finalCustomRules = (drawerFrequency.customRules || []).map(function (r) {
+              var sDate = r.dateRange && r.dateRange[0] ? r.dateRange[0].format('YYYY-MM-DD') : '';
+              var eDate = r.dateRange && r.dateRange[1] ? r.dateRange[1].format('YYYY-MM-DD') : '';
+              return {
+                id: r.id,
+                start_date: sDate,
+                end_date: eDate,
+                mode: r.mode,
+                value: r.value,
+              };
+            });
+
+            // 任务的时间跨度
+            var startDates = finalCustomRules.map(function (r) { return r.start_date; }).filter(Boolean);
+            var endDates = finalCustomRules.map(function (r) { return r.end_date; }).filter(Boolean);
+            if (startDates.length > 0) {
+              startDates.sort();
+              startStr = startDates[0];
+            }
+            if (endDates.length > 0) {
+              endDates.sort();
+              endStr = endDates[endDates.length - 1];
+            }
+
+            finalFrequencyText = '自定义 (' + finalCustomRules.length + '条规则)';
+          } else {
+            if (drawerFrequency.dateRange && drawerFrequency.dateRange[0] && drawerFrequency.dateRange[1]) {
+              startStr = drawerFrequency.dateRange[0].format('YYYY-MM-DD');
+              endStr = drawerFrequency.dateRange[1].format('YYYY-MM-DD');
+            }
+            finalFrequencyText = drawerFrequency.mode === 'hour' ? '每' + drawerFrequency.value + '小时' : '每天' + drawerFrequency.value;
+          }
+
+          // 回传表单 values
+          onSubmit?.({
+            ...values,
+            link_list: finalLinkList,
+            platforms: finalPlatforms,
+            platform_pages: pageConfig,
+            start_date: startStr,
+            end_date: endStr,
+            frequency: finalFrequencyText,
+            frequency_mode: drawerFrequency.mode,
+            frequency_value: drawerFrequency.mode === 'custom' ? '' : drawerFrequency.value,
+            frequency_custom_rules: finalCustomRules,
           });
-        }
+          message.success('任务创建成功');
+          onClose();
+        }, 1000);
+      });
+    };
 
-        const pageConfig = values.scope_type === 'other' ? linkPlatformPages : scopePlatformPages;
+    if ((scopeType === 'topic' || scopeType === 'source') && selectedDataCount === 0) {
+      Modal.confirm({
+        title: '确认创建任务？',
+        content: '当前选择的关联目录暂无舆情数据，系统将无法立即执行采集，是否仍按照现有配置创建？',
+        okText: '确认创建',
+        cancelText: '取消',
+        onOk() {
+          executeSubmit();
+        },
+      });
+      return;
+    }
 
-        let startStr = '';
-        let endStr = '';
-        let finalFrequencyText = '';
-        let finalCustomRules: any[] = [];
-
-        if (drawerFrequency.mode === 'custom') {
-          finalCustomRules = (drawerFrequency.customRules || []).map(function (r) {
-            var sDate = r.dateRange && r.dateRange[0] ? r.dateRange[0].format('YYYY-MM-DD') : '';
-            var eDate = r.dateRange && r.dateRange[1] ? r.dateRange[1].format('YYYY-MM-DD') : '';
-            return {
-              id: r.id,
-              start_date: sDate,
-              end_date: eDate,
-              mode: r.mode,
-              value: r.value,
-            };
-          });
-
-          // 任务的时间跨度
-          var startDates = finalCustomRules.map(function (r) { return r.start_date; }).filter(Boolean);
-          var endDates = finalCustomRules.map(function (r) { return r.end_date; }).filter(Boolean);
-          if (startDates.length > 0) {
-            startDates.sort();
-            startStr = startDates[0];
-          }
-          if (endDates.length > 0) {
-            endDates.sort();
-            endStr = endDates[endDates.length - 1];
-          }
-
-          finalFrequencyText = '自定义 (' + finalCustomRules.length + '条规则)';
-        } else {
-          if (drawerFrequency.dateRange && drawerFrequency.dateRange[0] && drawerFrequency.dateRange[1]) {
-            startStr = drawerFrequency.dateRange[0].format('YYYY-MM-DD');
-            endStr = drawerFrequency.dateRange[1].format('YYYY-MM-DD');
-          }
-          finalFrequencyText = drawerFrequency.mode === 'hour' ? '每' + drawerFrequency.value + '小时' : '每天' + drawerFrequency.value;
-        }
-
-        // 回传表单 values
-        onSubmit?.({
-          ...values,
-          link_list: finalLinkList,
-          platforms: finalPlatforms,
-          platform_pages: pageConfig,
-          start_date: startStr,
-          end_date: endStr,
-          frequency: finalFrequencyText,
-          frequency_mode: drawerFrequency.mode,
-          frequency_value: drawerFrequency.mode === 'custom' ? '' : drawerFrequency.value,
-          frequency_custom_rules: finalCustomRules,
-        });
-        onClose();
-      }, 1000);
-    });
-  }, [form, onSubmit, onClose, drawerFrequency, linkPlatformPages, scopePlatformPages, linkPlatforms, linksTableData]);
+    executeSubmit();
+  }, [form, onSubmit, onClose, drawerFrequency, linkPlatformPages, scopePlatformPages, linkPlatforms, linksTableData, selectedDataCount]);
 
   return (
     <Drawer
@@ -1500,6 +1607,8 @@ const CollectTaskDrawer: React.FC<CollectTaskDrawerProps> = function ({ open, ti
         setLinkPlatforms={setLinkPlatforms}
         linksTableData={linksTableData}
         setLinksTableData={setLinksTableData}
+        selectedDataCount={selectedDataCount}
+        setSelectedDataCount={setSelectedDataCount}
       />
     </Drawer>
   );
