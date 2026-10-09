@@ -19,8 +19,19 @@ import IntranetDataScreen from './pages/IntranetDataScreen';
 import ManualReport from './pages/ManualReport';
 import DutyRosterModal from './components/DutyRosterModal';
 import LinkCollection from './pages/LinkCollection';
+import ClientLedgerQuickEntry from './pages/ClientLedgerQuickEntry';
+import ClientWorkbench from './pages/ClientWorkbench';
+import ScenarioDirectProvincial from './pages/ScenarioDirectProvincial';
+import ScenarioCityAudit from './pages/ScenarioCityAudit';
+import ScenarioCrossTenantInstruction from './pages/ScenarioCrossTenantInstruction';
+import ScenarioSecondaryDispatch from './pages/ScenarioSecondaryDispatch';
+import { AnnotationProvider, AnnotationBoard } from '@/common/Annotation';
 
 export type PageKey =
+  | 'scenario-direct-provincial'
+  | 'scenario-city-audit'
+  | 'scenario-cross-tenant-instruction'
+  | 'scenario-secondary-dispatch'
   | 'police-opinion-joint'
   | 'manual-report'
   | 'source-control'
@@ -34,7 +45,8 @@ export type PageKey =
   | 'publications-management'
   | 'internet-data-screen'
   | 'intranet-data-screen'
-  | 'link-collection';
+  | 'link-collection'
+  | 'client-ledger-entry';
 
 export interface AxureProps {
   onEvent?: (eventName: string, data?: string) => void;
@@ -52,7 +64,19 @@ const BlueEagleIntegratedSystem = forwardRef<AxureHandle, AxureProps>(function B
   { onEvent },
   ref
 ) {
-  const [activePage, setActivePage] = useState<PageKey>('police-opinion-joint');
+  const [activePage, setActivePage] = useState<PageKey>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const page = params.get('page');
+      if (page) {
+        return page as PageKey;
+      }
+      if (params.has('taskId')) {
+        return 'client-ledger-entry';
+      }
+    }
+    return 'scenario-direct-provincial';
+  });
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [dutyRosterOpen, setDutyRosterOpen] = useState(false);
 
@@ -65,6 +89,14 @@ const BlueEagleIntegratedSystem = forwardRef<AxureHandle, AxureProps>(function B
 
   const renderPage = () => {
     switch (activePage) {
+      case 'scenario-direct-provincial':
+        return <ScenarioDirectProvincial />;
+      case 'scenario-city-audit':
+        return <ScenarioCityAudit />;
+      case 'scenario-cross-tenant-instruction':
+        return <ScenarioCrossTenantInstruction />;
+      case 'scenario-secondary-dispatch':
+        return <ScenarioSecondaryDispatch />;
       case 'police-opinion-joint':
         return <PoliceOpinionJoint />;
       case 'manual-report':
@@ -93,6 +125,13 @@ const BlueEagleIntegratedSystem = forwardRef<AxureHandle, AxureProps>(function B
         return <IntranetDataScreen onNavigate={handleMenuSelect} onSwitch={handleMenuSelect} />;
       case 'link-collection':
         return <LinkCollection />;
+      case 'client-ledger-entry':
+        return (
+          <ClientWorkbench
+            onNavigateToTask={() => setActivePage('source-control-cq')}
+            onOpenSystem={() => setActivePage('police-opinion-joint')}
+          />
+        );
       default:
         return <PoliceOpinionJoint />;
     }
@@ -133,29 +172,34 @@ const BlueEagleIntegratedSystem = forwardRef<AxureHandle, AxureProps>(function B
         },
       }}
     >
-      <div className={`blue-eagle-system ${activePage.endsWith('data-screen') ? 'screen-mode' : ''}`}>
-        <Header
-          onManualReport={() => setActivePage('manual-report')}
-          onOpenDutyRoster={() => setDutyRosterOpen(true)}
-        />
-        <div className="main-container">
-          <Navigation
-            activeKey={activePage}
-            onSelect={handleMenuSelect}
-            collapsed={sidebarCollapsed}
-            onCollapse={setSidebarCollapsed}
+      <AnnotationProvider>
+        <div className={`blue-eagle-system ${activePage.endsWith('data-screen') ? 'screen-mode' : ''}`}>
+          <Header
+            onManualReport={() => setActivePage('manual-report')}
+            onOpenDutyRoster={() => setDutyRosterOpen(true)}
           />
-          <div className={`content-area ${sidebarCollapsed ? 'collapsed' : ''} ${activePage.endsWith('data-screen') ? 'screen-content' : ''}`}>
-            {renderPage()}
+          <div className="main-container">
+            <Navigation
+              activeKey={activePage}
+              onSelect={handleMenuSelect}
+              collapsed={sidebarCollapsed}
+              onCollapse={setSidebarCollapsed}
+            />
+            <div className={`content-area ${sidebarCollapsed ? 'collapsed' : ''} ${activePage.endsWith('data-screen') ? 'screen-content' : ''}`}>
+              {renderPage()}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* 今日值班表 (Duty Roster Modal) */}
-      <DutyRosterModal
-        open={dutyRosterOpen}
-        onClose={() => setDutyRosterOpen(false)}
-      />
+        {/* 今日值班表 (Duty Roster Modal) */}
+        <DutyRosterModal
+          open={dutyRosterOpen}
+          onClose={() => setDutyRosterOpen(false)}
+        />
+
+        {/* AxHub 全局功能与细节批注看板 */}
+        <AnnotationBoard />
+      </AnnotationProvider>
     </ConfigProvider>
   );
 });

@@ -64,6 +64,7 @@ import {
   PlusOutlined,
   PlusCircleOutlined,
   SafetyOutlined,
+  DesktopOutlined,
 } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import dayjs from 'dayjs';
@@ -71,6 +72,7 @@ import * as echarts from 'echarts';
 import InstructionCommandModal from '../components/InstructionCommandModal';
 import UnifiedOpinionCard from '../components/UnifiedOpinionCard';
 import AddToPublicationModal from '../components/AddToPublicationModal';
+import ClientLedgerQuickEntry from './ClientLedgerQuickEntry';
 import { getTaskDataById, TaskDataset } from '../cq-task-data';
 
 const { TabPane } = Tabs;
@@ -756,6 +758,7 @@ const TaskDetailCQ: React.FC<TaskDetailCQProps> = ({ taskId, onBack, schedules: 
   const [selectedLedgerKeys, setSelectedLedgerKeys] = useState<React.Key[]>([]);
   const [isLedgerDetecting, setIsLedgerDetecting] = useState<boolean>(false);
   const [importModalOpen, setImportModalOpen] = useState<boolean>(false);
+  const [clientQuickEntryOpen, setClientQuickEntryOpen] = useState<boolean>(false);
   
   // 10条高拟真外置链接模拟数据
   const [ledgerData, setLedgerData] = useState<any[]>([
@@ -3239,6 +3242,14 @@ const TaskDetailCQ: React.FC<TaskDetailCQProps> = ({ taskId, onBack, schedules: 
                 <Button onClick={() => setImportModalOpen(true)}>
                   导入外置链接
                 </Button>
+                <Button
+                  type="primary"
+                  icon={<DesktopOutlined />}
+                  onClick={() => setClientQuickEntryOpen(true)}
+                  style={{ background: '#1677ff', borderColor: '#1677ff', fontWeight: 500 }}
+                >
+                  客户端快捷录入
+                </Button>
                 <Button type="primary" onClick={handleStartLedgerDetection} style={{ background: '#3366FF', borderColor: '#3366FF' }}>
                   开始处置检测
                 </Button>
@@ -3267,6 +3278,58 @@ const TaskDetailCQ: React.FC<TaskDetailCQProps> = ({ taskId, onBack, schedules: 
               ℹ️ 导入前请确认是否已下载“外置链接模板”，并按规范填写字段。
             </div>
           </div>
+        </Modal>
+
+        {/* 客户端快捷录入高保真弹窗 (桌面端 960px 视窗质感) */}
+        <Modal
+          title={null}
+          footer={null}
+          open={clientQuickEntryOpen}
+          onCancel={() => setClientQuickEntryOpen(false)}
+          width={980}
+          centered
+          closeIcon={null}
+          styles={{
+            content: { padding: 0, overflow: 'hidden', borderRadius: 16, background: 'transparent', boxShadow: 'none' },
+            body: { padding: 0 },
+          }}
+          destroyOnClose
+        >
+          <ClientLedgerQuickEntry
+            taskId={activeSideTask}
+            taskName={activeTaskName}
+            isTaskLocked={true}
+            onClose={() => setClientQuickEntryOpen(false)}
+            onSyncSuccess={(records) => {
+              setLedgerData(prev => {
+                const updated = [...prev];
+                records.forEach((r, idx) => {
+                  const existingIndex = updated.findIndex(u => u.url === r.url);
+                  if (existingIndex !== -1) {
+                    updated[existingIndex] = {
+                      ...updated[existingIndex],
+                      title: r.title,
+                      status: r.disposalStatus,
+                      time: r.publishTime,
+                    };
+                  } else {
+                    updated.unshift({
+                      id: Date.now() + idx,
+                      key: Date.now() + idx,
+                      title: r.title,
+                      url: r.url,
+                      status: r.disposalStatus,
+                      detectStatus: 'unchecked',
+                      source: r.platformName,
+                      time: r.publishTime,
+                    });
+                  }
+                });
+                return updated;
+              });
+              message.success(`已完成向【${activeTaskName}】同步 ${records.length} 条台账记录！`);
+            }}
+          />
         </Modal>
 
       </div>
