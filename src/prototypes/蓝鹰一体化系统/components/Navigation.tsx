@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   SafetyOutlined,
   RadarChartOutlined,
@@ -20,6 +20,9 @@ import {
   ThunderboltOutlined,
   SafetyCertificateOutlined,
   BranchesOutlined,
+  SettingOutlined,
+  DownOutlined,
+  AppstoreOutlined,
 } from '@ant-design/icons';
 import { Tooltip } from 'antd';
 
@@ -63,6 +66,12 @@ const scenarioMenuItems: MenuItem[] = [
     icon: <BranchesOutlined style={{ color: '#13c2c2' }} />,
     tag: '场景 4',
   },
+  {
+    key: 'scenario-cross-tenant-config',
+    label: '跨租户后台配置',
+    icon: <SettingOutlined style={{ color: '#52c41a' }} />,
+    tag: '场景 5',
+  },
 ];
 
 // 既有系统标准业务功能
@@ -90,10 +99,14 @@ const Navigation: React.FC<NavigationProps> = ({
   collapsed,
   onCollapse,
 }) => {
+  const isStandardActive = standardMenuItems.some((item) => item.key === activeKey);
+  // 默认折叠业务功能模块，聚焦场景闭环演示；若选中的是既有业务模块则自动展开
+  const [standardCollapsed, setStandardCollapsed] = useState<boolean>(!isStandardActive);
+
   return (
     <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
       <div className="sidebar-menu">
-        {/* 1. 核心场景演示分组（顶部归集） */}
+        {/* 1. 核心场景演示分组（顶部归集，高优先级展示） */}
         {!collapsed && (
           <div className="menu-group-header">
             核心场景演示
@@ -138,33 +151,87 @@ const Navigation: React.FC<NavigationProps> = ({
           );
         })}
 
-        {/* 2. 既有业务模块 */}
+        {/* 2. 既有业务功能模块（默认折叠收纳，点击可展开） */}
         {!collapsed && (
-          <div className="menu-group-header" style={{ marginTop: 12 }}>
-            业务功能模块
+          <div
+            className="menu-group-header collapsible-group-header"
+            onClick={() => setStandardCollapsed(!standardCollapsed)}
+            style={{
+              marginTop: 14,
+              padding: '8px 12px',
+              margin: '14px 8px 6px',
+              background: '#f8fafc',
+              borderRadius: 6,
+              border: '1px solid #e2e8f0',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              userSelect: 'none',
+              transition: 'all 0.2s ease',
+            }}
+            title={standardCollapsed ? '点击展开业务功能模块' : '点击收起业务功能模块'}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#64748b', fontSize: 12, fontWeight: 600 }}>
+              <AppstoreOutlined style={{ fontSize: 13, color: isStandardActive ? '#1677ff' : '#94a3b8' }} />
+              <span>业务功能模块</span>
+              <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 'normal' }}>
+                ({standardMenuItems.length})
+              </span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              {isStandardActive && standardCollapsed && (
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#1677ff', display: 'inline-block' }} />
+              )}
+              <span style={{ fontSize: 10, color: '#94a3b8', display: 'flex', alignItems: 'center' }}>
+                <DownOutlined style={{ transform: standardCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
+              </span>
+            </div>
           </div>
         )}
-        {standardMenuItems.map((item) => {
-          const menuItemNode = (
-            <div
-              key={item.key}
-              className={`menu-item ${activeKey === item.key ? 'active' : ''}`}
-              onClick={() => onSelect(item.key)}
-              style={{ padding: '10px 14px' }}
-            >
-              <span className="menu-icon" style={{ minWidth: 20, marginRight: 8 }}>{item.icon}</span>
-              {!collapsed && <span className="menu-label">{item.label}</span>}
-            </div>
-          );
 
-          return collapsed ? (
-            <Tooltip key={item.key} placement="right" title={item.label}>
-              {menuItemNode}
+        {/* 展开时展示业务功能列表 */}
+        {!collapsed && !standardCollapsed && (
+          <div className="standard-menu-items-container">
+            {standardMenuItems.map((item) => (
+              <div
+                key={item.key}
+                className={`menu-item ${activeKey === item.key ? 'active' : ''}`}
+                onClick={() => onSelect(item.key)}
+                style={{ padding: '9px 14px 9px 24px' }}
+              >
+                <span className="menu-icon" style={{ minWidth: 20, marginRight: 8 }}>{item.icon}</span>
+                <span className="menu-label">{item.label}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* 侧边栏极窄折叠模式时的展示 */}
+        {collapsed && (
+          <div style={{ marginTop: 12, borderTop: '1px solid #f0f0f0', paddingTop: 8 }}>
+            <Tooltip placement="right" title={standardCollapsed ? "展开业务功能模块" : "收起业务功能模块"}>
+              <div
+                className={`menu-item ${isStandardActive ? 'active' : ''}`}
+                onClick={() => setStandardCollapsed(!standardCollapsed)}
+                style={{ justifyContent: 'center', color: standardCollapsed ? '#94a3b8' : '#1677ff' }}
+              >
+                <AppstoreOutlined />
+              </div>
             </Tooltip>
-          ) : (
-            menuItemNode
-          );
-        })}
+            {!standardCollapsed && standardMenuItems.map((item) => (
+              <Tooltip key={item.key} placement="right" title={item.label}>
+                <div
+                  className={`menu-item ${activeKey === item.key ? 'active' : ''}`}
+                  onClick={() => onSelect(item.key)}
+                  style={{ justifyContent: 'center' }}
+                >
+                  <span className="menu-icon">{item.icon}</span>
+                </div>
+              </Tooltip>
+            ))}
+          </div>
+        )}
       </div>
       <div className="sidebar-footer">
         <div

@@ -25,6 +25,8 @@ import ScenarioDirectProvincial from './pages/ScenarioDirectProvincial';
 import ScenarioCityAudit from './pages/ScenarioCityAudit';
 import ScenarioCrossTenantInstruction from './pages/ScenarioCrossTenantInstruction';
 import ScenarioSecondaryDispatch from './pages/ScenarioSecondaryDispatch';
+import ScenarioCrossTenantConfig from './pages/ScenarioCrossTenantConfig';
+import ScenarioLayout from './components/ScenarioLayout';
 import { AnnotationProvider, AnnotationBoard } from '@/common/Annotation';
 
 export type PageKey =
@@ -32,6 +34,7 @@ export type PageKey =
   | 'scenario-city-audit'
   | 'scenario-cross-tenant-instruction'
   | 'scenario-secondary-dispatch'
+  | 'scenario-cross-tenant-config'
   | 'police-opinion-joint'
   | 'manual-report'
   | 'source-control'
@@ -90,13 +93,35 @@ const BlueEagleIntegratedSystem = forwardRef<AxureHandle, AxureProps>(function B
   const renderPage = () => {
     switch (activePage) {
       case 'scenario-direct-provincial':
-        return <ScenarioDirectProvincial />;
+        return (
+          <ScenarioLayout scenarioKey="scenario-direct-provincial">
+            <ScenarioDirectProvincial />
+          </ScenarioLayout>
+        );
       case 'scenario-city-audit':
-        return <ScenarioCityAudit />;
+        return (
+          <ScenarioLayout scenarioKey="scenario-city-audit">
+            <ScenarioCityAudit />
+          </ScenarioLayout>
+        );
       case 'scenario-cross-tenant-instruction':
-        return <ScenarioCrossTenantInstruction />;
+        return (
+          <ScenarioLayout scenarioKey="scenario-cross-tenant-instruction">
+            <ScenarioCrossTenantInstruction />
+          </ScenarioLayout>
+        );
       case 'scenario-secondary-dispatch':
-        return <ScenarioSecondaryDispatch />;
+        return (
+          <ScenarioLayout scenarioKey="scenario-secondary-dispatch">
+            <ScenarioSecondaryDispatch />
+          </ScenarioLayout>
+        );
+      case 'scenario-cross-tenant-config':
+        return (
+          <ScenarioLayout scenarioKey="scenario-cross-tenant-config">
+            <ScenarioCrossTenantConfig />
+          </ScenarioLayout>
+        );
       case 'police-opinion-joint':
         return <PoliceOpinionJoint />;
       case 'manual-report':
@@ -185,7 +210,11 @@ const BlueEagleIntegratedSystem = forwardRef<AxureHandle, AxureProps>(function B
               collapsed={sidebarCollapsed}
               onCollapse={setSidebarCollapsed}
             />
-            <div className={`content-area ${sidebarCollapsed ? 'collapsed' : ''} ${activePage.endsWith('data-screen') ? 'screen-content' : ''}`}>
+            <div
+              className={`content-area ${sidebarCollapsed ? 'collapsed' : ''} ${
+                activePage.endsWith('data-screen') ? 'screen-content' : ''
+              } ${activePage.startsWith('scenario-') ? 'scenario-content' : ''}`}
+            >
               {renderPage()}
             </div>
           </div>
@@ -197,8 +226,8 @@ const BlueEagleIntegratedSystem = forwardRef<AxureHandle, AxureProps>(function B
           onClose={() => setDutyRosterOpen(false)}
         />
 
-        {/* AxHub 全局功能与细节批注看板 */}
-        <AnnotationBoard />
+        {/* AxHub 全局功能与细节批注看板（场景页面已由右侧抽屉统一接管） */}
+        {!activePage.startsWith('scenario-') && <AnnotationBoard />}
       </AnnotationProvider>
     </ConfigProvider>
   );

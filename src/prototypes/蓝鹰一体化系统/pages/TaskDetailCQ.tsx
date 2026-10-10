@@ -3290,8 +3290,7 @@ const TaskDetailCQ: React.FC<TaskDetailCQProps> = ({ taskId, onBack, schedules: 
           centered
           closeIcon={null}
           styles={{
-            content: { padding: 0, overflow: 'hidden', borderRadius: 16, background: 'transparent', boxShadow: 'none' },
-            body: { padding: 0 },
+            body: { padding: 0, overflow: 'hidden', borderRadius: 16, background: 'transparent' },
           }}
           destroyOnClose
         >

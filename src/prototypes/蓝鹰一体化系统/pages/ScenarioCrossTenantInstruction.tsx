@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Button,
   message,
@@ -10,1505 +10,713 @@ import {
   Badge,
   Modal,
   Drawer,
-  Tooltip,
   Alert,
   Space,
   Input,
-  DatePicker,
   Select,
-  Pagination,
-  Switch,
-  Upload,
+  Radio,
+  Tabs,
+  Avatar,
+  Tooltip,
 } from 'antd';
 import {
-  SafetyCertificateOutlined,
+  BankOutlined,
   CheckCircleOutlined,
   ClockCircleOutlined,
-  CloseCircleOutlined,
-  ThunderboltOutlined,
   ArrowRightOutlined,
   RobotOutlined,
-  FileSearchOutlined,
-  GlobalOutlined,
-  CompassOutlined,
   ReloadOutlined,
-  UpOutlined,
-  DownOutlined,
-  HolderOutlined,
-  BankOutlined,
-  SyncOutlined,
-  ExclamationCircleOutlined,
-  ForwardOutlined,
-  StarOutlined,
-  InfoCircleOutlined,
   SendOutlined,
-  AuditOutlined,
-  FileTextOutlined,
-  EditOutlined,
-  RollbackOutlined,
-  EyeOutlined,
   CopyOutlined,
-  ShareAltOutlined,
-  EnvironmentOutlined,
-  VideoCameraOutlined,
-  CheckCircleFilled,
-  CloseCircleFilled,
-  ExportOutlined,
-  FormOutlined,
-  UserOutlined,
   LockOutlined,
+  SafetyCertificateOutlined,
   ApartmentOutlined,
-  PaperClipOutlined,
-  InboxOutlined,
+  FileTextOutlined,
+  ExclamationCircleOutlined,
+  CloseCircleOutlined,
+  CodeOutlined,
+  UserOutlined,
   BranchesOutlined,
+  CheckCircleFilled,
+  EnvironmentOutlined,
+  GlobalOutlined,
+  PlayCircleFilled,
+  InfoCircleOutlined,
+  ThunderboltOutlined,
+  SearchOutlined,
+  CloudOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { Annotated } from '@/common/Annotation';
+import { useScenarioContext } from '../components/ScenarioLayout';
 import '../scenario-style.css';
 
 const { TextArea } = Input;
 const { Option } = Select;
 
-// 指令流转状态类型
-export type InstructionFlowStatus =
-  | 'draft' // 未下发草稿
-  | 'issued' // 已下发推至徐州待办池，待签收 (version: 1)
-  | 'claimed_userA' // 用户 A (当前民警) 签收办理成功 (version: 2)
-  | 'claimed_userB' // 用户 B (同事张警官) 先行签收 (version: 2)
-  | 'feedback_submitted'; // 已提交反馈待省厅确认
-
 const ScenarioCrossTenantInstruction: React.FC = () => {
-  // 当前环境主视图：'provincial' (省厅内网端) | 'cityXuzhou' (徐州市局内网端)
-  const [currentView, setCurrentView] = useState<'provincial' | 'cityXuzhou'>('provincial');
-
-  // 核心指令业务流转状态
-  const [instructionStatus, setInstructionStatus] = useState<InstructionFlowStatus>('issued');
-  const [optimisticVersion, setOptimisticVersion] = useState<number>(1);
-  const [targetTenant, setTargetTenant] = useState<string>('xuzhou');
-  const [instructionTypes, setInstructionTypes] = useState<string[]>(['落地核查', '应急处置']);
+  // 核心指令业务流转状态（省厅下发闭环）
+  const [instructionIssued, setInstructionIssued] = useState<boolean>(false);
+  const [targetTenant, setTargetTenant] = useState<string>('徐州市公安局网安支队');
+  const [instructionTypes, setInstructionTypes] = useState<string[]>(['线下核查', '属地落实']);
+  const [timeLimit, setTimeLimit] = useState<string>('今日 18:00 前');
   const [instructionContent, setInstructionContent] = useState<string>(
-    '请徐州市局网安支队立即对涉事网民线下动向进行落地核查，限今日 18:00 前反馈核查笔录与处置结果。'
+    '请[单位名称]立即对涉事网民线下动向进行落地核查，并在[处理周期]前完成线下核查笔录与处置反馈。'
   );
-  const [issueTimestamp, setIssueTimestamp] = useState<string>('2026-10-09 09:30:15');
-  const [claimTimestamp, setClaimTimestamp] = useState<string>('');
-  const [claimOperator, setClaimOperator] = useState<string>('待认领');
+  const [issueTimestamp, setIssueTimestamp] = useState<string>('2026-10-10 10:15:20');
 
-  // 反馈内容
-  const [feedbackTitle, setFeedbackTitle] = useState<string>(
-    '【反馈】关于徐州某工业园区网络谣言线索排查处置报告'
+  // AI 辅助研判弹窗状态（截图 1 对标）
+  const [aiLevel, setAiLevel] = useState<string>('二级 (紧急)');
+  const [aiType, setAiType] = useState<string>('涉稳舆情 / 谣言排查');
+  const [aiOpinion, setAiOpinion] = useState<string>(
+    '【总队研判意见】：该线索涉及工业园区安全与排污虚假信息，跟帖转发超1200条，存在线上向线下传导聚集风险。建议由徐州市公安局网安支队会同贾汪分局网安大队开展线下落地核查，限今日18:00前反馈核查笔录与处置结果。'
   );
-  const [feedbackContent, setFeedbackContent] = useState<string>(
-    '已会同属地贾汪网安大队完成对发帖网民王某的落地约谈，当事人已主动删除不实视频，未引发次生舆情。核查笔录与现场照片已存证入库。'
+  const [commonUnitDirectives, setCommonUnitDirectives] = useState<string[]>(['总队落实']);
+  const [commonExecDirectives, setCommonExecDirectives] = useState<string[]>(['线下核查', '属地落实']);
+
+  // 详细指令下达弹窗状态（截图 2 对标）
+  const [detailedUnitDirectives, setDetailedUnitDirectives] = useState<string[]>(['总队落实']);
+  const [detailedExecDirectives, setDetailedExecDirectives] = useState<string[]>(['线下核查', '属地落实']);
+  const [supplementContent, setSupplementContent] = useState<string>(
+    '请[单位名称]立即对涉事网民线下动向进行落地核查，并在[处理周期]前完成线下核查笔录与处置反馈。'
   );
 
-  // 弹窗状态
-  const [aiModalOpen, setAiModalOpen] = useState(false); // 视图 2：AI 辅助研判与跨租户指令下发大弹窗
-  const [feedbackModalOpen, setFeedbackModalOpen] = useState(false); // 视图 4：市局应急处置反馈弹窗
-  const [payloadDrawerOpen, setPayloadDrawerOpen] = useState(false); // 载荷自描述包详情抽屉
+  // 弹窗与抽屉控制
+  const [issueModalOpen, setIssueModalOpen] = useState<boolean>(false);
+  const [payloadDrawerOpen, setPayloadDrawerOpen] = useState<boolean>(false);
+  const [detailDrawerOpen, setDetailDrawerOpen] = useState<boolean>(false);
+  const [aiModalOpen, setAiModalOpen] = useState<boolean>(false);
 
-  // 视图检索过滤与 Tab 状态
-  const [provincialStreamView, setProvincialStreamView] = useState<'detail' | 'analysis' | 'brief'>('analysis');
-  const [cityTabKey, setCityTabKey] = useState<string>('todo');
+  const { setCurrentStep, setActionButton, currentRoleView } = useScenarioContext();
 
-  // 悬浮演示控制台状态（继承统一右上角平滑收纳、静默半透明、防溢出展开规范）
-  const [consoleCollapsed, setConsoleCollapsed] = useState(false);
-  const [consolePos, setConsolePos] = useState<{ x: number; y: number }>(() => {
-    if (typeof window !== 'undefined') {
-      return { x: Math.max(20, window.innerWidth - 350), y: 84 };
-    }
-    return { x: 960, y: 84 };
-  });
-  const [hasCustomPos, setHasCustomPos] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
-  const dragInfoRef = React.useRef<{
-    startX: number;
-    startY: number;
-    initX: number;
-    initY: number;
-    hasMoved: boolean;
-  }>({
-    startX: 0,
-    startY: 0,
-    initX: 0,
-    initY: 0,
-    hasMoved: false,
-  });
-
-  // 处理控制台拖拽起始
-  const handleStartDrag = (e: React.MouseEvent) => {
-    const target = e.target as HTMLElement;
-    if (target.closest('button, .ant-btn, input, textarea, a, .no-drag')) {
-      return;
-    }
-    e.preventDefault();
-    setIsDragging(true);
-    const currentActualX = hasCustomPos
-      ? consolePos.x
-      : Math.max(20, window.innerWidth - 350);
-    const currentActualY = hasCustomPos ? consolePos.y : 84;
-
-    dragInfoRef.current = {
-      startX: e.clientX,
-      startY: e.clientY,
-      initX: currentActualX,
-      initY: currentActualY,
-      hasMoved: false,
-    };
-
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      const dx = moveEvent.clientX - dragInfoRef.current.startX;
-      const dy = moveEvent.clientY - dragInfoRef.current.startY;
-      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
-        dragInfoRef.current.hasMoved = true;
-        setHasCustomPos(true);
+  // 监听顶栏切换与联动
+  useEffect(() => {
+    if (currentRoleView) {
+      if (currentRoleView === 'provincial') {
+        setAiModalOpen(false);
+        setIssueModalOpen(false);
+      } else if (currentRoleView === 'detail') {
+        setIssueModalOpen(true);
+      } else if (currentRoleView === 'issued') {
+        setInstructionIssued(true);
       }
-      const panelWidth = 326;
-      const panelHeight = 440;
-      const maxX = Math.max(10, window.innerWidth - panelWidth - 24);
-      const maxY = Math.max(50, window.innerHeight - panelHeight - 20);
+    }
+  }, [currentRoleView]);
 
-      const nextX = Math.max(10, Math.min(maxX, dragInfoRef.current.initX + dx));
-      const nextY = Math.max(50, Math.min(maxY, dragInfoRef.current.initY + dy));
-      setConsolePos({ x: nextX, y: nextY });
-    };
+  useEffect(() => {
+    if (!instructionIssued) {
+      setCurrentStep(1);
+      setActionButton({
+        label: '下达处置指令 ➔',
+        onClick: () => setIssueModalOpen(true),
+      });
+    } else {
+      setCurrentStep(3);
+      setActionButton({
+        label: '重置下发演示 ↺',
+        onClick: handleResetDemo,
+      });
+    }
+  }, [instructionIssued, setCurrentStep, setActionButton]);
 
-    const handleMouseUp = () => {
-      setIsDragging(false);
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
+  // 插入变量符
+  const handleInsertVariable = (varCode: string) => {
+    setSupplementContent((prev) => prev + varCode);
+    message.info(`已插入变量模板占位符 ${varCode}`);
   };
 
-  // 1. 省厅端下达跨租户指令
+  // 省厅端下达跨租户指令
   const handleIssueInstruction = () => {
-    setInstructionStatus('issued');
-    setOptimisticVersion(1);
+    setInstructionIssued(true);
     setIssueTimestamp(dayjs().format('YYYY-MM-DD HH:mm:ss'));
+    if (supplementContent) {
+      setInstructionContent(supplementContent);
+    }
+    setIssueModalOpen(false);
     setAiModalOpen(false);
     message.success({
-      content: '跨租户指令下达成功！跨系统跟踪标识：CMD-2026-XUZHOU-001，已激活载荷自描述推入徐州市局待办池',
-      duration: 4,
+      content: '跨租户处置指令下达成功！载荷自描述包已通过安全通道推入 [徐州市公安局网安支队] 待办池！',
+      duration: 3.5,
     });
   };
 
-  // 2. 分支 A：用户 A 抢占办理成功 (正常路径)
-  const handleClaimByUserA = () => {
-    // 乐观锁版本校验
-    if (optimisticVersion !== 1 || instructionStatus === 'claimed_userB') {
-      message.error({
-        content: '【乐观锁并发拦截】该指令已被同事 [张警官 (支队值班岗)] 抢先签收办理，正在刷新状态！',
-        duration: 3,
-      });
-      setInstructionStatus('claimed_userB');
-      setClaimOperator('张警官 (支队值班岗)');
-      return;
-    }
-    setInstructionStatus('claimed_userA');
-    setOptimisticVersion(2);
-    setClaimOperator('当前用户 (支队值班岗)');
-    setClaimTimestamp(dayjs().format('YYYY-MM-DD HH:mm:ss'));
-    message.success('【签收办理成功】乐观锁校验通过 (版本: v1 -> v2)，已锁定为您经办！');
-  };
-
-  // 3. 分支 B：模拟用户 B 并发抢占冲突 (拦截路径)
-  const handleSimulateUserBConflict = () => {
-    setInstructionStatus('claimed_userB');
-    setOptimisticVersion(2);
-    setClaimOperator('张警官 (支队值班岗)');
-    setClaimTimestamp(dayjs().format('YYYY-MM-DD HH:mm:ss'));
-    message.warning({
-      content: '【模拟场景】同事 [张警官 (支队值班岗)] 已抢先在内网签收了该指令！',
-      duration: 3,
-    });
-  };
-
-  // 4. 提交处置反馈
-  const handleSubmitFeedback = () => {
-    setInstructionStatus('feedback_submitted');
-    setFeedbackModalOpen(false);
-    message.success('处置反馈已成功提交！数据实时同步回省厅发起端待复核确认。');
-  };
-
-  // 5. 重置全流程演示
+  // 重置演示
   const handleResetDemo = () => {
-    setCurrentView('provincial');
-    setInstructionStatus('issued');
-    setOptimisticVersion(1);
-    setClaimOperator('待认领');
-    setClaimTimestamp('');
+    setInstructionIssued(false);
+    setIssueModalOpen(false);
     setAiModalOpen(false);
-    setFeedbackModalOpen(false);
     setPayloadDrawerOpen(false);
-    message.info('场景演示已重置为初始待办状态。');
+    setDetailDrawerOpen(false);
+    message.info('场景三省厅指令下发演示已重置。');
   };
 
-  // =========================================================================
-  // 视图 1：省厅端 - 监测预警与研判发起 (1:1 参考图 1 真实系统)
-  // =========================================================================
-  const renderProvincialView = () => (
-    <div className="provincial-view-wrapper">
-      {/* 顶部公安内网环境标识 */}
-      <div className="scenario-env-header env-intranet">
+  return (
+    <div className="provincial-view-wrapper" style={{ position: 'relative' }}>
+      {/* 极简环境标题栏 */}
+      <div className="scenario-env-header env-intranet" style={{ marginBottom: 12 }}>
         <div className="scenario-env-info">
           <span className="env-tag-badge">
-            <BankOutlined /> 公安内网环境 · 省厅总队端
+            <BankOutlined /> 公安内网 · 省厅
           </span>
-          <span className="scenario-env-title" style={{ color: '#ffffff' }}>
-            江苏省公安厅网安总队 · 智控研判处置平台
+          <span className="scenario-env-title" style={{ color: '#fff' }}>
+            省厅网安总队
           </span>
           <span className="scenario-env-subtitle" style={{ color: '#bae0ff' }}>
-            （值班长：李警官 ｜ 路由：/provincial/monitor/warning-list）
+            （当前账号：李警官 · 总队值班长）
           </span>
         </div>
         <Space>
           <Button
             size="small"
             type="primary"
-            onClick={() => setCurrentView('cityXuzhou')}
-            style={{ background: '#1677ff' }}
+            onClick={() => setAiModalOpen(true)}
+            style={{ background: '#2563eb', border: 'none' }}
           >
-            前往徐州市局待办池 (视图 3) <ArrowRightOutlined />
+            AI 辅助研判 <ThunderboltOutlined />
+          </Button>
+          <Button
+            size="small"
+            icon={<ReloadOutlined />}
+            onClick={handleResetDemo}
+            style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: 'none' }}
+          >
+            重置演示
           </Button>
         </Space>
       </div>
 
-      {/* 状态横幅 */}
+      {/* 顶栏业务说明横幅 */}
       <Alert
         message={
-          instructionStatus === 'feedback_submitted'
-            ? '跨租户闭环达成：徐州市公安局网安支队已反馈处置结果，核查落地事实清楚，舆情已平息。'
-            : instructionStatus === 'claimed_userA'
-            ? '指令跟踪：徐州市公安局网安支队民警已签收办理，正在线下落地核查中……'
-            : instructionStatus === 'claimed_userB'
-            ? '指令跟踪：徐州市公安局网安支队张警官已签收办理中……'
-            : '重点舆情待研判：监测发现网民发布涉及徐州某园区重点工程不实言论，请通过【AI研判】向徐州市局下达处置指令。'
+          instructionIssued ? (
+            <span>
+              <strong>【指令已定向下达入库】</strong> 省厅自描述跨租户处置指令已下发至 <strong>徐州市公安局网安支队</strong>，载荷已落库目标部门【指令接收岗】待办池。
+            </span>
+          ) : (
+            <span>
+              <strong>【监测预警与指令下发】</strong> 省厅在【监测预警】板块查验全省线索，通过 AI 辅助研判与详细指令模板完成跨租户派工；底层乐观锁机制沿用现有逻辑，无需重复开发。
+            </span>
+          )
         }
-        type={instructionStatus === 'feedback_submitted' ? 'success' : 'info'}
+        type={instructionIssued ? 'success' : 'info'}
         showIcon
-        style={{ marginBottom: 14 }}
+        style={{ marginBottom: 12 }}
       />
 
-      {/* 顶部检索与视图切换栏 (1:1 参考图 1) */}
-      <div className="stream-filter-container">
-        <div className="stream-filter-top-row">
-          <div className="stream-filter-field">
-            <span className="stream-filter-label">内容搜索</span>
-            <Input
-              placeholder="可输入标题/正文/作者/ID"
-              style={{ width: 200 }}
-              defaultValue="徐州工业园区涉污"
-              allowClear
-            />
-          </div>
+      <Card bordered={false} className="std-view-card">
+        {/* 二级 Tab 导航 */}
+        <Tabs
+          defaultActiveKey="reported"
+          items={[
+            { key: 'all', label: '全部' },
+            { key: 'ai-discover', label: 'AI主动发现' },
+            { key: 'report-audit', label: '上报审核' },
+            {
+              key: 'reported',
+              label: (
+                <div style={{ display: 'inline-flex', alignItems: 'center' }}>
+                  <span>区县上报</span>
+                  <Badge count={1} style={{ backgroundColor: '#1677ff', marginLeft: 6 }} />
+                </div>
+              ),
+            },
+            { key: 'notice', label: '通报信息' },
+          ]}
+        />
 
-          <div className="stream-filter-field">
-            <span className="stream-filter-label">发布时间</span>
-            <DatePicker.RangePicker style={{ width: 240 }} />
-          </div>
-
-          <div className="stream-filter-field">
-            <span className="stream-filter-label">上报时间</span>
-            <DatePicker.RangePicker
-              showTime
-              style={{ width: 330 }}
-              defaultValue={[
-                dayjs('2026-10-08 00:00:00'),
-                dayjs('2026-10-09 23:59:59'),
-              ]}
-            />
-          </div>
-
-          {/* 右侧视图切换按钮组 */}
-          <div className="stream-view-switcher">
-            <button
-              type="button"
-              className={`stream-view-btn ${provincialStreamView === 'detail' ? 'active' : ''}`}
-              onClick={() => setProvincialStreamView('detail')}
-            >
-              详细视图
-            </button>
-            <button
-              type="button"
-              className={`stream-view-btn ${provincialStreamView === 'analysis' ? 'active' : ''}`}
-              onClick={() => setProvincialStreamView('analysis')}
-            >
-              研判视图
-            </button>
-            <button
-              type="button"
-              className={`stream-view-btn ${provincialStreamView === 'brief' ? 'active' : ''}`}
-              onClick={() => setProvincialStreamView('brief')}
-            >
-              简要视图
-            </button>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Space>
-            <Button size="small">重置</Button>
-            <Button type="primary" size="small">查询</Button>
-            <Button type="link" size="small" style={{ fontSize: 12, padding: 0 }}>
-              展开 <DownOutlined style={{ fontSize: 10 }} />
-            </Button>
-          </Space>
-
-          <Space>
-            <Button size="small" onClick={handleResetDemo}>重置演示数据</Button>
-          </Space>
-        </div>
-      </div>
-
-      {/* 模块二级 Tab 栏 (1:1 参考图 1) */}
-      <div className="stream-tabs-bar">
-        <div className="stream-tabs-list">
-          <div className="stream-tab-item">
-            <span className="stream-ai-pill">AI</span> 全部
-          </div>
-          <div className="stream-tab-item">研判建议</div>
-          <div className="stream-tab-item">
-            <span className="stream-ai-pill">AI</span> 智能预警
-          </div>
-          <div className="stream-tab-item">
-            <span className="stream-ai-pill">AI</span> 重点账号
-          </div>
-          <div className="stream-tab-item">专项巡查</div>
-          <div className="stream-tab-item">本地舆情</div>
-          <div className="stream-tab-item">重点源</div>
-          <div className="stream-tab-item">待认领舆情</div>
-          <div className="stream-tab-item active">
-            本地上报
-            <Badge count={1} size="small" style={{ backgroundColor: '#1677ff', marginLeft: 2 }} />
-          </div>
-          <div className="stream-tab-item">通报信息</div>
-        </div>
-
-        <Button
-          type="primary"
-          icon={<FormOutlined />}
-          size="small"
-          style={{ borderRadius: 4 }}
-          onClick={() => setAiModalOpen(true)}
-        >
-          AI研判下发
-        </Button>
-      </div>
-
-      {/* 舆情卡片流 (1:1 还原图 1) */}
-      <div className="stream-cards-wrapper">
-        <div className="stream-card-box">
-          {/* 卡片头部行 */}
-          <div className="stream-card-header">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Checkbox defaultChecked={false} />
-              <span style={{ fontWeight: 600, color: '#64748b', fontSize: 13, marginRight: 2 }}>
-                1
+        {/* 舆情事件卡片 */}
+        <div className="stream-card-box" style={{ marginTop: 8 }}>
+          <div className="stream-card-header-row">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span className="stream-card-seq-badge">1</span>
+              <Tag color="geekblue" style={{ margin: 0, fontWeight: 600 }}>
+                区县上报
+              </Tag>
+              <Tag color="orange" style={{ margin: 0 }}>
+                涉稳舆情
+              </Tag>
+              <span className="stream-card-title-text">
+                关于徐州某工业园区因环保升级改造停产网络谣言线索排查
               </span>
-              <Tag style={{ background: '#1677ff', color: '#ffffff', border: 'none', borderRadius: 2, padding: '0 6px', fontSize: 11 }}>
-                初研意见
-              </Tag>
-              <span style={{ fontSize: 12, color: '#595959', margin: '0 4px' }}>处置</span>
-              <Tag style={{ background: '#ffffff', color: '#1677ff', borderColor: '#91caff', borderRadius: 2, fontSize: 11 }}>
-                非热敏
+              <Tag color="red" style={{ margin: 0, fontSize: 11 }}>
+                <ClockCircleOutlined /> 限时：今日 18:00 前
               </Tag>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ color: '#faad14', fontSize: 14 }}>★ ★ ★ ☆ ☆</span>
-              <span style={{ color: '#64748b', fontSize: 12 }}>2.5星</span>
+            <div style={{ fontSize: 12, color: '#64748b' }}>
+              编号：202610100088
             </div>
           </div>
 
-          {/* 元数据行 */}
-          <div className="stream-card-meta">
-            <span style={{ color: '#1e293b', fontWeight: 600 }}>人间万象</span>
-            <span>ID 3766282728521547</span>
-            <span><EnvironmentOutlined style={{ color: '#1677ff' }} /> 淮安区，淮安市（涉事转徐州）</span>
-            <span><ClockCircleOutlined /> 2026-10-08 16:07:27</span>
+          <div className="stream-card-meta-line" style={{ marginTop: 8 }}>
+            <span>采集人：<strong style={{ color: '#1e293b' }}>苏北观察员 (抖音app)</strong></span>
+            <span className="stream-meta-divider">|</span>
+            <span>线索ID：<code>7694739512768873018</code></span>
+            <span className="stream-meta-divider">|</span>
+            <span>涉事属地：江苏省 / 徐州市 / 贾汪区</span>
+            <span className="stream-meta-divider">|</span>
+            <span>流转状态：<strong style={{ color: instructionIssued ? '#059669' : '#2563eb' }}>{instructionIssued ? '已下达指令 (派发至徐州市局网安支队)' : '待下发处置指令'}</strong></span>
           </div>
 
-          {/* 舆情主标题与正文 (参考图 1) */}
-          <div className="stream-card-title-content">
-            淮安区的小黄毛真是太猖狂了。#淮安 #淮安美食 #河下古镇 来淮安一趟，车停在淮安区万达对面，有监控都能撬车门，外地牌的朋友千万别停翔宇大道，河下古镇附近，撬车门的小黄毛有点多。
+          <div className="stream-card-content-body">
+            “徐州某工业园区因环保升级改造停产，网传将引发千人聚集游行抗议，已有网民在微信群中煽动前往园区管委会讨说法，请迅速落实排查处置！” #工业园区 #徐州停产
           </div>
 
-          {/* 双色块 AI 摘要与研判 + 右侧大尺寸舆情指数 45.00 */}
-          <div className="stream-card-split-body">
-            <div className="stream-card-analysis-side">
-              {/* 浅绿色 AI 摘要 */}
-              <div className="stream-card-ai-badge-box">
-                <span style={{ background: '#52c41a', color: '#fff', fontSize: 11, padding: '1px 7px', borderRadius: 10, fontWeight: 600, flexShrink: 0 }}>
-                  AI 摘要
-                </span>
-                <div style={{ fontSize: 12, color: '#374151', lineHeight: 1.5 }}>
-                  淮安区河下古镇及翔宇大道附近频发撬车门盗窃案件，引发外地游客对当地治安环境的不满与警示。
-                </div>
+          {/* AI 研判建议与舆情指数 */}
+          <div className="stream-card-ai-row" style={{ marginTop: 10 }}>
+            <div className="stream-ai-left-boxes">
+              <div className="stream-ai-green-summary">
+                <span className="stream-ai-pill-green">AI 摘要</span>
+                <span>涉事人包括本地自媒体从业者王某，涉事地点为徐州市贾汪区工业园区，网帖夸大企业停产规模并煽动线下非法聚集。</span>
               </div>
-
-              {/* 浅橙色 AI 研判 */}
-              <div className="stream-card-opinion-badge-box">
-                <span style={{ background: '#fa8c16', color: '#fff', fontSize: 11, padding: '1px 7px', borderRadius: 10, fontWeight: 600, flexShrink: 0 }}>
-                  AI 研判
-                </span>
-                <div style={{ fontSize: 12, color: '#374151', lineHeight: 1.5 }}>
-                  <span style={{ fontWeight: 600, color: '#c2410c' }}>【风险定性】：</span>
-                  一般治安案件舆情，存在局部负面口碑扩散的隐患。
-                  <span style={{ fontWeight: 600, color: '#c2410c', marginLeft: 8 }}>【处置建议】：</span>
-                  建议总队指令下发徐州及周边地市协同关注排查。
-                </div>
+              <div className="stream-ai-orange-opinion">
+                <span className="stream-ai-pill-orange">AI 研判</span>
+                <span>【事件定性】系一起因涉稳民生诉求引发的网络串联炒作事件。【当前态势】网帖在本地群组发酵，存在线下聚集风险。【关注建议】属地网安落地排查重点人员，责令删除不实言论。</span>
               </div>
             </div>
 
-            {/* 右侧大号紫色舆情指数 45.00 (1:1 参考图 1) */}
-            <div className="stream-card-index-card">
-              <div style={{ fontSize: 26, fontWeight: 700, color: '#7c3aed', lineHeight: 1.1 }}>
-                45.00
-              </div>
-              <div style={{ fontSize: 11, fontWeight: 600, color: '#7c3aed', opacity: 0.85, marginTop: 4 }}>
-                舆情指数
-              </div>
+            <div className="stream-ai-purple-index-card">
+              <span className="stream-ai-index-val">68.50</span>
+              <span className="stream-ai-index-label">舆情指数</span>
             </div>
           </div>
 
           {/* 标签池 */}
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 12 }}>
-            <Tag color="blue">数据来源: 快捷指令</Tag>
-            <Tag color="cyan">淮安市</Tag>
-            <Tag color="geekblue">淮安区</Tag>
-            <Tag color="volcano">反映突出治安问题</Tag>
+          <div className="stream-card-tags-pool" style={{ marginTop: 10 }}>
+            <span className="stream-meta-tag">来源: 手工上报-徐州市局</span>
+            <span className="stream-meta-tag">涉稳排查</span>
+            <span className="stream-meta-tag">重点关注</span>
+            {instructionIssued && (
+              <Tag color="success" style={{ margin: 0, fontSize: 11 }}>
+                <CheckCircleFilled /> 已定向下达徐州
+              </Tag>
+            )}
           </div>
 
-          {/* 底部操作栏 (参考图 1：一键搜素、复制信息、未处置、信息详情、AI研判、推送) */}
-          <div className="stream-card-actions-bar">
-            <Space>
-              <Button type="link" size="small" style={{ paddingLeft: 0 }}>一键搜索</Button>
-              <Button type="link" size="small">复制信息</Button>
-              <Tag color="orange">未处置</Tag>
-              <Button type="link" size="small">信息详情</Button>
-            </Space>
-
-            {/* 核心操作：点击打开 AI 辅助研判弹窗 (进入视图 2) */}
-            <Space>
+          {/* 操作栏右下角 */}
+          <div className="stream-card-actions-bar" style={{ justifyContent: 'flex-end', marginTop: 14 }}>
+            <Space size={10} align="center">
               <Button
-                type="primary"
-                icon={<RobotOutlined />}
-                style={{ background: '#722ed1', borderColor: '#722ed1' }}
+                type="default"
+                size="small"
+                icon={<CopyOutlined />}
+                onClick={() => message.success('已复制线索全文')}
+              >
+                一键复制
+              </Button>
+
+              <Button
+                type="default"
+                size="small"
+                icon={<ThunderboltOutlined />}
                 onClick={() => setAiModalOpen(true)}
               >
-                AI研判
+                AI辅助研判
               </Button>
+
+              {!instructionIssued ? (
+                <Button
+                  type="primary"
+                  size="small"
+                  icon={<SendOutlined />}
+                  onClick={() => setIssueModalOpen(true)}
+                >
+                  下达处置指令
+                </Button>
+              ) : (
+                <Tag color="success" style={{ padding: '3px 10px', fontSize: 12 }}>
+                  <CheckCircleFilled style={{ marginRight: 4 }} />
+                  已下发指令推入徐州市局
+                </Tag>
+              )}
+            </Space>
+          </div>
+        </div>
+      </Card>
+
+      {/* =========================================================================
+          1. AI 辅助研判综合弹窗 (1:1 复刻截图 1)
+          ========================================================================= */}
+      <Modal
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <RobotOutlined style={{ color: '#2563eb' }} />
+            <span>AI 辅助研判分析</span>
+          </div>
+        }
+        open={aiModalOpen}
+        width={980}
+        onCancel={() => setAiModalOpen(false)}
+        footer={[
+          <Button key="close" onClick={() => setAiModalOpen(false)}>
+            取消
+          </Button>,
+          <Button
+            key="issue"
+            type="primary"
+            icon={<SendOutlined />}
+            onClick={() => {
+              setAiModalOpen(false);
+              setIssueModalOpen(true);
+            }}
+          >
+            下达指令 ➔
+          </Button>,
+        ]}
+        destroyOnClose
+      >
+        <div className="ai-analysis-modal-body">
+          {/* 左侧：舆情细节与AI研判 */}
+          <div className="ai-analysis-left-col">
+            <div className="ai-modal-header-banner">
+              <div className="ai-modal-title-row">
+                <span style={{ fontSize: 15, fontWeight: 700, color: '#1e293b' }}>
+                  关于徐州某工业园区因环保升级改造停产网络谣言线索排查
+                </span>
+                <Tag color="red" style={{ margin: 0 }}>二级 (紧急)</Tag>
+              </div>
+              <div className="ai-modal-meta-row">
+                <span>作者：苏北观察员 (抖音app)</span>
+                <span>线索ID：7694739512768873018</span>
+                <span>时间：2026-10-10 10:15:20</span>
+              </div>
+            </div>
+
+            <div className="ai-index-cards-row">
+              <div className="ai-index-card-item">
+                <div className="ai-index-card-label">🔥 舆情热度</div>
+                <div className="ai-index-card-val-row">
+                  <span className="ai-index-card-val" style={{ color: '#e11d48' }}>68.5</span>
+                  <span className="ai-index-card-change" style={{ color: '#e11d48' }}>↑ 24%</span>
+                </div>
+              </div>
+              <div className="ai-index-card-item">
+                <div className="ai-index-card-label">⚡ 敏感度指数</div>
+                <div className="ai-index-card-val-row">
+                  <span className="ai-index-card-val" style={{ color: '#ea580c' }}>84.2</span>
+                  <span className="ai-index-card-change" style={{ color: '#ea580c' }}>高危</span>
+                </div>
+              </div>
+              <div className="ai-index-card-item">
+                <div className="ai-index-card-label">👥 扩散人群</div>
+                <div className="ai-index-card-val-row">
+                  <span className="ai-index-card-val" style={{ color: '#2563eb' }}>1,240</span>
+                  <span className="ai-index-card-change" style={{ color: '#2563eb' }}>群组扩散</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="section-sub-title">AI 分析敏感点</div>
+            <div style={{ background: '#f8fafc', padding: 10, borderRadius: 6, fontSize: 13, lineHeight: 1.6, color: '#334155' }}>
+              • <strong>煽动性言论</strong>：声称“千人聚集”，带有明显煽动聚集维权导向；<br />
+              • <strong>属地扩散风险</strong>：本地多个微信兼职群、同城群转发，涉事地点集中在贾汪区工业园区。
+            </div>
+
+            <div className="section-sub-title">事件聚类（相似信息）</div>
+            <div style={{ background: '#f8fafc', padding: 10, borderRadius: 6, fontSize: 12, color: '#475569' }}>
+              • 【抖音短视频】“徐州某厂停产现场实拍”（播放量 4,820）<br />
+              • 【微博同城】“求证实，徐州工业园是不是要组织游行？”（转评 158）
+            </div>
+          </div>
+
+          {/* 右侧：指令下达配置 */}
+          <div className="ai-analysis-right-col">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: '#1e293b' }}>处置指令下达</span>
               <Button
-                type="primary"
-                icon={<SendOutlined />}
-                onClick={() => setAiModalOpen(true)}
+                type="link"
+                size="small"
+                onClick={() => {
+                  setAiModalOpen(false);
+                  setIssueModalOpen(true);
+                }}
               >
-                下达处置指令
+                下达详细指令 ➔
               </Button>
-            </Space>
+            </div>
+
+            <div className="directive-blue-bar-title">常用单位指令</div>
+            <div className="directive-checkbox-grid">
+              <Checkbox
+                checked={commonUnitDirectives.includes('总队落实')}
+                onChange={(e) =>
+                  setCommonUnitDirectives(
+                    e.target.checked ? ['总队落实'] : []
+                  )
+                }
+              >
+                总队落实
+              </Checkbox>
+              <Checkbox>领导批示</Checkbox>
+            </div>
+
+            <div className="directive-blue-bar-title" style={{ marginTop: 14 }}>常用执行指令</div>
+            <div className="directive-checkbox-grid">
+              <Checkbox
+                checked={commonExecDirectives.includes('线下核查')}
+                onChange={(e) =>
+                  setCommonExecDirectives((prev) =>
+                    e.target.checked ? [...prev, '线下核查'] : prev.filter((x) => x !== '线下核查')
+                  )
+                }
+              >
+                线下核查
+              </Checkbox>
+              <Checkbox
+                checked={commonExecDirectives.includes('属地落实')}
+                onChange={(e) =>
+                  setCommonExecDirectives((prev) =>
+                    e.target.checked ? [...prev, '属地落实'] : prev.filter((x) => x !== '属地落实')
+                  )
+                }
+              >
+                属地落实
+              </Checkbox>
+              <Checkbox>持续监测</Checkbox>
+              <Checkbox>协调删帖</Checkbox>
+            </div>
+
+            <div className="directive-blue-bar-title" style={{ marginTop: 14 }}>目标接收单位</div>
+            <Select
+              style={{ width: '100%', height: 38 }}
+              value={targetTenant}
+              onChange={setTargetTenant}
+            >
+              <Option value="徐州市公安局网安支队">徐州市公安局网安支队</Option>
+              <Option value="南京市公安局网安支队">南京市公安局网安支队</Option>
+              <Option value="苏州市公安局网安支队">苏州市公安局网安支队</Option>
+            </Select>
+
+            <div className="directive-blue-bar-title" style={{ marginTop: 14 }}>研判意见正文</div>
+            <TextArea
+              rows={4}
+              value={aiOpinion}
+              onChange={(e) => setAiOpinion(e.target.value)}
+              style={{ fontSize: 13, lineHeight: 1.6 }}
+            />
           </div>
         </div>
-      </div>
-    </div>
-  );
+      </Modal>
 
-  // =========================================================================
-  // 视图 2：省厅端 - 跨租户指令下发大弹窗 (1:1 参考图 2 改造)
-  // =========================================================================
-  const renderAiAnalysisModal = () => (
-    <Modal
-      title={
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingRight: 24 }}>
-          <span style={{ fontSize: 16, fontWeight: 600 }}>AI辅助研判</span>
-          <Tag color="blue">跨租户指令生成引擎</Tag>
-        </div>
-      }
-      open={aiModalOpen}
-      onCancel={() => setAiModalOpen(false)}
-      width={1040}
-      footer={[
-        <Button key="cancel" onClick={() => setAiModalOpen(false)}>
-          取消
-        </Button>,
-        <Button
-          key="submit"
-          type="primary"
-          icon={<SendOutlined />}
-          style={{ background: '#1677ff' }}
-          onClick={handleIssueInstruction}
-        >
-          完成研判 / 下达指令并推至徐州市局待办池
-        </Button>,
-      ]}
-    >
-      {/* 顶部标题与标签概述行 (参考图 2) */}
-      <div style={{ borderBottom: '1px solid #f0f0f0', paddingBottom: 10, marginBottom: 12 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: '#1f2937', marginBottom: 6 }}>
-          淮安区的小黄毛真是太猖狂了。#淮安 #淮安美食 #河下古镇 来淮安一趟，车停在淮安区万达对面，有监控都能撬车门……
-        </div>
-        <Space size={6} wrap>
-          <span style={{ fontSize: 12, color: '#8c8c8c' }}>涉事属地：淮安市 责任属地：</span>
-          <Tag color="blue" closable={false}>淮安区</Tag>
-          <Tag color="blue" closable={false}>淮安市</Tag>
-          <Tag color="cyan">数据来源: 快捷指令</Tag>
-          <Tag color="geekblue">17 小时前 2026-10-08 16:26:18 支队 - [支队-张邵春]</Tag>
-          <Tag color="purple">非热敏</Tag>
-          <Tag color="warning">未处置</Tag>
-          <span style={{ color: '#faad14', fontSize: 12, marginLeft: 10 }}>★ ★ ★ ☆ ☆ 2.5星</span>
-        </Space>
-      </div>
+      {/* =========================================================================
+          2. 详细处置指令下达弹窗 (1:1 复刻截图 2)
+          ========================================================================= */}
+      <Modal
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <FileTextOutlined style={{ color: '#2563eb' }} />
+            <span>发起处置指令（详细配置）</span>
+          </div>
+        }
+        open={issueModalOpen}
+        width={860}
+        onCancel={() => setIssueModalOpen(false)}
+        onOk={handleIssueInstruction}
+        okText="确认下发至目标地市"
+        cancelText="取消"
+        destroyOnClose
+      >
+        <div style={{ padding: '6px 0' }}>
+          <Tabs
+            defaultActiveKey="all"
+            items={[
+              { key: 'all', label: '全部 (31)' },
+              { key: 'unit', label: '单位指令 (15)' },
+              { key: 'exec', label: '执行指令 (16)' },
+            ]}
+          />
 
-      {/* 左右分栏布局 (1:1 参考图 2) */}
-      <div className="ai-analysis-modal-body">
-        {/* 左侧：事件概述、原发热度、相似信息 */}
-        <div className="ai-analysis-left-col">
-          <div className="section-sub-title">事件概述</div>
-          <div className="stream-card-split-body" style={{ marginTop: 6 }}>
-            <div className="stream-card-analysis-side">
-              <div className="stream-card-ai-badge-box">
-                <span style={{ background: '#52c41a', color: '#fff', fontSize: 11, padding: '1px 6px', borderRadius: 10, fontWeight: 600, flexShrink: 0 }}>
-                  AI 摘要
-                </span>
-                <div style={{ fontSize: 12, color: '#374151' }}>
-                  淮安区河下古镇及翔宇大道附近频发撬车门盗窃案件，引发外地游客对当地治安环境的不满与警示。
-                </div>
-              </div>
-
-              <div className="stream-card-opinion-badge-box">
-                <span style={{ background: '#fa8c16', color: '#fff', fontSize: 11, padding: '1px 6px', borderRadius: 10, fontWeight: 600, flexShrink: 0 }}>
-                  AI 研判
-                </span>
-                <div style={{ fontSize: 12, color: '#374151' }}>
-                  【风险定性】：一般治安案件舆情，存在局部负面口碑扩散的隐患。涉事车辆为外地牌照，存在跨地市关联，建议由省厅协调徐州市局核查。
-                </div>
-              </div>
+          <div style={{ margin: '10px 0 16px' }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#1e293b', marginBottom: 8 }}>
+              可选指令清单
             </div>
-
-            <div className="stream-card-index-card" style={{ width: 84 }}>
-              <div style={{ fontSize: 22, fontWeight: 700, color: '#7c3aed' }}>45.00</div>
-              <div style={{ fontSize: 11, color: '#7c3aed', marginTop: 2 }}>舆情指数</div>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(4, 1fr)',
+                gap: 10,
+                background: '#f8fafc',
+                padding: 12,
+                borderRadius: 6,
+              }}
+            >
+              <Checkbox
+                checked={detailedExecDirectives.includes('线下核查')}
+                onChange={(e) =>
+                  setDetailedExecDirectives((prev) =>
+                    e.target.checked ? [...prev, '线下核查'] : prev.filter((x) => x !== '线下核查')
+                  )
+                }
+              >
+                线下核查
+              </Checkbox>
+              <Checkbox
+                checked={detailedExecDirectives.includes('属地落实')}
+                onChange={(e) =>
+                  setDetailedExecDirectives((prev) =>
+                    e.target.checked ? [...prev, '属地落实'] : prev.filter((x) => x !== '属地落实')
+                  )
+                }
+              >
+                属地落实
+              </Checkbox>
+              <Checkbox>持续监测</Checkbox>
+              <Checkbox>协调删帖</Checkbox>
+              <Checkbox checked>总队落实</Checkbox>
+              <Checkbox>领导研判</Checkbox>
+              <Checkbox>平台举报</Checkbox>
+              <Checkbox>属地稳控</Checkbox>
             </div>
           </div>
 
-          <div className="section-sub-title" style={{ marginTop: 16 }}>附件总览</div>
-          <div style={{ background: '#fafafa', border: '1px dashed #d9d9d9', borderRadius: 6, padding: '24px 0', textAlign: 'center', color: '#bfbfbf', fontSize: 12 }}>
-            <InboxOutlined style={{ fontSize: 24, marginBottom: 4 }} />
-            <div>暂无数据附件</div>
-          </div>
-
-          <div className="section-sub-title" style={{ marginTop: 16 }}>原发热度</div>
-          <div style={{ fontSize: 12, color: '#595959', lineHeight: 1.6 }}>
-            淮安区的小黄毛真是太猖狂了。#淮安 #淮安美食 #河下古镇……
-            <div style={{ color: '#8c8c8c', marginTop: 4 }}>
-              2026-10-08 16:07:27 ｜ 今日头条 ｜ 人间万象
-            </div>
-          </div>
-
-          <div className="section-sub-title" style={{ marginTop: 16 }}>相似信息 0</div>
-          <div style={{ color: '#bfbfbf', fontSize: 12 }}>暂无相似信息</div>
-        </div>
-
-        {/* 右侧：处置详情 / 分析研判工作台 (核心增量：跨租户指令下发与载荷自描述) */}
-        <div className="ai-analysis-right-col">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #f0f0f0', paddingBottom: 8, marginBottom: 12 }}>
-            <Space size={16}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: '#1677ff', borderBottom: '2px solid #1677ff', paddingBottom: 6 }}>
-                分析研判
-              </span>
-              <span style={{ fontSize: 13, color: '#6b7280', cursor: 'pointer' }}>处置过程</span>
-              <span style={{ fontSize: 13, color: '#6b7280', cursor: 'pointer' }}>处置详情</span>
-            </Space>
-            <Tag color="processing">下达处置指令</Tag>
-          </div>
-
-          {/* 下一步指令下达 */}
-          <div style={{ marginBottom: 12 }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: '#1f2937' }}>● 下一步指令下达</span>
-            <Tag color="orange" style={{ marginLeft: 8 }}>未上传视频</Tag>
-          </div>
-
-          <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 10 }}>常用指令</div>
-
-          {/* 本单位指令 */}
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }}>
-              | 本单位指令
-            </div>
-            <div style={{ fontSize: 12, color: '#6b7280' }}>
-              补充指令内容：<span style={{ color: '#1677ff', cursor: 'pointer' }}>填写</span>
-            </div>
-          </div>
-
-          {/* 执行单位指令 (核心增量改造：跨租户下发至徐州市局) */}
-          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: 14 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#1e293b' }}>
-                | 执行单位指令（跨租户协同穿透）
-              </div>
-              <Tag color="purple">跨公司租户穿透</Tag>
-            </div>
-
-            {/* 执行单位下拉选择 (挂载 AxHub 图钉批注 1) */}
-            <div style={{ marginBottom: 10 }}>
-              <div style={{ fontSize: 12, color: '#475569', marginBottom: 4 }}>
-                选择跨租户执行节点：
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#1e293b', marginBottom: 6 }}>
+                目标接收地市部门 <span style={{ color: '#ef4444' }}>*</span>
               </div>
               <Annotated
                 pin={1}
-                title="跨租户路由寻址规则"
-                note="路由寻址规则：检测目标为独立部署地市时，绕过本地指令岗位字典，检索目标租户下 is_cross_tenant_receiver = true 的岗位集合推送待办池。"
-                tag="路由寻址规则"
-                placement="top-right"
+                title="跨租户定向派发（目标部门）"
+                note="省厅总队下达指令时指定目标地市部门（徐州市局网安支队），系统自动流转至该部门申领了【指令接收岗】的账号待办池中。"
+                tag="跨域派工"
+                placement="bottom-left"
               >
-                <div className="incremental-container" style={{ width: '100%' }}>
-                  <Select
-                    value={targetTenant}
-                    onChange={(val) => setTargetTenant(val)}
-                    style={{ width: '100%' }}
-                    className="incremental-highlight"
-                  >
-                    <Option value="xuzhou">徐州市公安局 (独立部署地市租户 · 跨网)</Option>
-                    <Option value="changzhou">常州市公安局 (独立部署地市租户)</Option>
-                    <Option value="huaian">淮安市公安局 (本级内网租户)</Option>
-                  </Select>
-                  <span className="incremental-badge">改</span>
-                </div>
+                <Select
+                  style={{ width: '100%', height: 40 }}
+                  value={targetTenant}
+                  onChange={setTargetTenant}
+                >
+                  <Option value="徐州市公安局网安支队">徐州市公安局网安支队</Option>
+                  <Option value="南京市公安局网安支队">南京市公安局网安支队</Option>
+                  <Option value="苏州市公安局网安支队">苏州市公安局网安支队</Option>
+                </Select>
               </Annotated>
-            </div>
+            </Col>
 
-            {/* 载荷自描述卡片 Payload Self-description (挂载 AxHub 图钉批注 2) */}
-            {targetTenant === 'xuzhou' && (
-              <Annotated
-                pin={2}
-                title="Payload Self-description 机制"
-                note="Payload Self-description 机制：强制打包指令名称、分类、处置规范描述及截止时间，确保私有化地市无需配置省厅字典即可完全理解指令要求。"
-                tag="载荷自描述机制"
-                placement="top-right"
-              >
-                <div className="payload-self-describing-box incremental-highlight">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                    <CheckCircleFilled style={{ color: '#16a34a', fontSize: 14 }} />
-                    <span style={{ fontSize: 12, fontWeight: 600, color: '#15803d' }}>
-                      已激活跨租户标准载荷 (Payload Self-description)
-                    </span>
-                    <span className="incremental-badge" style={{ position: 'static' }}>改</span>
-                  </div>
-                  <div style={{ fontSize: 11, color: '#334155', lineHeight: 1.5 }}>
-                    检测到【徐州市公安局】为独立部署私有化租户。系统已自动打包指令分类规范、处置步骤与时效要求，直接穿透至徐州市局内网【应急处置 - 待处理】待办池。
-                  </div>
-                </div>
-              </Annotated>
-            )}
-
-            {/* 指令分类复选 */}
-            <div style={{ marginTop: 10, marginBottom: 8 }}>
-              <div style={{ fontSize: 12, color: '#475569', marginBottom: 4 }}>
-                指令任务分类：
+            <Col span={12}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#1e293b', marginBottom: 6 }}>
+                要求办结时效 <span style={{ color: '#ef4444' }}>*</span>
               </div>
-              <Checkbox.Group
-                options={['落地核查', '应急处置', '信息通报', '动态监测']}
-                value={instructionTypes}
-                onChange={(checked) => setInstructionTypes(checked as string[])}
+              <Input
+                style={{ height: 40 }}
+                value={timeLimit}
+                onChange={(e) => setTimeLimit(e.target.value)}
               />
-            </div>
+            </Col>
 
-            {/* 指令内容 */}
-            <div style={{ marginBottom: 10 }}>
-              <div style={{ fontSize: 12, color: '#475569', marginBottom: 4 }}>
-                补充指令内容（预置规范）：
-              </div>
-              <TextArea
-                rows={3}
-                value={instructionContent}
-                onChange={(e) => setInstructionContent(e.target.value)}
-                placeholder="请输入具体的指令描述与规范"
-              />
-            </div>
-
-            {/* 反馈时效 */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12, color: '#475569' }}>
-              <span>反馈时效要求：</span>
-              <Tag color="red" style={{ fontWeight: 600 }}>限 4 小时内反馈 (今日 18:00 前)</Tag>
-            </div>
-          </div>
-        </div>
-      </div>
-    </Modal>
-  );
-
-  // =========================================================================
-  // 视图 3：市局端 - 应急处置待办池与并发抢占 (1:1 参考图 3 真实系统)
-  // =========================================================================
-  const renderCityXuzhouView = () => (
-    <div className="city-xuzhou-view-wrapper">
-      {/* 顶部公安内网环境标识 */}
-      <div className="scenario-env-header env-city-audit">
-        <div className="scenario-env-info">
-          <span className="env-tag-badge">
-            <ApartmentOutlined /> 地市接收端 · 私有化租户
-          </span>
-          <span className="scenario-env-title">
-            徐州市公安局网安支队 · 舆情一体化智控平台
-          </span>
-          <span className="scenario-env-subtitle">
-            （值班岗：李四 / 岗位：支队值班岗 ｜ 路由：/city-xuzhou/emergency/task-list）
-          </span>
-        </div>
-        <Space>
-          <Button
-            size="small"
-            onClick={() => setCurrentView('provincial')}
-          >
-            ← 返回省厅总队端 (视图 1)
-          </Button>
-        </Space>
-      </div>
-
-      {/* 待办通知横幅 */}
-      <Alert
-        message={
-          instructionStatus === 'feedback_submitted'
-            ? '该指令已处置完成并提交反馈，正在等待省厅总队复核销号。'
-            : instructionStatus === 'claimed_userA'
-            ? '您已成功抢占签收该省厅指令（责任人：当前用户）！请线下核查后点击【提交反馈】录入处置结果。'
-            : instructionStatus === 'claimed_userB'
-            ? '该省厅指令已被同事 [张警官 (支队值班岗)] 抢先签收办理，您无须重复处置。'
-            : '当前待办池有 1 条来自省厅网安总队的跨租户下发指令待签收抢占！'
-        }
-        type={
-          instructionStatus === 'feedback_submitted'
-            ? 'success'
-            : instructionStatus === 'claimed_userA'
-            ? 'info'
-            : instructionStatus === 'claimed_userB'
-            ? 'warning'
-            : 'error'
-        }
-        showIcon
-        style={{ marginBottom: 14 }}
-      />
-
-      {/* 顶部检索表单 (1:1 参考图 3) */}
-      <div className="stream-filter-container">
-        <Row gutter={[12, 10]}>
-          <Col span={6}>
-            <div className="stream-filter-field">
-              <span className="stream-filter-label">报送信息全文搜</span>
-              <Input placeholder="请输入昵称、网址、组合搜索" allowClear />
-            </div>
-          </Col>
-          <Col span={6}>
-            <div className="stream-filter-field">
-              <span className="stream-filter-label">指令下发时间</span>
-              <DatePicker.RangePicker style={{ width: '100%' }} />
-            </div>
-          </Col>
-          <Col span={6}>
-            <div className="stream-filter-field">
-              <span className="stream-filter-label">处置时间</span>
-              <DatePicker.RangePicker style={{ width: '100%' }} />
-            </div>
-          </Col>
-          <Col span={6}>
-            <div className="stream-filter-field">
-              <span className="stream-filter-label">刊号</span>
-              <Input placeholder="输入刊号查询" />
-            </div>
-          </Col>
-          <Col span={6}>
-            <div className="stream-filter-field">
-              <span className="stream-filter-label">指令状态</span>
-              <Select defaultValue="all" style={{ width: '100%' }}>
-                <Option value="all">全部</Option>
-                <Option value="pending">待处理</Option>
-                <Option value="done">已处理</Option>
-              </Select>
-            </div>
-          </Col>
-          <Col span={6}>
-            <div className="stream-filter-field">
-              <span className="stream-filter-label">相关人员</span>
-              <Select placeholder="请选择" style={{ width: '100%' }}>
-                <Option value="u1">李四 (支队值班岗)</Option>
-                <Option value="u2">张警官 (支队值班岗)</Option>
-              </Select>
-            </div>
-          </Col>
-          <Col span={6}>
-            <div className="stream-filter-field">
-              <span className="stream-filter-label">编号</span>
-              <Input placeholder="请输入编号" />
-            </div>
-          </Col>
-          <Col span={6} style={{ textAlign: 'right' }}>
-            <Space>
-              <Button size="small">重置</Button>
-              <Button type="primary" size="small">查询</Button>
-              <Button type="link" size="small" style={{ fontSize: 12 }}>收起 ^</Button>
-            </Space>
-          </Col>
-        </Row>
-      </div>
-
-      {/* 任务列表 Tab 与开关 (1:1 参考图 3) */}
-      <div className="stream-tabs-bar" style={{ borderRadius: 6, marginBottom: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <span style={{ fontSize: 14, fontWeight: 600, color: '#1f2937' }}>| 任务列表</span>
-          <div className="stream-tabs-list">
-            <div
-              className={`stream-tab-item ${cityTabKey === 'todo' ? 'active' : ''}`}
-              onClick={() => setCityTabKey('todo')}
-            >
-              待处理
-              <Badge
-                count={instructionStatus === 'issued' ? 1 : 0}
-                size="small"
-                style={{ backgroundColor: '#ff4d4f', marginLeft: 2 }}
-              />
-            </div>
-            <div
-              className={`stream-tab-item ${cityTabKey === 'done' ? 'active' : ''}`}
-              onClick={() => setCityTabKey('done')}
-            >
-              已处理(6)
-            </div>
-            <div
-              className={`stream-tab-item ${cityTabKey === 'report' ? 'active' : ''}`}
-              onClick={() => setCityTabKey('report')}
-            >
-              信息编报(9)
-            </div>
-            <div
-              className={`stream-tab-item ${cityTabKey === 'feedback' ? 'active' : ''}`}
-              onClick={() => setCityTabKey('feedback')}
-            >
-              徐州反馈(1)
-            </div>
-            <div
-              className={`stream-tab-item ${cityTabKey === 'all' ? 'active' : ''}`}
-              onClick={() => setCityTabKey('all')}
-            >
-              全部
-            </div>
-          </div>
-        </div>
-
-        <Space size={16}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#475569' }}>
-            <Switch defaultChecked size="small" />
-            <span>已打开自动消息提醒</span>
-          </div>
-          <Select defaultValue="desc" size="small" style={{ width: 140 }}>
-            <Option value="desc">指令处理时间降序</Option>
-            <Option value="asc">指令处理时间升序</Option>
-          </Select>
-        </Space>
-      </div>
-
-      {/* 待处理任务卡片列表 (1:1 参考图 3 风格与结构) */}
-      <div className="stream-cards-wrapper" style={{ borderRadius: 6, borderTop: '1px solid #e5e7eb' }}>
-        {/* 卡片 1：来自省厅下发的重点跨租户指令 */}
-        <div className="stream-card-box" style={{ borderColor: '#93c5fd', boxShadow: '0 2px 8px rgba(22, 119, 255, 0.08)' }}>
-          {/* 任务状态条与胶囊 (1:1 参考图 3) */}
-          <div className="emergency-task-strip">
-            <Space size={8} wrap>
-              {/* 醒目标识：省厅下发 */}
-              <Tag
-                style={{
-                  background: '#1e40af',
-                  color: '#ffffff',
-                  fontWeight: 600,
-                  borderRadius: 4,
-                  fontSize: 11,
-                  padding: '1px 8px',
-                  border: 'none',
-                }}
-              >
-                [省厅下发] 跨租户指令
-              </Tag>
-
-              <Tag color="cyan" style={{ borderRadius: 999 }}>2个任务</Tag>
-              <Tag color="purple" style={{ borderRadius: 999 }}>跟踪号: CMD-2026-XUZHOU-001</Tag>
-
-              {/* 绿色任务类型胶囊 */}
-              <Tag
-                style={{
-                  background: '#52c41a',
-                  color: '#ffffff',
-                  border: 'none',
-                  borderRadius: 999,
-                  fontWeight: 600,
-                  fontSize: 11,
-                  padding: '1px 8px',
-                }}
-              >
-                落地核查
-              </Tag>
-
-              {/* 倒计时胶囊：剩余 03小时58分 (参考图 3 红胶囊) */}
-              <span className="countdown-pill-urgent">
-                <ClockCircleOutlined /> 剩余 03小时58分
-              </span>
-
-              <span style={{ fontSize: 12, color: '#64748b' }}>
-                下发人：江苏省公安厅网安总队 (李警官) ｜ 时效：4小时内
-              </span>
-            </Space>
-
-            <Space>
-              <Button
-                size="small"
-                type="link"
-                icon={<PaperClipOutlined />}
-                onClick={() => setPayloadDrawerOpen(true)}
-              >
-                查看指令规程
-              </Button>
-            </Space>
-          </div>
-
-          {/* 卡片头部行 */}
-          <div className="stream-card-header" style={{ marginTop: 8 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Checkbox />
-              <span style={{ fontWeight: 600, color: '#1f2937', fontSize: 14 }}>
-                关于徐州某工业园区网络谣言线索排查处置报告
-              </span>
-              <Tag color="blue">跨租户穿透</Tag>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ color: '#faad14', fontSize: 14 }}>★ ★ ★ ☆ ☆</span>
-              <span style={{ color: '#64748b', fontSize: 12 }}>3.0星</span>
-            </div>
-          </div>
-
-          {/* 编号与要求正文 */}
-          <div style={{ fontSize: 12, color: '#64748b', margin: '4px 0 8px' }}>
-            编号：<code>CMD-2026-XUZHOU-001</code> ｜ 下发时间：{issueTimestamp}
-          </div>
-
-          {/* AI 摘要色块与初研研判色块 (参考图 3) */}
-          <div className="stream-card-split-body" style={{ margin: '8px 0' }}>
-            <div className="stream-card-analysis-side">
-              <div className="stream-card-ai-badge-box">
-                <span style={{ background: '#52c41a', color: '#fff', fontSize: 11, padding: '1px 7px', borderRadius: 10, fontWeight: 600, flexShrink: 0 }}>
-                  AI 摘要
+            <Col span={24}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#1e293b' }}>
+                  指令补充说明与参数化模板
                 </span>
-                <div style={{ fontSize: 12, color: '#374151' }}>
-                  涉事网民在外市发布关于徐州某重点工业园区涉污及停工不实言论，煽动集聚维权。省厅指令要求徐州市局属地就地落地约谈。
-                </div>
-              </div>
 
-              <div className="stream-card-opinion-badge-box">
-                <span style={{ background: '#fa8c16', color: '#fff', fontSize: 11, padding: '1px 7px', borderRadius: 10, fontWeight: 600, flexShrink: 0 }}>
-                  省厅指令规范
-                </span>
-                <div style={{ fontSize: 12, color: '#374151' }}>
-                  {instructionContent}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* 任务状态、经办人与操作栏 */}
-          <div className="stream-card-actions-bar">
-            {/* 经办人与流转状态 */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span style={{ fontSize: 12, color: '#64748b' }}>经办人状态：</span>
-              {instructionStatus === 'issued' && (
-                <Tag color="default" style={{ fontWeight: 600 }}>
-                  <UserOutlined /> 待认领 (全支队在岗民警可见)
-                </Tag>
-              )}
-              {instructionStatus === 'claimed_userA' && (
-                <Tag color="blue" style={{ fontWeight: 600 }}>
-                  <CheckCircleFilled /> 处置中（经办人：当前民警）
-                </Tag>
-              )}
-              {instructionStatus === 'claimed_userB' && (
-                <Tag color="purple" style={{ fontWeight: 600 }}>
-                  <LockOutlined /> 已被同事张警官认领
-                </Tag>
-              )}
-              {instructionStatus === 'feedback_submitted' && (
-                <Tag color="green" style={{ fontWeight: 600 }}>
-                  <CheckCircleFilled /> 已提交反馈待总队销号
-                </Tag>
-              )}
-            </div>
-
-            {/* 核心操作列 (挂载 AxHub 图钉批注 3) */}
-            <div>
-              {instructionStatus === 'issued' && (
                 <Annotated
                   pin={3}
-                  title="并发防重签收机制"
-                  note="防重机制：前端携带指令当前版本号发起签收请求；若捕获版本冲突（被同事先行签收），系统自动拦截并提示经办人姓名，杜绝重复处置。"
-                  tag="并发防重"
+                  title="参数化变量指令模板"
+                  note="详细指令下发支持动态插入 [单位名称]、[处理周期] 等占位变量，下发时由系统引擎自动替换为规范业务文本。"
+                  tag="变量模板"
                   placement="top-right"
                 >
-                  <Button
-                    type="primary"
-                    icon={<CheckCircleOutlined />}
-                    style={{ background: '#1677ff', borderColor: '#1677ff', minWidth: 110, fontWeight: 500 }}
-                    onClick={handleClaimByUserA}
-                  >
-                    认领签收
-                  </Button>
+                  <Space size={6}>
+                    <span style={{ fontSize: 12, color: '#64748b' }}>插入变量：</span>
+                    <button
+                      type="button"
+                      className="variable-insert-btn"
+                      onClick={() => handleInsertVariable('[单位名称]')}
+                    >
+                      [单位名称]
+                    </button>
+                    <button
+                      type="button"
+                      className="variable-insert-btn"
+                      onClick={() => handleInsertVariable('[指令名称]')}
+                    >
+                      [指令名称]
+                    </button>
+                    <button
+                      type="button"
+                      className="variable-insert-btn"
+                      onClick={() => handleInsertVariable('[处理周期]')}
+                    >
+                      [处理周期]
+                    </button>
+                  </Space>
                 </Annotated>
-              )}
-
-              {instructionStatus === 'claimed_userA' && (
-                <Space size={10}>
-                  <Button
-                    style={{ borderColor: '#d9d9d9', color: '#595959' }}
-                    onClick={() => setFeedbackModalOpen(true)}
-                  >
-                    办理反馈
-                  </Button>
-                  <Button
-                    type="primary"
-                    icon={<BranchesOutlined />}
-                    style={{ background: '#1677ff', borderColor: '#1677ff', fontWeight: 500 }}
-                    onClick={() => {
-                      message.success('已开启二次转派，正在进入【场景 4：市局二次转派】...');
-                      if (typeof window !== 'undefined') {
-                        const url = new URL(window.location.href);
-                        url.searchParams.set('page', 'scenario-secondary-dispatch');
-                        window.location.href = url.toString();
-                      }
-                    }}
-                  >
-                    二次指派区县
-                  </Button>
-                </Space>
-              )}
-
-              {instructionStatus === 'claimed_userB' && (
-                <Space>
-                  <Button disabled icon={<CloseCircleOutlined />}>
-                    已被同事张警官认领
-                  </Button>
-                  <Button size="small" onClick={() => setPayloadDrawerOpen(true)}>
-                    调阅指令规程
-                  </Button>
-                </Space>
-              )}
-
-              {instructionStatus === 'feedback_submitted' && (
-                <Space>
-                  <Tag color="success">已反馈/待省厅确认</Tag>
-                  <Button
-                    size="small"
-                    type="link"
-                    onClick={() => setFeedbackModalOpen(true)}
-                  >
-                    查看反馈内容
-                  </Button>
-                </Space>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* 卡片 2：本地普通历史处置任务 (1:1 还原图 3 丰富真实感) */}
-        <div className="stream-card-box">
-          <div className="stream-card-header">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Checkbox />
-              <span style={{ fontWeight: 600, color: '#1f2937' }}>
-                #淮安自来水 #vivo #s60
-              </span>
-              <Tag color="blue">已处置</Tag>
-            </div>
-            <div style={{ color: '#8c8c8c', fontSize: 12 }}>编号: 202608110001</div>
-          </div>
-          <div style={{ fontSize: 12, color: '#64748b', margin: '4px 0' }}>
-            AI摘要：淮安市民反映多地小区自来水出现刺鼻异味，疑似自来水管网污染，网安配合排查。
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-            <Tag color="default">信息编报已完成</Tag>
-            <Tag color="success">已签收办结</Tag>
-          </div>
-        </div>
-
-        {/* 底部翻页 */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
-          <Button icon={<ExportOutlined />} size="small">导出数据</Button>
-          <Pagination size="small" total={2} current={1} pageSize={10} showTotal={(total) => `共 ${total} 条`} />
-        </div>
-      </div>
-    </div>
-  );
-
-  // =========================================================================
-  // 视图 4：市局端 - 指令办理与反馈弹窗 (1:1 参考图 4 真实系统)
-  // =========================================================================
-  const renderFeedbackModal = () => (
-    <Modal
-      title={
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingRight: 24 }}>
-          <span style={{ fontSize: 16, fontWeight: 600 }}>信息编报 / 处置反馈与成果报送</span>
-          <span style={{ fontSize: 12, color: '#1677ff', cursor: 'pointer' }}>
-            <CopyOutlined /> 一键复制
-          </span>
-        </div>
-      }
-      open={feedbackModalOpen}
-      onCancel={() => setFeedbackModalOpen(false)}
-      width={720}
-      footer={[
-        <Button key="close" onClick={() => setFeedbackModalOpen(false)}>
-          关闭
-        </Button>,
-        <Button
-          key="submit"
-          type="primary"
-          icon={<SendOutlined />}
-          style={{ background: '#1677ff' }}
-          onClick={handleSubmitFeedback}
-        >
-          提交工作请示 / 报送省厅
-        </Button>,
-      ]}
-    >
-      <div style={{ padding: '8px 0' }}>
-        <Alert
-          message="成果报送直通说明"
-          description="该处置反馈将自动打包回传至省公安厅网安总队发起人待审池，核查笔录与存证材料将作为办结销号佐证。"
-          type="info"
-          showIcon
-          style={{ marginBottom: 14 }}
-        />
-
-        {/* 标题 */}
-        <div style={{ marginBottom: 14 }}>
-          <div style={{ fontSize: 13, fontWeight: 500, color: '#374151', marginBottom: 6 }}>
-            <span style={{ color: '#ff4d4f' }}>*</span> 标题：
-          </div>
-          <Input
-            value={feedbackTitle}
-            onChange={(e) => setFeedbackTitle(e.target.value)}
-            placeholder="请输入反馈标题"
-          />
-        </div>
-
-        {/* 信息编报内容 (多行文本域) */}
-        <div style={{ marginBottom: 14 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-            <div style={{ fontSize: 13, fontWeight: 500, color: '#374151' }}>
-              <span style={{ color: '#ff4d4f' }}>*</span> 信息编报内容（处置措施与成果）：
-            </div>
-            <Tag color="purple" style={{ fontSize: 11 }}>
-              <RobotOutlined style={{ marginRight: 4 }} /> AI编报辅助
-            </Tag>
-          </div>
-          <TextArea
-            rows={5}
-            value={feedbackContent}
-            onChange={(e) => setFeedbackContent(e.target.value)}
-            placeholder="请输入处置经过、落地约谈情况与当事人态度"
-          />
-        </div>
-
-        {/* 佐证材料与附件 */}
-        <div style={{ marginBottom: 14 }}>
-          <div style={{ fontSize: 13, fontWeight: 500, color: '#374151', marginBottom: 6 }}>
-            佐证附件与核查笔录：
-          </div>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 6, padding: '8px 12px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <PaperClipOutlined style={{ color: '#1677ff' }} />
-              <span>王某约谈询问笔录_已盖章.pdf (1.4MB)</span>
-            </div>
-            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 6, padding: '8px 12px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <PaperClipOutlined style={{ color: '#1677ff' }} />
-              <span>现场劝导及删除视频证明.jpg (860KB)</span>
-            </div>
-          </div>
-        </div>
-
-        {/* 工作请示岗位 */}
-        <div style={{ fontSize: 12, color: '#64748b' }}>
-          工作请示岗位：<span style={{ color: '#1e293b', fontWeight: 600 }}>徐州市公安局网安支队值班岗</span>
-        </div>
-      </div>
-    </Modal>
-  );
-
-  // =========================================================================
-  // 载荷自描述包详情抽屉 (调阅跨租户底层封签)
-  // =========================================================================
-  const renderPayloadDrawer = () => (
-    <Drawer
-      title="跨租户载荷自描述包 (Payload Self-description) 架构详情"
-      width={560}
-      open={payloadDrawerOpen}
-      onClose={() => setPayloadDrawerOpen(false)}
-    >
-      <Alert
-        message="自描述数据包技术规格"
-        description="针对私有化地市租户无省厅统一业务字典的问题，系统在网络摆渡层将指令所有元属性与结构规范完整打包为标准 JSON 载荷自描述封签。"
-        type="info"
-        showIcon
-        style={{ marginBottom: 16 }}
-      />
-
-      <div style={{ background: '#1e293b', color: '#f8fafc', padding: 14, borderRadius: 6, fontFamily: 'monospace', fontSize: 12, lineHeight: 1.6, overflowX: 'auto' }}>
-        <pre style={{ margin: 0 }}>
-{`{
-  "tracking_id": "CMD-2026-XUZHOU-001",
-  "issuer_tenant": "jiangsu_provincial_police",
-  "issuer_unit": "江苏省公安厅网安总队指挥研判大厅",
-  "target_tenant": "xuzhou_city_police",
-  "target_routing_rule": "is_cross_tenant_receiver == true",
-  "payload_self_description": {
-    "instruction_types": ["落地核查", "应急处置"],
-    "urgency": "high",
-    "deadline_hours": 4,
-    "deadline_time": "2026-10-09 18:00:00",
-    "specification": "${instructionContent}",
-    "optimistic_lock": {
-      "initial_version": 1,
-      "lock_type": "atomic_claim"
-    }
-  }
-}`}
-        </pre>
-      </div>
-
-      <div style={{ marginTop: 20, fontSize: 13, lineHeight: '24px', color: '#334155' }}>
-        <p><strong>跟踪标识：</strong> <code>CMD-2026-XUZHOU-001</code></p>
-        <p><strong>当前乐观锁版本：</strong> <Tag color="blue">v{optimisticVersion}</Tag></p>
-        <p><strong>经办人认领状态：</strong> {claimOperator}</p>
-        <p><strong>下发时间：</strong> {issueTimestamp}</p>
-        {claimTimestamp && <p><strong>签收时间：</strong> {claimTimestamp}</p>}
-      </div>
-    </Drawer>
-  );
-
-  // =========================================================================
-  // 悬浮导引控制台 (Glassmorphism 磨砂玻璃质感 · 统一右上角平滑收纳)
-  // =========================================================================
-  const renderFloatingGuideConsole = () => {
-    const isStep1Active = true;
-    const isStep2Active = instructionStatus !== 'draft';
-    const isStep3Active = instructionStatus === 'claimed_userA' || instructionStatus === 'claimed_userB' || instructionStatus === 'feedback_submitted';
-    const isStep4Active = instructionStatus === 'feedback_submitted';
-
-    return (
-      <div
-        className={`scenario-guide-console ${consoleCollapsed ? 'collapsed' : ''} ${isDragging ? 'is-dragging' : ''}`}
-        style={
-          hasCustomPos && !consoleCollapsed
-            ? { left: consolePos.x, top: consolePos.y, right: 'auto' }
-            : { right: 24, top: 84 }
-        }
-      >
-        {consoleCollapsed ? (
-          <Tooltip title="点击展开跨租户指令与多人待办指引面板" placement="left">
-            <div
-              className="scenario-guide-ball-inner"
-              onClick={() => {
-                setConsoleCollapsed(false);
-                setHasCustomPos(false);
-              }}
-            >
-              <CompassOutlined style={{ fontSize: 20 }} />
-              <span className="guide-ball-badge">
-                {currentView === 'provincial' ? '1/4' : instructionStatus === 'issued' ? '2/4' : instructionStatus === 'feedback_submitted' ? '4/4 ✓' : '3/4'}
-              </span>
-            </div>
-          </Tooltip>
-        ) : (
-          <div className="guide-console-full-content">
-            {/* 头部 */}
-            <div className="guide-console-header" onMouseDown={handleStartDrag}>
-              <div className="guide-header-title">
-                <HolderOutlined style={{ opacity: 0.45, cursor: 'grab', marginRight: 2 }} />
-                <span className="guide-badge-pill">场景 3</span>
-                <span className="guide-header-title-text" title="跨租户指令与多人待办">
-                  跨租户指令与多人待办
-                </span>
               </div>
-              <button
-                className="guide-toggle-btn no-drag"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setConsoleCollapsed(true);
-                  setHasCustomPos(false);
-                }}
-                title="折叠为微缩悬浮球"
+
+              <TextArea
+                rows={3}
+                value={supplementContent}
+                onChange={(e) => setSupplementContent(e.target.value)}
+                style={{ fontSize: 13, lineHeight: 1.6 }}
+              />
+            </Col>
+
+            <Col span={24}>
+              <Annotated
+                pin={2}
+                title="自描述数据包机制 (Schema v2.4)"
+                note="跨租户下发无需异构字典互通，数据包自包含契约定义、业务上下文与数字防伪签名，地市租户零依赖安全自解析。"
+                tag="Schema契约"
+                placement="bottom-left"
               >
-                <UpOutlined />
-              </button>
-            </div>
-
-            <div className="guide-console-body">
-              {/* 四等分胶囊进度条 */}
-              <div className="guide-progress-bar-container">
-                <div className={`guide-progress-pill ${isStep1Active ? 'active' : ''}`} />
-                <div className={`guide-progress-pill ${isStep2Active ? 'active' : ''}`} />
-                <div className={`guide-progress-pill ${isStep3Active ? 'active' : ''}`} />
-                <div className={`guide-progress-pill ${isStep4Active ? 'active' : ''}`} />
-              </div>
-
-              {/* 进度步骤文本 */}
-              <div className="guide-step-labels" style={{ fontSize: 11 }}>
-                <span className={`guide-step-label-item ${currentView === 'provincial' ? 'active' : ''}`}>
-                  1. 省厅研判
-                </span>
-                <span className={`guide-step-label-item ${currentView === 'cityXuzhou' && instructionStatus === 'issued' ? 'active' : ''}`}>
-                  2. 市局待办
-                </span>
-                <span className={`guide-step-label-item ${instructionStatus === 'claimed_userA' || instructionStatus === 'claimed_userB' ? 'active' : ''}`}>
-                  3. 认领签收
-                </span>
-                <span className={`guide-step-label-item ${instructionStatus === 'feedback_submitted' ? 'active' : ''}`}>
-                  4. 反馈闭环
-                </span>
-              </div>
-
-              {/* 指引卡片 */}
-              <div className="guide-step-card-light" style={{ marginTop: 10 }}>
-                <InfoCircleOutlined style={{ color: '#1677ff', fontSize: 14, marginTop: 2, flexShrink: 0 }} />
-                <div className="guide-step-card-text">
-                  {currentView === 'provincial' && (
-                    <span>
-                      当前处于省厅总队端。点击【AI研判下发】弹窗，向跨租户的【徐州市公安局】下达载荷自描述指令，系统将自动打包推入徐州内网待办池。
-                    </span>
-                  )}
-                  {currentView === 'cityXuzhou' && instructionStatus === 'issued' && (
-                    <span>
-                      指令已推入徐州市局待办池（全支队可见）。可测试【正常签收抢占 (分支 A)】或【模拟并发冲突拦截 (分支 B)】体会乐观锁防重机制。
-                    </span>
-                  )}
-                  {currentView === 'cityXuzhou' && instructionStatus === 'claimed_userA' && (
-                    <span style={{ color: '#16a34a', fontWeight: 500 }}>
-                      分支 A 成功：您已抢占该指令并锁定责任人！请点击【提交处置反馈】录入工作成果并回传省厅。
-                    </span>
-                  )}
-                  {currentView === 'cityXuzhou' && instructionStatus === 'claimed_userB' && (
-                    <span style={{ color: '#dc2626', fontWeight: 500 }}>
-                      分支 B 拦截：同事张警官已抢先办理，系统乐观锁拦截了重复签收操作，状态自动刷新置灰！
-                    </span>
-                  )}
-                  {instructionStatus === 'feedback_submitted' && (
-                    <span style={{ color: '#16a34a', fontWeight: 500 }}>
-                      全流程闭环达成：徐州市局已提交反馈，数据实时同步回省厅总队！
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* 核心快捷操作区 */}
-              <div className="no-drag" style={{ marginTop: 10 }}>
-                {currentView === 'provincial' ? (
-                  <>
-                    <button
-                      className="guide-btn-sub"
-                      onClick={() => setAiModalOpen(true)}
-                    >
-                      <RobotOutlined style={{ fontSize: 12 }} /> 呼出【AI辅助研判与跨租户指令】弹窗
-                    </button>
-                    <button
-                      className="guide-btn-primary"
-                      onClick={() => setCurrentView('cityXuzhou')}
-                    >
-                      前往徐州市局待办池 (视图 3) <ArrowRightOutlined style={{ fontSize: 12 }} />
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    {/* 乐观锁抢占测试双按钮 */}
-                    <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-                      <button
-                        className="guide-btn-sub"
-                        style={{ flex: 1, color: '#16a34a', borderColor: '#86efac', marginBottom: 0 }}
-                        onClick={handleClaimByUserA}
-                      >
-                        测试分支 A: 正常抢占
-                      </button>
-                      <button
-                        className="guide-btn-sub"
-                        style={{ flex: 1, color: '#dc2626', borderColor: '#fca5a5', marginBottom: 0 }}
-                        onClick={handleSimulateUserBConflict}
-                      >
-                        测试分支 B: 冲突拦截
-                      </button>
-                    </div>
-
-                    {instructionStatus === 'claimed_userA' && (
-                      <button
-                        className="guide-btn-primary"
-                        onClick={() => setFeedbackModalOpen(true)}
-                      >
-                        呼出【信息编报与反馈弹窗】(视图 4) <ArrowRightOutlined style={{ fontSize: 12 }} />
-                      </button>
-                    )}
-
-                    <button
-                      className="guide-btn-primary"
-                      onClick={handleResetDemo}
-                      style={{
-                        background: '#f3f4f6',
-                        color: '#374151',
-                        border: '1px solid #d1d5db',
-                        boxShadow: 'none',
-                        marginTop: 4,
-                      }}
-                    >
-                      <ReloadOutlined style={{ fontSize: 12 }} /> 重置全流程演示
-                    </button>
-                  </>
-                )}
-              </div>
-
-              {/* 视图分段控制器 */}
-              <div className="guide-segmented-wrapper no-drag">
                 <div
-                  className={`guide-segmented-item ${currentView === 'provincial' ? 'active' : ''}`}
-                  onClick={() => setCurrentView('provincial')}
-                >
-                  省厅研判
-                </div>
-                <div
-                  className={`guide-segmented-item ${currentView === 'cityXuzhou' ? 'active' : ''}`}
-                  onClick={() => setCurrentView('cityXuzhou')}
-                >
-                  市局待办
-                </div>
-                <div
-                  className="guide-segmented-item"
-                  onClick={() => {
-                    setCurrentView('cityXuzhou');
-                    setFeedbackModalOpen(true);
+                  style={{
+                    background: '#eff6ff',
+                    border: '1px solid #bfdbfe',
+                    borderRadius: 6,
+                    padding: '10px 14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
                   }}
                 >
-                  办理反馈
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <CodeOutlined style={{ color: '#2563eb', fontSize: 16 }} />
+                    <span style={{ fontSize: 13, color: '#1e40af', fontWeight: 500 }}>
+                      底层数据契约：<code>Schema v2.4 跨租户自描述数据包（含防篡改数字签名）</code>
+                    </span>
+                  </div>
+                  <Button
+                    type="link"
+                    size="small"
+                    onClick={() => setPayloadDrawerOpen(true)}
+                  >
+                    查看契约 JSON ➔
+                  </Button>
                 </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
+              </Annotated>
+            </Col>
+          </Row>
+        </div>
+      </Modal>
 
-  return (
-    <div className="scenario-cross-tenant-container" style={{ position: 'relative' }}>
-      {/* 视图主体渲染 */}
-      {currentView === 'provincial' && renderProvincialView()}
-      {currentView === 'cityXuzhou' && renderCityXuzhouView()}
-
-      {/* 业务弹窗群 */}
-      {renderAiAnalysisModal()}
-      {renderFeedbackModal()}
-      {renderPayloadDrawer()}
-
-      {/* 悬浮导引控制台 */}
-      {renderFloatingGuideConsole()}
+      {/* =========================================================================
+          3. Schema v2.4 契约抽屉
+          ========================================================================= */}
+      <Drawer
+        title="跨租户自描述数据包契约 (Schema v2.4)"
+        placement="right"
+        width={520}
+        open={payloadDrawerOpen}
+        onClose={() => setPayloadDrawerOpen(false)}
+      >
+        <div style={{ background: '#0f172a', padding: 14, borderRadius: 6, color: '#38bdf8', fontSize: 12, fontFamily: 'monospace', lineHeight: 1.6 }}>
+          {JSON.stringify(
+            {
+              $schema: 'https://security.police.cn/schemas/directive-v2.4.json',
+              directiveId: 'DIR-20261010-0088',
+              issuerTenant: 'PROVINCIAL_COMMAND_CENTER',
+              targetTenant: targetTenant,
+              timeLimit: timeLimit,
+              directives: [...detailedUnitDirectives, ...detailedExecDirectives],
+              payloadContent: supplementContent,
+              verificationSignature: 'SHA256:e8f9a0c14b2d88e99...',
+            },
+            null,
+            2
+          )}
+        </div>
+      </Drawer>
     </div>
   );
 };
