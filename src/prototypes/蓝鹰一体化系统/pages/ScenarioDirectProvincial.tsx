@@ -204,7 +204,7 @@ export const ScenarioDirectProvincial: React.FC = () => {
       setTimeout(() => {
         setSyncingDictionary(false);
         message.success({
-          content: '字典已成功切换为省厅13地市字典，激活全省属地与跨地市通报。',
+          content: '切换成功！',
           key: 'dictSync',
           duration: 2,
         });
@@ -244,7 +244,7 @@ export const ScenarioDirectProvincial: React.FC = () => {
         const nowStr = dayjs().format('YYYY-MM-DD HH:mm:ss');
         setSubmitTimestamp(nowStr);
         message.success({
-          content: '上报成功！已直通同步至省厅【区县上报】，并基于名称匹配镜像推送至连云港市公安局【通报信息】',
+          content: '上报成功！',
           key: 'submittingKey',
           duration: 3,
         });
@@ -263,7 +263,7 @@ export const ScenarioDirectProvincial: React.FC = () => {
       setInstructionSubmitting(false);
       setInstructionModalOpen(false);
       setProvincialAdopted(true);
-      message.success('处置指令下发成功！该记录状态已更新为【已采纳】，计入省厅对淮安市局的采纳考核分值！');
+      message.success('指令下达成功！');
     }, 400);
   };
 

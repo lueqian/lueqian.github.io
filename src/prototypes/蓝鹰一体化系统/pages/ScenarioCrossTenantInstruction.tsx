@@ -135,7 +135,7 @@ const ScenarioCrossTenantInstruction: React.FC = () => {
     setIssueModalOpen(false);
     setAiModalOpen(false);
     message.success({
-      content: '跨租户处置指令下达成功！载荷自描述包已通过安全通道推入 [徐州市公安局网安支队] 待办池！',
+      content: '指令下达成功！',
       duration: 3.5,
     });
   };
@@ -665,24 +665,26 @@ const ScenarioCrossTenantInstruction: React.FC = () => {
                     border: '1px solid #bfdbfe',
                     borderRadius: 6,
                     padding: '10px 14px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <CodeOutlined style={{ color: '#2563eb', fontSize: 16 }} />
-                    <span style={{ fontSize: 13, color: '#1e40af', fontWeight: 500 }}>
-                      底层数据契约：<code>Schema v2.4 跨租户自描述数据包（含防篡改数字签名）</code>
-                    </span>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <CodeOutlined style={{ color: '#2563eb', fontSize: 16 }} />
+                      <span style={{ fontSize: 13, color: '#1e40af', fontWeight: 600 }}>
+                        轻量化数据契约：<code>Schema v2.4 跨租户自描述载荷</code>
+                      </span>
+                    </div>
+                    <Button
+                      type="link"
+                      size="small"
+                      onClick={() => setPayloadDrawerOpen(true)}
+                    >
+                      查看传输包 JSON ➔
+                    </Button>
                   </div>
-                  <Button
-                    type="link"
-                    size="small"
-                    onClick={() => setPayloadDrawerOpen(true)}
-                  >
-                    查看契约 JSON ➔
-                  </Button>
+                  <div style={{ fontSize: 12, color: '#3b82f6', marginTop: 4, lineHeight: 1.5 }}>
+                    ⚡ 规避网闸带宽瓶颈：仅打包传输基础元数据（链接、正文、AI研判）与指令参数，免除大附件同步延迟，下发直达目标租户【应急处置 - 总队指令】待办池。
+                  </div>
                 </div>
               </Annotated>
             </Col>
@@ -691,26 +693,52 @@ const ScenarioCrossTenantInstruction: React.FC = () => {
       </Modal>
 
       {/* =========================================================================
-          3. Schema v2.4 契约抽屉
+          3. Schema v2.4 契约抽屉 (轻量化传输 Payload 规范)
           ========================================================================= */}
       <Drawer
-        title="跨租户自描述数据包契约 (Schema v2.4)"
+        title="跨租户轻量化指令载荷 (Schema v2.4)"
         placement="right"
-        width={520}
+        width={560}
         open={payloadDrawerOpen}
         onClose={() => setPayloadDrawerOpen(false)}
       >
-        <div style={{ background: '#0f172a', padding: 14, borderRadius: 6, color: '#38bdf8', fontSize: 12, fontFamily: 'monospace', lineHeight: 1.6 }}>
+        <div style={{ marginBottom: 12, fontSize: 12, color: '#64748b', background: '#f8fafc', padding: 10, borderRadius: 6 }}>
+          <strong>传输策略说明：</strong>为规避不同地市网闸带宽及数据同步FTP方案差异，该载荷采用纯文本轻量化封包，排除了体积庞大的图片/视频附件，确保秒级下达与100%落库。
+        </div>
+        <div style={{ background: '#0f172a', padding: 14, borderRadius: 6, color: '#38bdf8', fontSize: 12, fontFamily: 'monospace', lineHeight: 1.6, overflowX: 'auto' }}>
           {JSON.stringify(
             {
               $schema: 'https://security.police.cn/schemas/directive-v2.4.json',
-              directiveId: 'DIR-20261010-0088',
-              issuerTenant: 'PROVINCIAL_COMMAND_CENTER',
-              targetTenant: targetTenant,
-              timeLimit: timeLimit,
-              directives: [...detailedUnitDirectives, ...detailedExecDirectives],
-              payloadContent: supplementContent,
-              verificationSignature: 'SHA256:e8f9a0c14b2d88e99...',
+              transportStrategy: {
+                mode: 'LIGHTWEIGHT_METADATA_ONLY',
+                largeAttachmentExcluded: true,
+                targetQueue: 'EMERGENCY_PROVINCIAL_DIRECTIVE',
+              },
+              sourceInfo: {
+                url: 'https://v.douyin.com/xuzhou-rumor-0088/',
+                title: '关于徐州某工业园区因环保升级改造停产网络谣言线索排查',
+                content: '徐州某工业园区因环保升级改造停产，网传将引发千人聚集游行抗议，已有网民在微信群中煽动前往园区管委会讨说法，请迅速落实排查处置！',
+                author: '苏北观察员 (ID: 7694739512768873018)',
+                platform: '抖音app',
+                publishTime: '2026-10-10 10:15:20',
+              },
+              aiInsight: {
+                summary: '涉事人包括本地自媒体从业者王某，涉事地点为徐州市贾汪区工业园区，网帖夸大企业停产规模并煽动线下非法聚集。',
+                judgment: '【事件定性】系一起因民生诉求引发的网络串联炒作事件。【关注建议】属地网安落地排查重点人员，责令删除不实言论。',
+                sentimentIndex: 68.5,
+              },
+              directive: {
+                directiveId: 'DIR-20261010-0088',
+                directiveName: '网络谣言核查及涉稳风险落地化解指令',
+                directiveType: '线下核查',
+                timeLimit: timeLimit,
+                directives: [...detailedUnitDirectives, ...detailedExecDirectives],
+                templateContent: supplementContent,
+                issuerTenant: 'JSGA_CYBER_COMMAND_CENTER',
+                issuerUnit: '江苏省公安厅网安总队',
+                targetTenant: targetTenant,
+              },
+              verificationSignature: 'SHA256:e8f9a0c14b2d88e99a81fbc4029b3c4d',
             },
             null,
             2

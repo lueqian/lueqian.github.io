@@ -140,7 +140,7 @@ export const ScenarioCityAudit: React.FC = () => {
       setIsSubmitted(true);
       setSubmitTimestamp(dayjs().format('YYYY-MM-DD HH:mm:ss'));
       setNotifyModalVisible(true);
-      message.warning('已提交！当前租户已开启市局前置审核策略，该舆情已受控暂扣在市局待审池');
+      message.warning('已提交！');
       setCountySubTab('list');
     }, 400);
   };
@@ -150,7 +150,7 @@ export const ScenarioCityAudit: React.FC = () => {
     setAuditStatus('approved');
     setAuditTimestamp(dayjs().format('YYYY-MM-DD HH:mm:ss'));
     setNotifyModalVisible(false);
-    message.success('审核通过！已生成跨网安全摆渡任务并直通推送至省厅中心库');
+    message.success('审核通过！');
   };
 
   // 市局端审核驳回
@@ -163,7 +163,7 @@ export const ScenarioCityAudit: React.FC = () => {
     setAuditTimestamp(dayjs().format('YYYY-MM-DD HH:mm:ss'));
     setRejectModalVisible(false);
     setNotifyModalVisible(false);
-    message.error('已执行驳回！数据终止外发省厅，并已就地闭环回写给武进分局');
+    message.error('已驳回！');
   };
 
   // ==================== 1. 视图 A：区县端填报与列表视图 ====================
@@ -1207,7 +1207,7 @@ export const ScenarioCityAudit: React.FC = () => {
         onOk={() => {
           setProvincialAdopted(true);
           setInstructionModalOpen(false);
-          message.success('已下达省厅指令，该工单已采纳并计入考核！');
+          message.success('指令下达成功！');
         }}
         onCancel={() => setInstructionModalOpen(false)}
         okText="确认下发指令（确认采纳）"

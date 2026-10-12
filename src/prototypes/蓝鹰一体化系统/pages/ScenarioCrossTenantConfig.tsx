@@ -296,7 +296,7 @@ const ScenarioCrossTenantConfig: React.FC = () => {
       })
     );
     setCustomerModalOpen(false);
-    message.success(`客户 [${formCustName}] 配置已成功保存！关联部门 [${formRelatedDept}] 已绑定生效！`);
+    message.success('保存成功！');
   };
 
   // 触发保存岗位
@@ -337,7 +337,7 @@ const ScenarioCrossTenantConfig: React.FC = () => {
     }
 
     setPostModalOpen(false);
-    message.success(`岗位 [${formPostName}] 权限已成功更新！权限配置已实时生效！`);
+    message.success('更新成功！');
   };
 
   // 打开编辑岗位
@@ -818,7 +818,7 @@ const ScenarioCrossTenantConfig: React.FC = () => {
                     message.error('请至少选择一位支队审批人！');
                     return;
                   }
-                  message.success('一体化工作平台定制配置保存成功！已生效更新！');
+                  message.success('保存成功！');
                 }}
                 style={{ background: '#1677ff' }}
               >
