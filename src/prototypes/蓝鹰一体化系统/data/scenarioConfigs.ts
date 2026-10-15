@@ -369,7 +369,7 @@ export const scenarioConfigs: Record<string, ScenarioConfig> = {
     scenarioBadge: '场景 06 / 联合处置与容灾',
     title: '跨租户多单位联合处置 · 指令推送失败排查与全链路容灾补发',
     userStory: {
-      role: '省厅总队值班长 / 地市网安支队值班员',
+      role: '省厅总队值班长 / 舆情民警',
       action: '在发现重大舆情后向多单位（清江浦区、淮安区、淮阴区等）联合下达指令，当专网网闸波动导致部分指令推送失败时，系统实时感知、自动挂起对方时效、即刻拦截呼出排查弹窗，并在各模块支持行内重试与消息中心兜底消除',
       value: '保障跨租户与私有化多部署形态下的指令下发可靠性，彻底杜绝指令未送达导致舆情处置延误的风险',
       kpi: '指令推送异常感知 0秒 · 失败精准补发成功率 100% · 时效挂起误判率 0%',
@@ -430,7 +430,7 @@ export const scenarioConfigs: Record<string, ScenarioConfig> = {
     steps: [
       { step: 1, name: '联合下达与Loading拦截', desc: '选择多单位联合下达指令，展示Loading遮罩与即刻失败拦截弹窗', currentRoleView: 'dispatch' },
       { step: 2, name: '失败排查与精准重发', desc: '在 DirectiveFailureModal 查验错误码与日志，执行精准补发', currentRoleView: 'failure-modal' },
-      { step: 3, name: '应急处置卡片行内重发', desc: '在应急处置卡片明细中查验失败条目、时效挂起标签并体验行内重发', currentRoleView: 'card-retry' },
+      { step: 3, name: '省厅应急处置卡片明细与重发', desc: '在省厅应急处置卡片明细中查验失败条目、时效挂起标签并体验行内重发', currentRoleView: 'card-retry' },
       { step: 4, name: 'AI研判时间轴与消息消除', desc: '查看AI辅助研判处置详情时间轴与消息中心自动消除闭环', currentRoleView: 'msg-center' },
     ],
     annotations: [

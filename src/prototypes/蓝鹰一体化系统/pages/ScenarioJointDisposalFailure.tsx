@@ -59,7 +59,7 @@ const ScenarioJointDisposalFailure: React.FC = () => {
     openAiModal,
   } = useDirectiveState();
 
-  // 核心业务视角：'monitor' (省厅监测预警-发起端) ↔ 'emergency' (应急处置-接收端)
+  // 核心业务视角：'monitor' (省厅内网·监测预警-发起端) ↔ 'emergency' (省厅内网·应急处置-卡片指令明细与重发)
   const [currentPerspective, setCurrentPerspective] = useState<'monitor' | 'emergency'>('monitor');
   const [instructionModalOpen, setInstructionModalOpen] = useState<boolean>(false);
   const [retryingId, setRetryingId] = useState<string | null>(null);
@@ -227,7 +227,7 @@ const ScenarioJointDisposalFailure: React.FC = () => {
             </Radio.Button>
             <Radio.Button value="emergency">
               <FileTextOutlined style={{ marginRight: 6 }} />
-              2. 地市/区县 · 应急处置 (卡片指令明细与行内重发)
+              2. 省厅内网 · 应急处置 (卡片指令明细与重发)
             </Radio.Button>
           </Radio.Group>
         </div>
@@ -442,7 +442,7 @@ const ScenarioJointDisposalFailure: React.FC = () => {
         </div>
       )}
 
-      {/* ==================== 视图 2：地市/区县 · 应急处置 (指令承接端 / 离线查验) ==================== */}
+      {/* ==================== 视图 2：省厅内网 · 应急处置 (卡片指令明细与重发) ==================== */}
       {currentPerspective === 'emergency' && (
         <div className="scenario-emergency-view">
           {/* 应急处置卡片指令明细展示区（1:1复刻截图 2） */}
