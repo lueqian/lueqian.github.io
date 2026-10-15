@@ -21,12 +21,15 @@ import {
   DeleteOutlined,
   DownOutlined,
   RobotOutlined,
+  SendOutlined,
 } from '@ant-design/icons';
 import type { TabsProps } from 'antd';
 import dayjs from 'dayjs';
 import AIAssistantDrawer from '../components/AIAssistantDrawer';
 import UnifiedOpinionCard from '../components/UnifiedOpinionCard';
 import AddToPublicationModal from '../components/AddToPublicationModal';
+import InstructionCommandModal from '../components/InstructionCommandModal';
+import { useDirectiveState } from '../context/DirectiveStateContext';
 
 const { RangePicker } = DatePicker;
 
@@ -78,8 +81,28 @@ export interface OpinionItem {
 
 const mockOpinions: OpinionItem[] = [
   {
-    id: '1',
+    id: '202610150002',
     seq: 1,
+    title: '#盱眙马上真的要命，真的体会到了。',
+    author: '盱眙恒居房产',
+    postId: '70638584236',
+    heat: 35,
+    platform: '抖音app',
+    time: '2026-10-15 13:00:05',
+    isHot: false,
+    rating: 3.5,
+    aiSummary: '网民在盱眙县发布情绪化言论称"盱眙马上真的要命"，表达强烈负面情绪，属地为淮安市-盱眙县。',
+    aiAnalysis: '【风险定性】非热敏舆情，存在个体极端情绪宣泄引发次生传播的风险隐患。【核心风险要素】- 主体：普通网民；情绪偏激，宜主动做好舆情前置引导。',
+    tags: ['盱眙县', '情绪宣泄'],
+    dataSource: '主动发现',
+    hasVideo: true,
+    sentimentIndex: 68.50,
+    status: '未处置',
+    responsibilityArea: '盱眙县',
+  },
+  {
+    id: '1',
+    seq: 2,
     title: '反应土地征收诉求：村民集体反对征地补偿方案，要求重新评估',
     author: '东莞村民代表',
     postId: '8528778184343279',
@@ -232,6 +255,9 @@ const MonitorWarning: React.FC = () => {
   });
 
   // 视图和分页状态
+  const { openAiModal } = useDirectiveState();
+  const [instructionModalOpen, setInstructionModalOpen] = useState(false);
+  const [selectedPostForInstruction, setSelectedPostForInstruction] = useState<OpinionItem | null>(null);
   const [viewMode, setViewMode] = useState<'detail' | 'analysis' | 'simple'>('detail');
   const [activeCategory, setActiveCategory] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
@@ -630,11 +656,25 @@ const MonitorWarning: React.FC = () => {
             <Button size="small" type="link" className="detail-btn">信息详情</Button>
             <Button
               size="small"
+              type="primary"
+              icon={<SendOutlined />}
+              onClick={() => {
+                setSelectedPostForInstruction(item);
+                setInstructionModalOpen(true);
+              }}
+              style={{ background: '#2563eb' }}
+            >
+              下达处置指令
+            </Button>
+            <Button
+              size="small"
+              type="primary"
               className="ai-assistant-btn"
               icon={<RobotOutlined />}
-              onClick={() => handleOpenAIAssistant(item)}
+              onClick={() => openAiModal(item, 'monitor')}
+              style={{ background: '#4f46e5' }}
             >
-              AI 智能助手
+              AI辅助研判
             </Button>
           </>
         }
@@ -1045,6 +1085,21 @@ const MonitorWarning: React.FC = () => {
         visible={aiDrawerVisible}
         opinion={selectedOpinion}
         onClose={handleCloseAIAssistant}
+      />
+
+      {/* 下达处置指令弹窗 */}
+      <InstructionCommandModal
+        open={instructionModalOpen}
+        targetSummary={
+          selectedPostForInstruction ? (
+            <div style={{ fontSize: '12px', color: '#64748b' }}>
+              下达目标：{selectedPostForInstruction.title} ({selectedPostForInstruction.platform})
+            </div>
+          ) : undefined
+        }
+        eventId={selectedPostForInstruction?.id || '202610150002'}
+        onCancel={() => setInstructionModalOpen(false)}
+        onSubmit={() => setInstructionModalOpen(false)}
       />
     </div>
   );

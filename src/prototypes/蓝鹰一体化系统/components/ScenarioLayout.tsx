@@ -34,6 +34,8 @@ export interface ScenarioContextType {
   actionButton: ScenarioActionBtn | null;
   setActionButton: (btn: ScenarioActionBtn | null) => void;
   openDrawerWithAnchor: (anchorId: number) => void;
+  activeAnchor: number | null;
+  setActiveAnchor: (anchorId: number | null) => void;
   cleanMode: boolean;
   setCleanMode: React.Dispatch<React.SetStateAction<boolean>>;
   drawerOpen: boolean;
@@ -48,6 +50,8 @@ export const ScenarioContext = createContext<ScenarioContextType>({
   actionButton: null,
   setActionButton: () => {},
   openDrawerWithAnchor: () => {},
+  activeAnchor: null,
+  setActiveAnchor: () => {},
   cleanMode: false,
   setCleanMode: () => {},
   drawerOpen: false,
@@ -215,6 +219,8 @@ export const ScenarioLayout: React.FC<ScenarioLayoutProps> = ({
         actionButton,
         setActionButton,
         openDrawerWithAnchor: handleBadgeClick,
+        activeAnchor,
+        setActiveAnchor,
         cleanMode,
         setCleanMode,
         drawerOpen,

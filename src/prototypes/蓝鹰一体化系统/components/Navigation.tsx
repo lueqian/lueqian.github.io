@@ -23,6 +23,7 @@ import {
   SettingOutlined,
   DownOutlined,
   AppstoreOutlined,
+  SyncOutlined,
 } from '@ant-design/icons';
 import { Tooltip } from 'antd';
 
@@ -71,6 +72,12 @@ const scenarioMenuItems: MenuItem[] = [
     label: '跨租户后台配置',
     icon: <SettingOutlined style={{ color: '#52c41a' }} />,
     tag: '场景 5',
+  },
+  {
+    key: 'scenario-joint-disposal-failure',
+    label: '联合处置与容灾',
+    icon: <SyncOutlined style={{ color: '#ef4444' }} />,
+    tag: '场景 6',
   },
 ];
 

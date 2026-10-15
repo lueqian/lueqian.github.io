@@ -26,8 +26,23 @@ import ScenarioCityAudit from './pages/ScenarioCityAudit';
 import ScenarioCrossTenantInstruction from './pages/ScenarioCrossTenantInstruction';
 import ScenarioSecondaryDispatch from './pages/ScenarioSecondaryDispatch';
 import ScenarioCrossTenantConfig from './pages/ScenarioCrossTenantConfig';
+import ScenarioJointDisposalFailure from './pages/ScenarioJointDisposalFailure';
 import ScenarioLayout from './components/ScenarioLayout';
 import { AnnotationProvider, AnnotationBoard } from '@/common/Annotation';
+import { DirectiveProvider, useDirectiveState } from './context/DirectiveStateContext';
+import AIAnalysisModal from './components/AIAnalysisModal';
+
+const GlobalAIModalContainer: React.FC = () => {
+  const { aiModalVisible, aiModalMode, aiModalEvent, closeAiModal } = useDirectiveState();
+  return (
+    <AIAnalysisModal
+      open={aiModalVisible}
+      mode={aiModalMode}
+      eventId={aiModalEvent?.id || '202610150002'}
+      onClose={closeAiModal}
+    />
+  );
+};
 
 export type PageKey =
   | 'scenario-direct-provincial'
@@ -35,6 +50,7 @@ export type PageKey =
   | 'scenario-cross-tenant-instruction'
   | 'scenario-secondary-dispatch'
   | 'scenario-cross-tenant-config'
+  | 'scenario-joint-disposal-failure'
   | 'police-opinion-joint'
   | 'manual-report'
   | 'source-control'
@@ -122,6 +138,12 @@ const BlueEagleIntegratedSystem = forwardRef<AxureHandle, AxureProps>(function B
             <ScenarioCrossTenantConfig />
           </ScenarioLayout>
         );
+      case 'scenario-joint-disposal-failure':
+        return (
+          <ScenarioLayout scenarioKey="scenario-joint-disposal-failure">
+            <ScenarioJointDisposalFailure />
+          </ScenarioLayout>
+        );
       case 'police-opinion-joint':
         return <PoliceOpinionJoint />;
       case 'manual-report':
@@ -197,38 +219,43 @@ const BlueEagleIntegratedSystem = forwardRef<AxureHandle, AxureProps>(function B
         },
       }}
     >
-      <AnnotationProvider>
-        <div className={`blue-eagle-system ${activePage.endsWith('data-screen') ? 'screen-mode' : ''}`}>
-          <Header
-            onManualReport={() => setActivePage('manual-report')}
-            onOpenDutyRoster={() => setDutyRosterOpen(true)}
-          />
-          <div className="main-container">
-            <Navigation
-              activeKey={activePage}
-              onSelect={handleMenuSelect}
-              collapsed={sidebarCollapsed}
-              onCollapse={setSidebarCollapsed}
+      <DirectiveProvider>
+        <AnnotationProvider>
+          <div className={`blue-eagle-system ${activePage.endsWith('data-screen') ? 'screen-mode' : ''}`}>
+            <Header
+              onManualReport={() => setActivePage('manual-report')}
+              onOpenDutyRoster={() => setDutyRosterOpen(true)}
             />
-            <div
-              className={`content-area ${sidebarCollapsed ? 'collapsed' : ''} ${
-                activePage.endsWith('data-screen') ? 'screen-content' : ''
-              } ${activePage.startsWith('scenario-') ? 'scenario-content' : ''}`}
-            >
-              {renderPage()}
+            <div className="main-container">
+              <Navigation
+                activeKey={activePage}
+                onSelect={handleMenuSelect}
+                collapsed={sidebarCollapsed}
+                onCollapse={setSidebarCollapsed}
+              />
+              <div
+                className={`content-area ${sidebarCollapsed ? 'collapsed' : ''} ${
+                  activePage.endsWith('data-screen') ? 'screen-content' : ''
+                } ${activePage.startsWith('scenario-') ? 'scenario-content' : ''}`}
+              >
+                {renderPage()}
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* 今日值班表 (Duty Roster Modal) */}
-        <DutyRosterModal
-          open={dutyRosterOpen}
-          onClose={() => setDutyRosterOpen(false)}
-        />
+          {/* 今日值班表 (Duty Roster Modal) */}
+          <DutyRosterModal
+            open={dutyRosterOpen}
+            onClose={() => setDutyRosterOpen(false)}
+          />
 
-        {/* AxHub 全局功能与细节批注看板（场景页面已由右侧抽屉统一接管） */}
-        {!activePage.startsWith('scenario-') && <AnnotationBoard />}
-      </AnnotationProvider>
+          {/* 全局 AI 辅助研判综合弹窗 */}
+          <GlobalAIModalContainer />
+
+          {/* AxHub 全局功能与细节批注看板（场景页面已由右侧抽屉统一接管） */}
+          {!activePage.startsWith('scenario-') && <AnnotationBoard />}
+        </AnnotationProvider>
+      </DirectiveProvider>
     </ConfigProvider>
   );
 });
