@@ -62,24 +62,34 @@ const ScenarioJointDisposalFailure: React.FC = () => {
   // 核心业务视角：'monitor' (省厅内网·监测预警-发起端) ↔ 'emergency' (省厅内网·应急处置-卡片指令明细与重发)
   const [currentPerspective, setCurrentPerspective] = useState<'monitor' | 'emergency'>('monitor');
   const [instructionModalOpen, setInstructionModalOpen] = useState<boolean>(false);
+  const [failureModalOpen, setFailureModalOpen] = useState<boolean>(false);
+  const [emergencyTaskTab, setEmergencyTaskTab] = useState<string>('feedback');
   const [retryingId, setRetryingId] = useState<string | null>(null);
 
   // 监测预警筛选状态
   const [monitorCategory, setMonitorCategory] = useState<string>('ai-discover');
   const [monitorSearch, setMonitorSearch] = useState<string>('#盱眙马上真的要命');
 
-  // 获取清江浦区针对盱眙事件的指令项
+  // 获取清江浦区与徐州市指令
   const qjpDirective = directives.find(
     (d) => d.eventId === '202610150002' && d.targetDept === '清江浦区' && d.instructionName === '帖文处置'
   );
+  const followUpDirective = directives.find(
+    (d) => d.eventId === '202610150002' && d.targetDept === '徐州市' && d.instructionName === '持续关注'
+  );
+
   const isQjpFailed = qjpDirective?.status === 'failed';
+  const isFollowUpFailed = followUpDirective?.status === 'failed';
+  const hasFailedDirectives = directives.some((d) => d.status === 'failed');
 
   // 监听右侧规格抽屉点击锚点，平滑联动切换视角
   useEffect(() => {
     if (activeAnchor) {
       if (activeAnchor === 1) {
         setCurrentPerspective('monitor');
-      } else if (activeAnchor === 2 || activeAnchor === 3 || activeAnchor === 4) {
+      } else if (activeAnchor === 2) {
+        setFailureModalOpen(true);
+      } else if (activeAnchor === 3 || activeAnchor === 4) {
         setCurrentPerspective('emergency');
       }
     }
@@ -92,6 +102,7 @@ const ScenarioJointDisposalFailure: React.FC = () => {
         setCurrentPerspective('monitor');
       } else if (currentRoleView === 'failure-modal') {
         setCurrentPerspective('monitor');
+        setFailureModalOpen(true);
       } else if (currentRoleView === 'card-retry') {
         setCurrentPerspective('emergency');
       } else if (currentRoleView === 'msg-center') {
@@ -166,6 +177,14 @@ const ScenarioJointDisposalFailure: React.FC = () => {
             style={{ background: '#2563eb' }}
           >
             直接下发指令测试
+          </Button>
+          <Button
+            size="small"
+            icon={<ExclamationCircleOutlined />}
+            danger={hasFailedDirectives}
+            onClick={() => setFailureModalOpen(true)}
+          >
+            查验推送结果大弹窗
           </Button>
           <Button size="small" icon={<ReloadOutlined />} onClick={handleResetDemo}>
             重置演示状态
@@ -445,13 +464,86 @@ const ScenarioJointDisposalFailure: React.FC = () => {
       {/* ==================== 视图 2：省厅内网 · 应急处置 (卡片指令明细与重发) ==================== */}
       {currentPerspective === 'emergency' && (
         <div className="scenario-emergency-view">
+          {/* 应急处置二级 Tabs：｜待反馈｜待处理｜帖文处置｜动态监测｜全部｜ */}
+          <div
+            style={{
+              background: '#fff',
+              border: '1px solid #e2e8f0',
+              borderRadius: '8px 8px 0 0',
+              padding: '8px 16px 0 16px',
+              borderBottom: 'none',
+              display: 'flex',
+              gap: 8,
+            }}
+          >
+            {[
+              { key: 'feedback', label: '待反馈' },
+              { key: 'pending', label: '待处理' },
+              { key: 'disposal', label: '帖文处置' },
+              { key: 'monitor', label: '动态监测' },
+              { key: 'all', label: '全部' },
+            ].map((tab) => {
+              const isFeedback = tab.key === 'feedback';
+              const showExclamation = isFeedback && hasFailedDirectives;
+              const active = emergencyTaskTab === tab.key;
+
+              return (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setEmergencyTaskTab(tab.key)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    borderBottom: active ? '2px solid #2563eb' : '2px solid transparent',
+                    color: active ? '#2563eb' : '#64748b',
+                    fontWeight: active ? 600 : 500,
+                    padding: '8px 14px',
+                    cursor: 'pointer',
+                    fontSize: '13.5px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    position: 'relative',
+                    marginBottom: -1,
+                  }}
+                >
+                  <span>{tab.label}</span>
+                  {showExclamation && (
+                    <Tooltip title="存在指令推送失败的情况，请及时排查与重新下发！">
+                      <span
+                        className="failure-exclamation-badge"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: 17,
+                          height: 17,
+                          backgroundColor: '#ef4444',
+                          color: '#ffffff',
+                          borderRadius: '50%',
+                          fontSize: '11px',
+                          fontWeight: 900,
+                          marginLeft: 6,
+                          lineHeight: 1,
+                          boxShadow: '0 0 0 1.5px #fff, 0 1px 3px rgba(239, 68, 68, 0.4)',
+                        }}
+                      >
+                        !
+                      </span>
+                    </Tooltip>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
           {/* 应急处置卡片指令明细展示区（1:1复刻截图 2） */}
           <div
             className="unified-opinion-card compact"
             style={{
               background: '#fff',
               border: '1px solid #e2e8f0',
-              borderRadius: 8,
+              borderRadius: '0 0 8px 8px',
               padding: '18px 22px',
               boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
             }}
@@ -572,6 +664,73 @@ const ScenarioJointDisposalFailure: React.FC = () => {
                 <div style={{ display: 'flex', gap: 6 }}>
                   <Button size="small" type="primary">签收</Button>
                   <Button size="small">反馈</Button>
+                </div>
+              </div>
+
+              {/* 指令明细行：持续关注（徐州市，受专网网闸波动影响发生下达失败） */}
+              <div
+                style={{
+                  background: isFollowUpFailed ? '#fff1f2' : '#f8fafc',
+                  border: `1.5px solid ${isFollowUpFailed ? '#f87171' : '#e2e8f0'}`,
+                  borderRadius: 6,
+                  padding: '10px 14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  transition: 'all 0.3s ease',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <Tag color="cyan" style={{ margin: 0 }}>持续关注</Tag>
+                  {isFollowUpFailed ? (
+                    <Tooltip title="目标内网网关超时：徐州市局专网网闸摆渡超时 (ERR_NET_TIMEOUT)，指令未能写入对方内网待办池">
+                      <Tag color="error" style={{ margin: 0, cursor: 'pointer', fontWeight: 600 }}>
+                        ● 推送失败-错误码：ERR_NET_TIMEOUT
+                      </Tag>
+                    </Tooltip>
+                  ) : (
+                    <Tag color="success" style={{ margin: 0 }}>待签收 (已送达)</Tag>
+                  )}
+
+                  {/* 时效挂起状态与错误诊断提示 */}
+                  {isFollowUpFailed ? (
+                    <span style={{ fontSize: '12px', color: '#dc2626', fontWeight: 600 }}>
+                      <ClockCircleOutlined /> ⏱ 时效已挂起 (未送达目标单位，免责保护)
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: '11.5px', color: '#16a34a' }}>
+                      <ClockCircleOutlined /> 剩00天01时00分
+                    </span>
+                  )}
+
+                  <span style={{ fontSize: '12.5px', color: '#1e293b', fontWeight: 600 }}>
+                    🏢 徐州市局网安支队
+                  </span>
+                  <span style={{ fontSize: '11.5px', color: '#94a3b8' }}>2026-10-15 14:45:00</span>
+                  <span style={{ fontSize: '12px', color: '#475569' }}>
+                    请对涉事舆情保持持续关注与日常巡查
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  {isFollowUpFailed ? (
+                    <Button
+                      type="primary"
+                      danger
+                      icon={<ReloadOutlined spin={retryingId === followUpDirective?.id} />}
+                      loading={retryingId === followUpDirective?.id}
+                      onClick={() => followUpDirective && handleInlineRetry(followUpDirective.id)}
+                      style={{ fontWeight: 500 }}
+                    >
+                      重发指令
+                    </Button>
+                  ) : (
+                    <>
+                      <Tag color="cyan">已自动恢复计时</Tag>
+                      <Button size="small" type="primary">签收</Button>
+                      <Button size="small">反馈</Button>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -709,6 +868,18 @@ const ScenarioJointDisposalFailure: React.FC = () => {
         eventId="202610150002"
         onCancel={() => setInstructionModalOpen(false)}
         onSubmit={() => setInstructionModalOpen(false)}
+      />
+
+      {/* 指令推送结果提醒大弹窗组件 */}
+      <DirectiveFailureModal
+        open={failureModalOpen}
+        results={directives.filter((d) => d.eventId === '202610150002')}
+        onClose={() => setFailureModalOpen(false)}
+        onRetrySingle={retryDirective}
+        onRetry={batchRetryDirectives}
+        onRetrySuccess={() => {
+          message.success('指令已成功重新推送到目标部门内网！时效恢复计时。');
+        }}
       />
     </div>
   );

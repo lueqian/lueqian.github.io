@@ -409,6 +409,107 @@ const AIAnalysisModal: React.FC<AIAnalysisModalProps> = ({
                       }}
                     />
 
+                    {/* 节点：持续关注指令明细 (淮安市、南京市、徐州市) */}
+                    <div style={{ position: 'relative', marginBottom: 18 }}>
+                      <div
+                        style={{
+                          position: 'absolute',
+                          left: -18,
+                          top: 4,
+                          width: 8,
+                          height: 8,
+                          borderRadius: '50%',
+                          background: '#06b6d4',
+                        }}
+                      />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                        <span style={{ fontSize: '11.5px', color: '#94a3b8' }}>2026-10-15 14:45:00</span>
+                        <Tag color="cyan" style={{ fontSize: '11px', margin: 0 }}>指令：持续关注</Tag>
+                        <Tag color="blue" style={{ fontSize: '11px', margin: 0 }}>省厅值班长</Tag>
+                      </div>
+
+                      <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '10px 14px' }}>
+                        <div style={{ fontSize: '12px', color: '#334155', fontWeight: 500, marginBottom: 8 }}>
+                          指令要求：请对涉事舆情保持持续关注与日常巡查
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          {/* 淮安市 */}
+                          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 6, padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <strong style={{ fontSize: '12.5px', color: '#1e293b' }}>淮安市</strong>
+                              <Tag color="success" style={{ margin: 0 }}>待签收 (已送达)</Tag>
+                            </div>
+                            <span style={{ fontSize: '11px', color: '#94a3b8' }}>剩00天01时00分</span>
+                          </div>
+
+                          {/* 南京市 */}
+                          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 6, padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <strong style={{ fontSize: '12.5px', color: '#1e293b' }}>南京市</strong>
+                              <Tag color="success" style={{ margin: 0 }}>待签收 (已送达)</Tag>
+                            </div>
+                            <span style={{ fontSize: '11px', color: '#94a3b8' }}>剩00天01时00分</span>
+                          </div>
+
+                          {/* 徐州市 (失败项) */}
+                          {(() => {
+                            const xz = eventDirectives.find((d) => d.targetDept === '徐州市' && d.instructionName === '持续关注');
+                            const isFailed = xz?.status === 'failed';
+
+                            return (
+                              <div
+                                style={{
+                                  background: isFailed ? '#fff1f2' : '#fff',
+                                  border: `1px solid ${isFailed ? '#fecdd3' : '#e2e8f0'}`,
+                                  borderRadius: 6,
+                                  padding: '6px 10px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                  <strong style={{ fontSize: '12.5px', color: '#1e293b' }}>徐州市</strong>
+                                  {isFailed ? (
+                                    <Tooltip title={xz?.errorMessage || '目标专网超时 (ERR_NET_TIMEOUT)'}>
+                                      <Tag color="error" style={{ margin: 0, cursor: 'pointer' }}>
+                                        ● 推送失败-错误码：ERR_NET_TIMEOUT
+                                      </Tag>
+                                    </Tooltip>
+                                  ) : (
+                                    <Tag color="success" style={{ margin: 0 }}>
+                                      待签收 (已送达)
+                                    </Tag>
+                                  )}
+                                  {isFailed && (
+                                    <span style={{ fontSize: '11px', color: '#e11d48' }}>
+                                      ⏱ 处置时效已挂起
+                                    </span>
+                                  )}
+                                </div>
+                                <div>
+                                  {isFailed && (
+                                    <Button
+                                      size="small"
+                                      type="primary"
+                                      danger
+                                      icon={<ReloadOutlined spin={retryingId === xz?.id} />}
+                                      loading={retryingId === xz?.id}
+                                      onClick={() => xz && handleInlineRetry(xz.id)}
+                                      style={{ height: 24, fontSize: '11px', padding: '0 8px' }}
+                                    >
+                                      重发指令
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                    </div>
+
                     {/* 节点 1：帖文处置指令明细 */}
                     <div style={{ position: 'relative', marginBottom: 18 }}>
                       <div

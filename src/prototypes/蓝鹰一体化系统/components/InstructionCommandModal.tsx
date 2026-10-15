@@ -21,6 +21,7 @@ interface InstructionCommandModalProps {
 }
 
 const instructionOptions: InstructionOption[] = [
+  { id: 'follow-up', name: '持续关注', group: '执行单位指令', cycle: '12小时' },
   { id: 'local-monitor', name: '本地动态监测', group: '本单位指令', cycle: '2小时' },
   { id: 'verify-rumor', name: '谣言核查', group: '执行单位指令', cycle: '4小时' },
   { id: 'post-disposal', name: '帖文处置', group: '执行单位指令', cycle: '6小时' },
@@ -28,9 +29,12 @@ const instructionOptions: InstructionOption[] = [
   { id: 'material-report', name: '材料反馈', group: '执行单位指令', cycle: '12小时' },
 ];
 
-const areaOptions = ['淮安区', '清江浦区', '淮阴区', '洪泽区', '金湖县'];
+const areaOptions = ['淮安市', '南京市', '徐州市', '清江浦区', '淮安区', '淮阴区', '洪泽区', '金湖县'];
 
 const userOptionsByArea: Record<string, string[]> = {
+  淮安市: ['赵警官 (市局网安)', '李警官'],
+  南京市: ['孙警官 (网巡支队)', '周警官'],
+  徐州市: ['钱警官 (网安支队)'],
   淮安区: ['张明', '刘浩宇', '陈思远'],
   清江浦区: ['王敏', '李倩'],
   淮阴区: ['刘浩宇'],
@@ -45,21 +49,22 @@ const InstructionCommandModal: React.FC<InstructionCommandModalProps> = ({
   onCancel,
   onSubmit,
 }) => {
-  const { issueNewDirectives, batchRetryDirectives } = useDirectiveState();
+  const { issueNewDirectives, retryDirective, batchRetryDirectives } = useDirectiveState();
 
-  const [selectedInstructionIds, setSelectedInstructionIds] = useState<string[]>(['post-disposal']);
+  const [selectedInstructionIds, setSelectedInstructionIds] = useState<string[]>(['follow-up']);
   // assignments 结构：{ [instructionId]: { [area]: string[] } }
   const [assignments, setAssignments] = useState<Record<string, Record<string, string[]>>>({
-    'post-disposal': { 清江浦区: [], 淮安区: [], 淮阴区: [] },
+    'follow-up': { 淮安市: [], 南京市: [], 徐州市: [] },
   });
   const [supplementContent, setSupplementContent] = useState<string>(
-    '请对帖文展开劝删处置工作，并在处理周期内反馈落地情况。'
+    '请对涉事舆情保持持续关注与日常巡查，并在处理周期内反馈落地处置情况。'
   );
 
   // 下达加载与失败拦截弹窗状态
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [simulateFailure, setSimulateFailure] = useState<boolean>(true);
   const [failureModalOpen, setFailureModalOpen] = useState<boolean>(false);
+  const [pushResults, setPushResults] = useState<DirectiveItem[]>([]);
   const [failedDirectives, setFailedDirectives] = useState<DirectiveItem[]>([]);
 
   // ========== 关联重大事项任务及边界控制 ==========
@@ -192,14 +197,16 @@ const InstructionCommandModal: React.FC<InstructionCommandModalProps> = ({
       setSubmitting(false);
 
       if (result.success) {
-        message.success('指令下达成功！已推送至各协同单位内网系统。');
+        // 状态 1：全部成功时 toast 提醒指令下达成功，不弹出大弹窗
+        message.success('指令下达成功');
         onSubmit?.();
         onCancel();
       } else {
-        // 部分或全部失败：即刻呼出失败排查弹窗
+        // 状态 2：部分成功时，通过一个大的弹窗组件展示推送的目标与结果
+        setPushResults(result.allItems);
         setFailedDirectives(result.failedItems);
         setFailureModalOpen(true);
-        onCancel(); // 关闭当前编辑弹窗
+        onCancel(); // 关闭当前配置弹窗，聚焦在大弹窗组件上
       }
     } catch (e) {
       setSubmitting(false);
@@ -490,14 +497,18 @@ const InstructionCommandModal: React.FC<InstructionCommandModalProps> = ({
         </Spin>
       </Modal>
 
-      {/* 指令下达失败排查与重新下发弹窗 */}
+      {/* 指令推送结果提醒大弹窗组件（展示所有目标与结果、行内重发及排查提示） */}
       <DirectiveFailureModal
         open={failureModalOpen}
+        results={pushResults}
         failedDirectives={failedDirectives}
-        onClose={() => setFailureModalOpen(false)}
+        onRetrySingle={retryDirective}
         onRetry={batchRetryDirectives}
-        onRetrySuccess={() => {
+        onClose={() => {
           setFailureModalOpen(false);
+          onSubmit?.();
+        }}
+        onRetrySuccess={() => {
           onSubmit?.();
         }}
       />

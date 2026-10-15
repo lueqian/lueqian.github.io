@@ -62,6 +62,41 @@ interface DirectiveContextType {
 
 const initialDirectives: DirectiveItem[] = [
   {
+    id: 'dir-follow-001',
+    eventId: '202610150002',
+    instructionName: '持续关注',
+    targetDept: '淮安市',
+    status: 'pending_sign',
+    remainTime: '剩00天01时00分',
+    issuedTime: '2026-10-15 14:45:00',
+    issuer: '省厅值班长',
+    requirements: '请对涉事舆情保持持续关注与日常巡查',
+  },
+  {
+    id: 'dir-follow-002',
+    eventId: '202610150002',
+    instructionName: '持续关注',
+    targetDept: '南京市',
+    status: 'pending_sign',
+    remainTime: '剩00天01时00分',
+    issuedTime: '2026-10-15 14:45:00',
+    issuer: '省厅值班长',
+    requirements: '请对涉事舆情保持持续关注与日常巡查',
+  },
+  {
+    id: 'dir-follow-003',
+    eventId: '202610150002',
+    instructionName: '持续关注',
+    targetDept: '徐州市',
+    status: 'failed',
+    errorCode: 'ERR_NET_TIMEOUT',
+    errorMessage: '徐州市局专网网闸摆渡超时 (504 Gateway Timeout)，指令未能写入目标待办池',
+    remainTime: '时效已挂起',
+    issuedTime: '2026-10-15 14:45:00',
+    issuer: '省厅值班长',
+    requirements: '请对涉事舆情保持持续关注与日常巡查',
+  },
+  {
     id: 'dir-xuyi-001',
     eventId: '202610150002',
     instructionName: '帖文处置',
@@ -270,8 +305,11 @@ export const DirectiveProvider: React.FC<{ children: ReactNode }> = ({ children 
             departments.forEach((dept, deptIdx) => {
               instructionNames.forEach((instName, instIdx) => {
                 const id = `dir-${Date.now()}-${deptIdx}-${instIdx}`;
-                // 模拟网络波动：当部门为清江浦区且指令为帖文处置时，模拟一次推送超时失败
-                const isFail = simulatePartialFailure && dept.includes('清江浦') && instName.includes('处置');
+                // 模拟网络波动：当开启模拟异常时，徐州市或清江浦区推送失败（模拟专网网闸波动）
+                const isFail =
+                  simulatePartialFailure &&
+                  (dept.includes('徐州') || dept.includes('清江浦')) &&
+                  (instName.includes('持续关注') || instName.includes('处置'));
 
                 const item: DirectiveItem = {
                   id,

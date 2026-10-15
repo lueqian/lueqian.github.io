@@ -15,11 +15,10 @@ import AIAnalysisModal from '../components/AIAnalysisModal';
 import { useDirectiveState } from '../context/DirectiveStateContext';
 
 const taskTabs = [
-  { key: 'pending', label: '待处理', count: 2, badge: 64 },
-  { key: 'done', label: '已处理' },
-  { key: 'monitor', label: '动态监测', count: 5, badge: 49 },
-  { key: 'report', label: '信息编报', count: 1 },
-  { key: 'disposal', label: '帖文处置', count: 3, badge: 11 },
+  { key: 'feedback', label: '待反馈' },
+  { key: 'pending', label: '待处理', count: 2 },
+  { key: 'disposal', label: '帖文处置', count: 3 },
+  { key: 'monitor', label: '动态监测', count: 5 },
   { key: 'all', label: '全部' },
 ];
 
@@ -78,15 +77,23 @@ const filterRows = [
 const EmergencyResponse: React.FC = () => {
   const { directives, retryDirective, openAiModal } = useDirectiveState();
 
-  const [activeTaskTab, setActiveTaskTab] = useState('pending');
+  const [activeTaskTab, setActiveTaskTab] = useState('feedback');
   const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
   const [retryingDirectiveId, setRetryingDirectiveId] = useState<string | null>(null);
 
-  // 获取针对盱眙事件（202610150002）的清江浦区帖文处置指令
+  // 获取针对盱眙事件（202610150002）的指令
   const qjpDirective = directives.find(
     (d) => d.eventId === '202610150002' && d.targetDept === '清江浦区' && d.instructionName === '帖文处置'
   );
+  const followUpDirective = directives.find(
+    (d) => d.eventId === '202610150002' && d.targetDept === '徐州市' && d.instructionName === '持续关注'
+  );
+
   const isQjpFailed = qjpDirective?.status === 'failed';
+  const isFollowUpFailed = followUpDirective?.status === 'failed';
+
+  // 关键：检测是否存在任何指令推送失败的情况，以此在“待反馈”指令右上角显示红色“！”标签
+  const hasFailedDirectives = directives.some((d) => d.status === 'failed');
 
   const handleRetry = async (directiveId: string) => {
     setRetryingDirectiveId(directiveId);
@@ -145,19 +152,48 @@ const EmergencyResponse: React.FC = () => {
           </div>
         </div>
 
-        {/* 顶部 Tabs（带红圈气泡计数） */}
+        {/* 顶部二级 Tabs：｜待反馈｜待处理｜帖文处置｜动态监测｜全部｜ */}
         <div className="emergency-task-tabs">
-          {taskTabs.map((tab) => (
-            <button
-              key={tab.key}
-              type="button"
-              className={activeTaskTab === tab.key ? 'active' : ''}
-              onClick={() => setActiveTaskTab(tab.key)}
-            >
-              <span>{tab.count !== undefined ? `${tab.label}(${tab.count})` : tab.label}</span>
-              {tab.badge !== undefined && <em>{tab.badge}</em>}
-            </button>
-          ))}
+          {taskTabs.map((tab) => {
+            const isFeedback = tab.key === 'feedback';
+            const showExclamation = isFeedback && hasFailedDirectives;
+
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                className={activeTaskTab === tab.key ? 'active' : ''}
+                onClick={() => setActiveTaskTab(tab.key)}
+                style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}
+              >
+                <span>{tab.count !== undefined ? `${tab.label}(${tab.count})` : tab.label}</span>
+                {showExclamation && (
+                  <Tooltip title="存在指令推送失败的情况，请及时排查与重新下发！">
+                    <span
+                      className="failure-exclamation-badge"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: 17,
+                        height: 17,
+                        backgroundColor: '#ef4444',
+                        color: '#ffffff',
+                        borderRadius: '50%',
+                        fontSize: '11px',
+                        fontWeight: 900,
+                        marginLeft: 6,
+                        lineHeight: 1,
+                        boxShadow: '0 0 0 1.5px #fff, 0 1px 3px rgba(239, 68, 68, 0.4)',
+                      }}
+                    >
+                      !
+                    </span>
+                  </Tooltip>
+                )}
+              </button>
+            );
+          })}
         </div>
 
         <div className="emergency-disposal-list">
@@ -333,6 +369,73 @@ const EmergencyResponse: React.FC = () => {
                 <div style={{ display: 'flex', gap: 6 }}>
                   <Button size="small" type="primary">签收</Button>
                   <Button size="small">反馈</Button>
+                </div>
+              </div>
+
+              {/* 指令明细行：持续关注（徐州市，受专网网闸波动影响发生下达失败） */}
+              <div
+                style={{
+                  background: isFollowUpFailed ? '#fff1f2' : '#f8fafc',
+                  border: `1px solid ${isFollowUpFailed ? '#fecdd3' : '#e2e8f0'}`,
+                  borderRadius: 6,
+                  padding: '8px 12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: 8,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <Tag color="cyan" style={{ margin: 0 }}>持续关注</Tag>
+                  {isFollowUpFailed ? (
+                    <Tooltip title="目标内网网关超时：徐州市局专网网闸摆渡超时 (ERR_NET_TIMEOUT)，指令未能写入对方内网待办池">
+                      <Tag color="error" style={{ margin: 0, cursor: 'pointer', fontWeight: 600 }}>
+                        ● 推送失败-错误码：ERR_NET_TIMEOUT
+                      </Tag>
+                    </Tooltip>
+                  ) : (
+                    <Tag color="success" style={{ margin: 0 }}>待签收</Tag>
+                  )}
+
+                  {/* 时效挂起状态与错误诊断提示 */}
+                  {isFollowUpFailed ? (
+                    <span style={{ fontSize: '11.5px', color: '#e11d48', fontWeight: 500 }}>
+                      <ClockCircleOutlined /> 时效已挂起 (未送达目标单位)
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: '11.5px', color: '#16a34a' }}>
+                      <ClockCircleOutlined /> 剩00天01时00分
+                    </span>
+                  )}
+
+                  <span style={{ fontSize: '12px', color: '#334155', fontWeight: 500 }}>
+                    🏢 徐州市局网安支队
+                  </span>
+                  <span style={{ fontSize: '11.5px', color: '#94a3b8' }}>2026-10-15 14:45:00</span>
+                  <span style={{ fontSize: '12px', color: '#475569' }}>
+                    请对涉事舆情保持持续关注与日常巡查
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  {isFollowUpFailed ? (
+                    <Button
+                      size="small"
+                      type="primary"
+                      danger
+                      icon={<ReloadOutlined spin={retryingDirectiveId === followUpDirective?.id} />}
+                      loading={retryingDirectiveId === followUpDirective?.id}
+                      onClick={() => followUpDirective && handleRetry(followUpDirective.id)}
+                    >
+                      重发指令
+                    </Button>
+                  ) : (
+                    <>
+                      <Button size="small" type="primary">签收</Button>
+                      <Button size="small">反馈</Button>
+                    </>
+                  )}
                 </div>
               </div>
 
