@@ -54,10 +54,12 @@ import {
   RollbackOutlined,
   SkinOutlined,
   SecurityScanOutlined,
+  ApiOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { Annotated } from '@/common/Annotation';
 import { useScenarioContext } from '../components/ScenarioLayout';
+import DataFlowConfig from '../components/DataFlowConfig';
 import '../scenario-style.css';
 
 const { TextArea } = Input;
@@ -91,8 +93,8 @@ interface PostRecord {
 const ScenarioCrossTenantConfig: React.FC = () => {
   const { setCurrentStep, setActionButton, currentRoleView } = useScenarioContext();
 
-  // 当前主视图步骤：'admin' (管理后台·客户关联配置) | 'platform-config' (一体化·工作平台配置·上报审批) | 'city-post' (一体化·市局岗位配置) | 'county-post' (一体化·区县岗位配置)
-  const [activeStepTab, setActiveStepTab] = useState<'admin' | 'platform-config' | 'city-post' | 'county-post'>('admin');
+  // 当前主视图步骤：'admin' (管理后台·客户关联配置) | 'platform-config' (一体化·工作平台配置·上报审批) | 'transmission-config' (一体化·数据流转配置) | 'city-post' (一体化·市局岗位配置) | 'county-post' (一体化·区县岗位配置)
+  const [activeStepTab, setActiveStepTab] = useState<'admin' | 'platform-config' | 'transmission-config' | 'city-post' | 'county-post'>('admin');
 
   // =========================================================================
   // 1. 管理后台状态与数据 (1:1 复刻截图 1 & 2)
@@ -264,10 +266,11 @@ const ScenarioCrossTenantConfig: React.FC = () => {
   }, [currentRoleView]);
 
   // 同步主步骤
-  const handleSwitchTab = (tab: 'admin' | 'platform-config' | 'city-post' | 'county-post') => {
+  const handleSwitchTab = (tab: 'admin' | 'platform-config' | 'transmission-config' | 'city-post' | 'county-post') => {
     setActiveStepTab(tab);
     if (tab === 'admin') setCurrentStep(1);
     if (tab === 'platform-config') setCurrentStep(2);
+    if (tab === 'transmission-config') setCurrentStep(2);
     if (tab === 'city-post') setCurrentStep(3);
     if (tab === 'county-post') setCurrentStep(4);
   };
@@ -827,9 +830,9 @@ const ScenarioCrossTenantConfig: React.FC = () => {
               <Button
                 type="primary"
                 ghost
-                onClick={() => handleSwitchTab('city-post')}
+                onClick={() => handleSwitchTab('transmission-config')}
               >
-                下一步：配置市局岗位权限 ➔
+                下一步：前往内网-工具箱-数据流转配置 (寻址与测通) ➔
               </Button>
             </Space>
           </div>
@@ -1570,16 +1573,22 @@ const ScenarioCrossTenantConfig: React.FC = () => {
             <SlidersOutlined /> 2. 一体化平台 · 定制配置与上报审批
           </span>
           <span
+            className={`segment-tab-item ${activeStepTab === 'transmission-config' ? 'active' : ''}`}
+            onClick={() => handleSwitchTab('transmission-config')}
+          >
+            <ApiOutlined /> 3. 内网-工具箱-数据流转配置
+          </span>
+          <span
             className={`segment-tab-item ${activeStepTab === 'city-post' ? 'active' : ''}`}
             onClick={() => handleSwitchTab('city-post')}
           >
-            <SettingOutlined /> 3. 一体化平台 · 市局岗位权限配置
+            <SettingOutlined /> 4. 一体化平台 · 市局岗位权限配置
           </span>
           <span
             className={`segment-tab-item ${activeStepTab === 'county-post' ? 'active' : ''}`}
             onClick={() => handleSwitchTab('county-post')}
           >
-            <BranchesOutlined /> 4. 一体化平台 · 区县岗位与链路校验
+            <BranchesOutlined /> 5. 一体化平台 · 区县岗位与链路校验
           </span>
         </div>
 
@@ -1599,6 +1608,11 @@ const ScenarioCrossTenantConfig: React.FC = () => {
       {/* 核心主视图渲染 */}
       {activeStepTab === 'admin' && renderAdminView()}
       {activeStepTab === 'platform-config' && renderPlatformCustomConfigView()}
+      {activeStepTab === 'transmission-config' && (
+        <div style={{ marginTop: 12 }}>
+          <DataFlowConfig initialRole="provincial" />
+        </div>
+      )}
       {activeStepTab === 'city-post' && renderCityPostView()}
       {activeStepTab === 'county-post' && renderCountyPostView()}
 

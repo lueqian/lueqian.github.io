@@ -9,10 +9,12 @@ import {
   AppstoreOutlined,
   RightOutlined,
   ToolOutlined,
+  ApiOutlined,
 } from '@ant-design/icons';
 import LeaderManagement from './LeaderManagement';
+import DataFlowConfig from '../components/DataFlowConfig';
 
-type ToolboxTabKey = 'leader' | 'settings' | 'department' | 'instruction' | 'post';
+type ToolboxTabKey = 'leader' | 'settings' | 'department' | 'instruction' | 'post' | 'transmission';
 
 interface ModuleItem {
   key: ToolboxTabKey;
@@ -53,6 +55,13 @@ const modules: ModuleItem[] = [
     label: '岗位管理',
     desc: '指挥调度岗、研判岗、汇编岗等值班岗位设置',
     icon: <UserSwitchOutlined style={{ color: '#db2777' }} />,
+  },
+  {
+    key: 'transmission',
+    label: '数据流转配置',
+    desc: '跨租户与跨地域专网的指令下发、签收确认及结果回传网络寻址路径（权限点: toolbox:transmission）',
+    icon: <ApiOutlined style={{ color: '#0284c7' }} />,
+    badge: '专网寻址',
   },
 ];
 
@@ -218,6 +227,9 @@ const Toolbox: React.FC = () => {
             </Empty>
           </Card>
         )}
+
+        {/* 独立一级 Tab：数据流转配置 (权限点: toolbox:transmission) */}
+        {activeTab === 'transmission' && <DataFlowConfig initialRole="provincial" />}
       </div>
     </div>
   );

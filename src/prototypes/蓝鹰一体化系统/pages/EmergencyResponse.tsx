@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button, Checkbox, Empty, Input, Select, Switch, Tag, Tooltip, message } from 'antd';
+import { Button, Checkbox, Empty, Input, Pagination, Select, Switch, Tag, Tooltip, message } from 'antd';
 import {
   ClockCircleOutlined,
   ReloadOutlined,
@@ -8,17 +8,21 @@ import {
   SendOutlined,
   RobotOutlined,
   FireOutlined,
+  InfoCircleOutlined,
 } from '@ant-design/icons';
 import UnifiedOpinionCard from '../components/UnifiedOpinionCard';
 import AddToPublicationModal from '../components/AddToPublicationModal';
 import AIAnalysisModal from '../components/AIAnalysisModal';
 import { useDirectiveState } from '../context/DirectiveStateContext';
 
+// 二级 Tabs 结构：待反馈 ｜ 待处理 ｜ 已处理 ｜ 帖文处置 ｜ 动态监测 ｜ …… ｜ 全部
+// 涉及指令类型的 Tab 随时间范围动态平铺；待办指令数以普通括号展示，完全剥离舆情事件数
 const taskTabs = [
   { key: 'feedback', label: '待反馈' },
-  { key: 'pending', label: '待处理', count: 2 },
-  { key: 'disposal', label: '帖文处置', count: 3 },
-  { key: 'monitor', label: '动态监测', count: 5 },
+  { key: 'pending', label: '待处理', count: 5 },
+  { key: 'processed', label: '已处理' },
+  { key: 'disposal', label: '帖文处置', count: 3, isTypeTab: true },
+  { key: 'monitor', label: '动态监测', count: 2, isTypeTab: true },
   { key: 'all', label: '全部' },
 ];
 
@@ -152,48 +156,58 @@ const EmergencyResponse: React.FC = () => {
           </div>
         </div>
 
-        {/* 顶部二级 Tabs：｜待反馈｜待处理｜帖文处置｜动态监测｜全部｜ */}
-        <div className="emergency-task-tabs">
-          {taskTabs.map((tab) => {
-            const isFeedback = tab.key === 'feedback';
-            const showExclamation = isFeedback && hasFailedDirectives;
+        {/* 顶部二级 Tabs 栏：左侧 Tabs（待反馈｜待处理｜已处理｜帖文处置｜动态监测｜全部），右侧业务备注组件 */}
+        <div className="emergency-tabs-bar">
+          <div className="emergency-task-tabs">
+            {taskTabs.map((tab) => {
+              const isFeedback = tab.key === 'feedback';
+              const showExclamation = isFeedback && hasFailedDirectives;
 
-            return (
-              <button
-                key={tab.key}
-                type="button"
-                className={activeTaskTab === tab.key ? 'active' : ''}
-                onClick={() => setActiveTaskTab(tab.key)}
-                style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}
-              >
-                <span>{tab.count !== undefined ? `${tab.label}(${tab.count})` : tab.label}</span>
-                {showExclamation && (
-                  <Tooltip title="存在指令推送失败的情况，请及时排查与重新下发！">
-                    <span
-                      className="failure-exclamation-badge"
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: 17,
-                        height: 17,
-                        backgroundColor: '#ef4444',
-                        color: '#ffffff',
-                        borderRadius: '50%',
-                        fontSize: '11px',
-                        fontWeight: 900,
-                        marginLeft: 6,
-                        lineHeight: 1,
-                        boxShadow: '0 0 0 1.5px #fff, 0 1px 3px rgba(239, 68, 68, 0.4)',
-                      }}
-                    >
-                      !
-                    </span>
-                  </Tooltip>
-                )}
-              </button>
-            );
-          })}
+              return (
+                <button
+                  key={tab.key}
+                  type="button"
+                  className={activeTaskTab === tab.key ? 'active' : ''}
+                  onClick={() => setActiveTaskTab(tab.key)}
+                  style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}
+                >
+                  <span>{tab.count !== undefined ? `${tab.label}(${tab.count})` : tab.label}</span>
+                  {showExclamation && (
+                    <Tooltip title="存在指令推送失败的情况，请及时排查与重新下发！">
+                      <span
+                        className="failure-exclamation-badge"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: 17,
+                          height: 17,
+                          backgroundColor: '#ef4444',
+                          color: '#ffffff',
+                          borderRadius: '50%',
+                          fontSize: '11px',
+                          fontWeight: 900,
+                          marginLeft: 6,
+                          lineHeight: 1,
+                          boxShadow: '0 0 0 1.5px #fff, 0 1px 3px rgba(239, 68, 68, 0.4)',
+                        }}
+                      >
+                        !
+                      </span>
+                    </Tooltip>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* 右侧业务规则备注组件（简洁低负荷，清晰指引） */}
+          <div className="emergency-tabs-note" title="Tab与数据标签业务说明">
+            <InfoCircleOutlined className="emergency-note-icon" />
+            <span className="emergency-note-text">
+              红色感叹号标签代表当前有未成功下达的指令，括号后的数字代表当前该类型有多少条待办指令
+            </span>
+          </div>
         </div>
 
         <div className="emergency-disposal-list">
@@ -573,6 +587,18 @@ const EmergencyResponse: React.FC = () => {
               </Button>
             </div>
           </div>
+        </div>
+
+        {/* 列表底部分页与统计：呈现舆情事件条数（“共 N 条”），使用户进入Tab后直接在此获知卡片总量 */}
+        <div className="emergency-pagination-wrapper">
+          <Pagination
+            size="small"
+            total={2}
+            pageSize={10}
+            current={1}
+            showTotal={(total) => `共 ${total} 条`}
+            showSizeChanger={false}
+          />
         </div>
       </section>
     </div>

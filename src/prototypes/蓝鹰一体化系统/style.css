@@ -1146,13 +1146,23 @@
   color: #fff;
 }
 
+.emergency-tabs-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #e7e9f0;
+  margin-top: 8px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
 .emergency-task-tabs {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 20px;
   min-height: 44px;
-  margin-top: 8px;
-  border-bottom: 1px solid #e7e9f0;
+  margin-top: 0;
+  border-bottom: none;
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -1166,18 +1176,24 @@
   display: inline-flex;
   align-items: center;
   height: 44px;
-  padding: 0;
+  padding: 0 4px;
   border: 0;
   background: transparent;
-  color: #2f3440;
+  color: #334155;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.emergency-task-tabs button:hover {
+  color: #2563eb;
 }
 
 .emergency-task-tabs button.active {
-  color: #6259d9;
+  color: #2563eb;
+  font-weight: 700;
 }
 
 .emergency-task-tabs button.active::after {
@@ -1187,24 +1203,43 @@
   left: 0;
   height: 2px;
   border-radius: 999px;
-  background: #6259d9;
+  background: #2563eb;
   content: "";
 }
 
-.emergency-task-tabs em {
-  position: absolute;
-  top: -2px;
-  right: -22px;
-  min-width: 24px;
-  height: 20px;
-  padding: 0 6px;
-  border-radius: 999px;
-  background: #ff6b72;
-  color: #fff;
+/* 右侧业务规则备注组件：轻量极简、降低视觉疲劳与心理负担 */
+.emergency-tabs-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  color: #64748b;
   font-size: 12px;
-  font-style: normal;
-  line-height: 20px;
-  text-align: center;
+  line-height: 1.4;
+  white-space: nowrap;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.emergency-tabs-note .emergency-note-icon {
+  color: #3b82f6;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.emergency-tabs-note .emergency-note-text {
+  color: #64748b;
+  letter-spacing: 0.1px;
+}
+
+.emergency-pagination-wrapper {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 12px 0 8px;
 }
 
 .emergency-disposal-list {
