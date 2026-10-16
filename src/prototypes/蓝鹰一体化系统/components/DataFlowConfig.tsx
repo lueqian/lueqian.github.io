@@ -14,6 +14,7 @@ import {
   Badge,
   Tooltip,
   Alert,
+  Select,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
@@ -29,13 +30,35 @@ import {
   CloseCircleFilled,
 } from '@ant-design/icons';
 
+// 系统部署时初始化的地市部门与部门代码字典列表
+export interface DepartmentDictItem {
+  deptName: string;
+  deptCode: string;
+  defaultEndpoint?: string;
+}
+
+export const INITIAL_DEPARTMENT_LIST: DepartmentDictItem[] = [
+  { deptName: '南京市', deptCode: 'DEPT_NJ_001', defaultEndpoint: 'https://ga.nanjing.internal:8443/api/v1/directive/receive' },
+  { deptName: '无锡市', deptCode: 'DEPT_WX_003', defaultEndpoint: 'https://ga.wuxi.internal:8443/api/v1/directive/receive' },
+  { deptName: '徐州市', deptCode: 'DEPT_XZ_002', defaultEndpoint: 'https://ga.xuzhou.internal:8443/api/v1/directive/receive' },
+  { deptName: '常州市', deptCode: 'DEPT_CZ_004', defaultEndpoint: 'https://ga.changzhou.internal:8443/api/v1/directive/receive' },
+  { deptName: '苏州市', deptCode: 'DEPT_SZ_005', defaultEndpoint: 'https://ga.suzhou.internal:8443/api/v1/directive/receive' },
+  { deptName: '南通市', deptCode: 'DEPT_NT_006', defaultEndpoint: 'https://ga.nantong.internal:8443/api/v1/directive/receive' },
+  { deptName: '连云港市', deptCode: 'DEPT_LYG_007', defaultEndpoint: 'https://ga.lyg.internal:8443/api/v1/directive/receive' },
+  { deptName: '淮安市', deptCode: 'DEPT_HA_008', defaultEndpoint: 'https://ga.huaian.internal:8443/api/v1/directive/receive' },
+  { deptName: '盐城市', deptCode: 'DEPT_YC_009', defaultEndpoint: 'https://ga.yancheng.internal:8443/api/v1/directive/receive' },
+  { deptName: '扬州市', deptCode: 'DEPT_YZ_010', defaultEndpoint: 'https://ga.yangzhou.internal:8443/api/v1/directive/receive' },
+  { deptName: '镇江市', deptCode: 'DEPT_ZJ_011', defaultEndpoint: 'https://ga.zhenjiang.internal:8443/api/v1/directive/receive' },
+  { deptName: '泰州市', deptCode: 'DEPT_TZ_012', defaultEndpoint: 'https://ga.taizhou.internal:8443/api/v1/directive/receive' },
+  { deptName: '宿迁市', deptCode: 'DEPT_SQ_013', defaultEndpoint: 'https://ga.suqian.internal:8443/api/v1/directive/receive' },
+];
+
 // 数据流转路径记录接口（总队端）
 export interface DataFlowRouteItem {
   key: string;
   deptName: string; // 部门字段
   deptCode: string;
   primaryEndpoint: string;
-  backupEndpoint?: string;
   status: 'connected' | 'error';
   latencyMs: number;
 }
@@ -57,7 +80,6 @@ const DataFlowConfig: React.FC<DataFlowConfigProps> = ({ initialRole = 'provinci
       deptName: '徐州市',
       deptCode: 'DEPT_XZ_002',
       primaryEndpoint: 'https://ga.xuzhou.internal:8443/api/v1/directive/receive',
-      backupEndpoint: 'https://backup.xuzhou.internal:8443/api/v1/directive/receive',
       status: 'connected',
       latencyMs: 16,
     },
@@ -66,7 +88,6 @@ const DataFlowConfig: React.FC<DataFlowConfigProps> = ({ initialRole = 'provinci
       deptName: '淮安市',
       deptCode: 'DEPT_HA_008',
       primaryEndpoint: 'https://ga.huaian.internal:8443/api/v1/directive/receive',
-      backupEndpoint: 'https://backup.huaian.internal:8443/api/v1/directive/receive',
       status: 'connected',
       latencyMs: 14,
     },
@@ -75,7 +96,6 @@ const DataFlowConfig: React.FC<DataFlowConfigProps> = ({ initialRole = 'provinci
       deptName: '南京市',
       deptCode: 'DEPT_NJ_001',
       primaryEndpoint: 'https://ga.nanjing.internal:8443/api/v1/directive/receive',
-      backupEndpoint: 'https://backup.nanjing.internal:8443/api/v1/directive/receive',
       status: 'connected',
       latencyMs: 12,
     },
@@ -114,13 +134,10 @@ const DataFlowConfig: React.FC<DataFlowConfigProps> = ({ initialRole = 'provinci
   const [form] = Form.useForm();
 
   // ---------------------------------------------------------------------------
-  // 2. 地市端状态（仅保留目标地址、备用地址、重试范围与快速检测）
+  // 2. 地市端状态（仅保留目标地址、重试范围与快速检测，无需备用地址）
   // ---------------------------------------------------------------------------
   const [cityTargetPrimaryUrl, setCityTargetPrimaryUrl] = useState(
     'https://jsga.provincial.internal:8443/gateway/directive/feedback'
-  );
-  const [cityTargetBackupUrl, setCityTargetBackupUrl] = useState(
-    'https://jsga-backup.provincial.internal:8443/gateway/directive/feedback'
   );
   const [cityTimeoutMs, setCityTimeoutMs] = useState<number>(5000); // 默认 5000ms
   const [cityRetries, setCityRetries] = useState<number>(3); // 默认 3次
@@ -152,9 +169,7 @@ const DataFlowConfig: React.FC<DataFlowConfigProps> = ({ initialRole = 'provinci
       setEditingItem(item);
       form.setFieldsValue({
         deptName: item.deptName,
-        deptCode: item.deptCode,
         primaryEndpoint: item.primaryEndpoint,
-        backupEndpoint: item.backupEndpoint,
       });
     } else {
       setEditingItem(null);
@@ -163,10 +178,25 @@ const DataFlowConfig: React.FC<DataFlowConfigProps> = ({ initialRole = 'provinci
     setDrawerOpen(true);
   };
 
+  // 部门名称下拉联动填充默认地址
+  const handleDeptNameChange = (deptName: string) => {
+    const found = INITIAL_DEPARTMENT_LIST.find((item) => item.deptName === deptName);
+    if (found) {
+      if (!editingItem && !form.getFieldValue('primaryEndpoint')) {
+        form.setFieldsValue({
+          primaryEndpoint: found.defaultEndpoint,
+        });
+      }
+    }
+  };
+
   // 保存路径（总队端）
   const handleSaveDrawer = async () => {
     try {
       const values = await form.validateFields();
+      const matchedDept = INITIAL_DEPARTMENT_LIST.find((item) => item.deptName === values.deptName);
+      const resolvedDeptCode = matchedDept?.deptCode || `DEPT_${Date.now().toString().slice(-4)}`;
+
       if (editingItem) {
         setRoutes((prev) =>
           prev.map((r) =>
@@ -174,9 +204,8 @@ const DataFlowConfig: React.FC<DataFlowConfigProps> = ({ initialRole = 'provinci
               ? {
                   ...r,
                   deptName: values.deptName,
-                  deptCode: values.deptCode || r.deptCode,
+                  deptCode: resolvedDeptCode,
                   primaryEndpoint: values.primaryEndpoint,
-                  backupEndpoint: values.backupEndpoint,
                 }
               : r
           )
@@ -188,9 +217,8 @@ const DataFlowConfig: React.FC<DataFlowConfigProps> = ({ initialRole = 'provinci
           {
             key: `dept-${Date.now()}`,
             deptName: values.deptName,
-            deptCode: values.deptCode || `DEPT_${Date.now().toString().slice(-4)}`,
+            deptCode: resolvedDeptCode,
             primaryEndpoint: values.primaryEndpoint,
-            backupEndpoint: values.backupEndpoint,
             status: 'connected',
             latencyMs: 18,
           },
@@ -263,33 +291,25 @@ const DataFlowConfig: React.FC<DataFlowConfigProps> = ({ initialRole = 'provinci
       ),
     },
     {
-      title: '指令下达接收主地址',
+      title: '指令下达接收地址',
       key: 'primaryEndpoint',
       render: (_, record) => (
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 13, color: '#334155', fontFamily: 'monospace' }}>
-              {record.primaryEndpoint}
-            </span>
-            <Tooltip title="复制地址">
-              <Button
-                type="text"
-                size="small"
-                icon={<CopyOutlined />}
-                onClick={() => {
-                  navigator.clipboard?.writeText(record.primaryEndpoint);
-                  message.success('已复制');
-                }}
-                style={{ color: '#94a3b8' }}
-              />
-            </Tooltip>
-          </div>
-          {record.backupEndpoint && (
-            <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
-              <span style={{ color: '#94a3b8' }}>备用地址: </span>
-              <span style={{ fontFamily: 'monospace' }}>{record.backupEndpoint}</span>
-            </div>
-          )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontSize: 13, color: '#334155', fontFamily: 'monospace' }}>
+            {record.primaryEndpoint}
+          </span>
+          <Tooltip title="复制地址">
+            <Button
+              type="text"
+              size="small"
+              icon={<CopyOutlined />}
+              onClick={() => {
+                navigator.clipboard?.writeText(record.primaryEndpoint);
+                message.success('已复制');
+              }}
+              style={{ color: '#94a3b8' }}
+            />
+          </Tooltip>
         </div>
       ),
     },
@@ -464,7 +484,7 @@ const DataFlowConfig: React.FC<DataFlowConfigProps> = ({ initialRole = 'provinci
       )}
 
       {/* ========================================================================= */}
-      {/* 场景 2：地市单位（仅保留上报单位目标地址、备用地址、重试范围与快速检测）    */}
+      {/* 场景 2：地市单位（仅保留上报单位目标地址、重试范围与快速检测）             */}
       {/* ========================================================================= */}
       {companyType === 'city' && (
         <Card
@@ -478,34 +498,21 @@ const DataFlowConfig: React.FC<DataFlowConfigProps> = ({ initialRole = 'provinci
               label={
                 <span style={{ fontWeight: 600, color: '#1e293b' }}>
                   <span style={{ color: '#ef4444' }}>* </span>
-                  上报单位目标地址 (总队接收主地址)
+                  上报单位目标地址 (总队接收地址)
                 </span>
               }
-              extra="指令签收回执、核查反馈材料及结案数据包推送到上级总队的专网服务接口地址"
+              extra="指令签收回执、核查反馈材料及结案数据包推送到上级总队的专网服务接口地址（单地址直连，大多数情况下不提供备用地址）"
               required
             >
               <Input
-                placeholder="请输入上级总队指令接收主地址"
+                placeholder="请输入上级总队指令接收地址"
                 value={cityTargetPrimaryUrl}
                 onChange={(e) => setCityTargetPrimaryUrl(e.target.value)}
                 style={{ fontFamily: 'monospace' }}
               />
             </Form.Item>
 
-            {/* 2. 备用地址 */}
-            <Form.Item
-              label={<span style={{ fontWeight: 600, color: '#1e293b' }}>备用地址 (容灾通道)</span>}
-              extra="当主地址因专网抖动超时时，系统自动切流至备用地址重试（非必填）"
-            >
-              <Input
-                placeholder="请输入备用总队网关地址（选填）"
-                value={cityTargetBackupUrl}
-                onChange={(e) => setCityTargetBackupUrl(e.target.value)}
-                style={{ fontFamily: 'monospace' }}
-              />
-            </Form.Item>
-
-            {/* 3. 重试范围 (默认超时阈值5000ms，重试次数3次，允许动态配置) */}
+            {/* 2. 重试范围 (默认超时阈值5000ms，重试次数3次，允许动态配置) */}
             <div style={{ display: 'flex', gap: 20, marginBottom: 8 }}>
               <Form.Item
                 label={<span style={{ fontWeight: 600, color: '#1e293b' }}>超时阈值 (ms)</span>}
@@ -535,7 +542,7 @@ const DataFlowConfig: React.FC<DataFlowConfigProps> = ({ initialRole = 'provinci
               </Form.Item>
             </div>
 
-            {/* 4. 操作与快速连通性检测结果 */}
+            {/* 3. 操作与快速连通性检测结果 */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8, marginBottom: 16 }}>
               <Button type="primary" onClick={handleSaveCityConfig} style={{ background: '#2563eb' }}>
                 保存配置
@@ -600,36 +607,29 @@ const DataFlowConfig: React.FC<DataFlowConfigProps> = ({ initialRole = 'provinci
         <Form form={form} layout="vertical">
           <Form.Item
             name="deptName"
-            label="匹配部门字段 (地市单位)"
-            rules={[{ required: true, message: '请填写匹配部门字段' }]}
-            extra="如：徐州市、淮安市、南京市，用于总队下达指令时按部门自动寻址"
+            label="部门选择"
+            rules={[{ required: true, message: '请选择部门' }]}
+            extra="系统部署时已初始化全省地市部门列表，用于总队下达指令时按部门自动寻址"
           >
-            <Input placeholder="请输入地市部门名称，如：徐州市" />
-          </Form.Item>
-
-          <Form.Item
-            name="deptCode"
-            label="部门代码 (选填)"
-            extra="如：DEPT_XZ_002"
-          >
-            <Input placeholder="请输入部门唯一编码（选填）" />
+            <Select
+              placeholder="请选择地市部门（系统初始化列表）"
+              showSearch
+              optionFilterProp="label"
+              onChange={handleDeptNameChange}
+              options={INITIAL_DEPARTMENT_LIST.map((item) => ({
+                label: item.deptName,
+                value: item.deptName,
+              }))}
+            />
           </Form.Item>
 
           <Form.Item
             name="primaryEndpoint"
-            label="指令接收主地址"
-            rules={[{ required: true, message: '请输入指令接收主地址' }]}
-            extra="地市专网前置指令接收接口地址"
+            label="指令接收地址"
+            rules={[{ required: true, message: '请输入指令接收地址' }]}
+            extra="地市专网前置指令接收接口地址（单地址部署，无需配置备用地址）"
           >
             <Input placeholder="https://ga.xuzhou.internal:8443/api/v1/directive/receive" />
-          </Form.Item>
-
-          <Form.Item
-            name="backupEndpoint"
-            label="备用地址 (选填)"
-            extra="专网故障时的备用容灾接口"
-          >
-            <Input placeholder="https://backup.xuzhou.internal:8443/api/v1/directive/receive" />
           </Form.Item>
 
           <div style={{ marginTop: 24, textAlign: 'right' }}>
