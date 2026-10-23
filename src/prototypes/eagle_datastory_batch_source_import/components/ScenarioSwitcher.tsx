@@ -44,7 +44,7 @@ const SCENARIO_ITEMS: {
     step: 2,
     label: '理想链路 (1:1)',
     badge: '精准匹配',
-    desc: '28个账号唯一命中，一键全选，挂载至现有目录【涉华博主】',
+    desc: '28个精准匹配与2个冲突推荐实体（共30个），挂载至现有目录【涉华博主】',
     icon: <CheckCheck className="w-3.5 h-3.5" />,
   },
   {
@@ -52,7 +52,7 @@ const SCENARIO_ITEMS: {
     step: 3,
     label: '异常消歧 (1:N)',
     badge: '冲突裁决',
-    desc: '2个URL命中历史多版本快照，左右并排卡片单选裁决，防遗漏阻断校验',
+    desc: '冲突项默认选中首选实体（计入已选）；点击暂不关注-1，选定账号+1，实时联动提交计数',
     icon: <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />,
   },
   {
@@ -60,7 +60,7 @@ const SCENARIO_ITEMS: {
     step: 4,
     label: '兜底与异步补采',
     badge: '未命中',
-    desc: '5个未命中URL一键提取，勾选异步补采推入爬虫队列并绑定目录',
+    desc: '确认导入已选30个账号，并提交5个未命中URL推入后台异步补采队列',
     icon: <Layers className="w-3.5 h-3.5" />,
   },
   {

@@ -322,7 +322,7 @@ export const MOCK_CONFLICT_ITEMS: ConflictItem[] = [
     id: 'conf_1',
     originUrl: 'https://v.douyin.com/iJXXXXX/',
     reason: '该主页链接命中 2 个不同历史采集中收录的同名/改名快照实体',
-    selectedOption: null, // 用户未选
+    selectedOption: 'candidate_0', // 自动解析后默认选中第一个实体
     candidates: [
       {
         id: 'c1_a',
@@ -360,7 +360,7 @@ export const MOCK_CONFLICT_ITEMS: ConflictItem[] = [
     id: 'conf_2',
     originUrl: 'https://weibo.com/u/1892847291',
     reason: '该链接在微博平台存在历史机构号转制为自媒体多版本元数据记录',
-    selectedOption: null,
+    selectedOption: 'candidate_0', // 自动解析后默认选中第一个实体
     candidates: [
       {
         id: 'c2_a',

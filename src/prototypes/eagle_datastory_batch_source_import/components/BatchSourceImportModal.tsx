@@ -91,9 +91,31 @@ export const BatchSourceImportModal: React.FC<BatchSourceImportModalProps> = ({
     () => matchedList.some((item) => item.selected) && !allSelected,
     [matchedList, allSelected]
   );
-  const selectedCount = useMemo(
+  // 精准匹配已选计数
+  const matchedSelectedCount = useMemo(
     () => matchedList.filter((item) => item.selected).length,
     [matchedList]
+  );
+
+  // 冲突项中有效选中的候选实体计数（candidate_0 或 candidate_1）
+  const conflictSelectedCount = useMemo(
+    () =>
+      conflicts.filter(
+        (item) => item.selectedOption === 'candidate_0' || item.selectedOption === 'candidate_1'
+      ).length,
+    [conflicts]
+  );
+
+  // 跳过的冲突项数量
+  const conflictSkippedCount = useMemo(
+    () => conflicts.filter((item) => item.selectedOption === 'skip').length,
+    [conflicts]
+  );
+
+  // 总已选导入账号数 = 精准匹配已选数 + 冲突项有效选中数
+  const totalSelectedCount = useMemo(
+    () => matchedSelectedCount + conflictSelectedCount,
+    [matchedSelectedCount, conflictSelectedCount]
   );
 
   const handleToggleSelectAll = (checked: boolean) => {
@@ -123,6 +145,10 @@ export const BatchSourceImportModal: React.FC<BatchSourceImportModalProps> = ({
       setTimeout(() => {
         setStage('results');
         setActiveTab('matched');
+        // 重置冲突项为默认选中第一个实体
+        setConflicts(
+          MOCK_CONFLICT_ITEMS.map((item) => ({ ...item, selectedOption: 'candidate_0' }))
+        );
       }, 500);
     }, 1300);
   };
@@ -151,7 +177,7 @@ export const BatchSourceImportModal: React.FC<BatchSourceImportModalProps> = ({
     [selectedDirId]
   );
   const remainingQuota = currentDirectory.maxLimit - currentDirectory.currentCount;
-  const isOverQuota = dirMode === 'existing' && selectedCount > remainingQuota;
+  const isOverQuota = dirMode === 'existing' && totalSelectedCount > remainingQuota;
 
   // 提交绑定
   const handleSubmit = () => {
@@ -175,7 +201,7 @@ export const BatchSourceImportModal: React.FC<BatchSourceImportModalProps> = ({
     }
 
     if (isOverQuota) {
-      message.error(`已选账号数 (${selectedCount}) 超过目录剩余容量 (${remainingQuota})`);
+      message.error(`已选账号数 (${totalSelectedCount}) 超过目录剩余容量 (${remainingQuota})`);
       return;
     }
 
@@ -183,7 +209,7 @@ export const BatchSourceImportModal: React.FC<BatchSourceImportModalProps> = ({
       dirMode === 'existing' ? currentDirectory.name : newDirName.trim();
 
     // 成功反馈
-    message.success(`成功将 ${selectedCount} 个账号加入目录【${targetDirName}】`);
+    message.success(`成功将 ${totalSelectedCount} 个账号加入目录【${targetDirName}】`);
     if (autoCrawlChecked) {
       message.info(`已下发 5 个未匹配链接的后台异步补采任务`);
     }
@@ -191,7 +217,7 @@ export const BatchSourceImportModal: React.FC<BatchSourceImportModalProps> = ({
     onClose();
     if (onConfirmSuccess) {
       onConfirmSuccess({
-        matchedCount: selectedCount,
+        matchedCount: totalSelectedCount,
         dirName: targetDirName,
         autoCrawlCount: autoCrawlChecked ? 5 : 0,
       });
@@ -347,7 +373,7 @@ export const BatchSourceImportModal: React.FC<BatchSourceImportModalProps> = ({
                       </Checkbox>
                       <span className="text-slate-400">|</span>
                       <span className="text-slate-600">
-                        已选择 <span className="text-blue-600 font-semibold">{selectedCount}</span> / {matchedList.length} 个账号
+                        已选择 <span className="text-blue-600 font-semibold">{matchedSelectedCount}</span> / {matchedList.length} 个账号
                       </span>
                     </div>
                     <span className="text-slate-400 text-[11px]">
@@ -435,13 +461,25 @@ export const BatchSourceImportModal: React.FC<BatchSourceImportModalProps> = ({
               {/* Tab 2：多实体冲突 (1:N) */}
               {activeTab === 'conflicts' && (
                 <div className="space-y-4">
-                  <div className="p-3 bg-amber-50 rounded-lg border border-amber-200 text-xs text-amber-800 flex items-start gap-2">
-                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                    <div>
-                      <span className="font-semibold">冲突手动裁决：</span>
-                      <span>
-                        检测到以下 2 个链接在历史快照或多平台采集通道中命中多个实体，请为每条链接指定唯一关注账号：
+                  <div className="p-3 bg-amber-50 rounded-lg border border-amber-200 text-xs text-amber-800 flex items-center justify-between gap-3">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-semibold">冲突手动裁决：</span>
+                        <span>
+                          系统已为以下 {conflicts.length} 个冲突链接默认预选推荐实体（已计入底部已选）；选择实体“+1”，选择暂不关注“-1”：
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 font-medium">
+                      <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-700 border border-blue-200 text-[11px]">
+                        已选定加入：{conflictSelectedCount} 个
                       </span>
+                      {conflictSkippedCount > 0 && (
+                        <span className="px-2 py-0.5 rounded bg-slate-200 text-slate-600 border border-slate-300 text-[11px]">
+                          已跳过：{conflictSkippedCount} 条
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -471,7 +509,11 @@ export const BatchSourceImportModal: React.FC<BatchSourceImportModalProps> = ({
                           </div>
 
                           {/* 左右并排候选实体卡片 (Side-by-side Layout) */}
-                          <div className="grid grid-cols-2 gap-3 mb-3">
+                          <div
+                            className={`grid grid-cols-2 gap-3 mb-3 transition-opacity ${
+                              conflict.selectedOption === 'skip' ? 'opacity-60' : 'opacity-100'
+                            }`}
+                          >
                             {conflict.candidates.map((cand, cIdx) => {
                               const optionKey = cIdx === 0 ? 'candidate_0' : 'candidate_1';
                               const isChecked = conflict.selectedOption === optionKey;
@@ -533,11 +575,20 @@ export const BatchSourceImportModal: React.FC<BatchSourceImportModalProps> = ({
                           <div className="flex items-center justify-between pt-1">
                             <label
                               onClick={() => handleSelectConflict(conflict.id, 'skip')}
-                              className="inline-flex items-center gap-2 text-xs text-slate-500 hover:text-slate-700 cursor-pointer"
+                              className={`inline-flex items-center gap-2 text-xs cursor-pointer transition-colors ${
+                                conflict.selectedOption === 'skip'
+                                  ? 'text-amber-700 font-semibold'
+                                  : 'text-slate-500 hover:text-slate-700'
+                              }`}
                             >
                               <Radio checked={conflict.selectedOption === 'skip'} />
                               <span>暂不关注此链接 (跳过此条)</span>
                             </label>
+                            {conflict.selectedOption === 'skip' && (
+                              <span className="text-[11px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded">
+                                已从本次导入清单中排除 (-1)
+                              </span>
+                            )}
                             {hasError && (
                               <span className="text-xs text-red-600 font-medium">
                                 ⚠️ 请为此冲突项指定唯一目标账号
@@ -684,8 +735,8 @@ export const BatchSourceImportModal: React.FC<BatchSourceImportModalProps> = ({
                 <FolderCheck className="w-3.5 h-3.5 shrink-0" />
                 <span className="whitespace-nowrap">
                   {autoCrawlChecked
-                    ? `确认导入 (已选 ${selectedCount} 个) 并提交补采 (5 个)`
-                    : `确认导入目录 (已选 ${selectedCount} 个)`}
+                    ? `确认导入 (已选 ${totalSelectedCount} 个) 并提交补采 (5 个)`
+                    : `确认导入目录 (已选 ${totalSelectedCount} 个)`}
                 </span>
               </button>
             </div>
