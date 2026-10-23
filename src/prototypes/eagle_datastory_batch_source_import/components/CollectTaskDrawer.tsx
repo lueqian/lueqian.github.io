@@ -41,7 +41,8 @@ export interface CollectTaskDrawerProps {
 const PLATFORMS = ['小红书', '抖音', '小红书', '今日头条', '快手', 'B站', '知乎', '百度贴吧'];
 
 export const mockDataSourceCounts: Record<string, number> = {
-  '汽车行业专题': 24,
+  '汽车行业品牌声量监控': 1420,
+  '汽车行业专题': 1420,
   '科技数码舆情': 0, // 用于模拟 0 条数据的空专题
   '猫咪日常Bot': 15,
   '数码测评组': 0,   // 用于模拟 0 条数据的空重点源
@@ -57,7 +58,7 @@ export const mockDataSourceCounts: Record<string, number> = {
 };
 
 const TOPIC_OPTIONS = [
-  { value: 'topic_001', label: '汽车行业专题' },
+  { value: 'topic_001', label: '汽车行业品牌声量监控' },
   { value: 'topic_empty', label: '科技数码舆情' },
   { value: 'topic_002', label: '消费专题调研' },
   { value: 'topic_003', label: '科技数码专题' },
@@ -341,7 +342,9 @@ const SCOPE_PLATFORM_OPTIONS = [
   { value: '知乎', label: '知乎' },
 ];
 
-// ============ 额度预估看板 ============
+import QuotaEstimatePanel, { ValidationResult } from './QuotaEstimatePanel';
+
+// ============ 额度预估与翻页选项 ============
 
 const COLLECT_PAGE_OPTIONS = [
   { value: '1', label: '前1页' },
@@ -349,213 +352,6 @@ const COLLECT_PAGE_OPTIONS = [
   { value: '5', label: '前5页' },
   { value: '10', label: '前10页' },
 ];
-
-const PAGE_MULTIPLIER: Record<string, number> = {
-  '1': 1,
-  '3': 2,
-  '5': 3,
-  '10': 8,
-};
-
-const QuotaEstimatePanel: React.FC<{
-  scopeLabel: string;
-  platformPageConfig: Record<string, string>;
-  linkCount?: number;
-  frequency?: { mode: string; value: string; dateRange?: any; customRules?: any[] };
-  platformCounts?: Record<string, number>;
-  taskType?: string;
-  platforms?: string[];
-}> = function ({ scopeLabel, platformPageConfig, linkCount, frequency, platformCounts, taskType, platforms }) {
-  const [loading, setLoading] = useState(false);
-  const [postData, setPostData] = useState(0);
-  const [estimatedQuota, setEstimatedQuota] = useState(0);
-
-  // 将 platformPageConfig 对象和 frequency/platformCounts/platforms 序列化，用于触发重算
-  var configKey = JSON.stringify(platformPageConfig) + '_' + linkCount + '_' + JSON.stringify(frequency) + '_' + JSON.stringify(platforms);
-
-  // 计算消耗额度
-  var calculateQuota = useCallback(function () {
-    // 取得每日抓取轮数
-    var tPerDay = 12; // 默认每2小时
-    if (frequency) {
-      if (frequency.mode === 'hour') {
-        var h = parseInt(frequency.value, 10) || 2;
-        tPerDay = Math.ceil(24 / h);
-      } else if (frequency.mode === 'day') {
-        tPerDay = 1;
-      } else if (frequency.mode === 'custom' && frequency.customRules && frequency.customRules.length > 0) {
-        var totalRounds = 0;
-        var minStart: any = null;
-        var maxEnd: any = null;
-        
-        frequency.customRules.forEach(function (rule: any) {
-          if (rule.dateRange && rule.dateRange[0] && rule.dateRange[1]) {
-            var start = rule.dateRange[0];
-            var end = rule.dateRange[1];
-            var days = end.diff(start, 'day') + 1;
-            
-            if (!minStart || start.isBefore(minStart)) minStart = start;
-            if (!maxEnd || end.isAfter(maxEnd)) maxEnd = end;
-            
-            var rPerDay = 1;
-            if (rule.mode === 'hour') {
-              var h = parseInt(rule.value, 10) || 2;
-              rPerDay = Math.ceil(24 / h);
-            }
-            totalRounds += days * rPerDay;
-          }
-        });
-        
-        var totalDays = 1;
-        if (minStart && maxEnd) {
-          totalDays = maxEnd.diff(minStart, 'day') + 1;
-        }
-        tPerDay = Math.ceil(totalRounds / totalDays);
-      }
-    }
-
-    if (scopeLabel === '链接' && linkCount) {
-      // 链接计算逻辑：链接总数 * 每天抓取轮数 * 页数系数
-      var totalQuota = 0;
-      if (Object.keys(platformPageConfig).length === 0) {
-        // 互动量更新，每个链接每轮次更新消耗 1 次额度
-        totalQuota = linkCount * tPerDay;
-      } else {
-        for (var platform in platformPageConfig) {
-          var pages = platformPageConfig[platform];
-          var multiplier = PAGE_MULTIPLIER[pages] || 1;
-          var platLinkCount = (platformCounts && platformCounts[platform]) || Math.ceil(linkCount / Math.max(1, Object.keys(platformPageConfig).length));
-          totalQuota += platLinkCount * tPerDay * multiplier;
-        }
-      }
-      return { posts: linkCount, quota: totalQuota };
-    } else {
-      // 专题/重点源计算逻辑
-      if (taskType === 'interaction') {
-        // 互动量更新
-        var totalQuota = 0;
-        var posts = 0;
-        var plist = platforms || [];
-        if (plist.length > 0) {
-          plist.forEach(function () {
-            posts += 250; // 每个平台设定平均 250 篇帖子
-          });
-          totalQuota = posts * tPerDay;
-        }
-        return { posts, quota: totalQuota };
-      } else {
-        // 评论区采集
-        var posts = 1850;
-        var median = 80;
-        var totalQuota = 0;
-        for (var platform in platformPageConfig) {
-          var pages = platformPageConfig[platform];
-          var multiplier = PAGE_MULTIPLIER[pages] || 1;
-          totalQuota += median * multiplier * tPerDay;
-        }
-        return { posts, quota: totalQuota };
-      }
-    }
-  }, [configKey, scopeLabel, linkCount, frequency, platformCounts, platformPageConfig, taskType, platforms]);
-
-  // 初始化 + 选项变更时重新计算
-  useEffect(function () {
-    setLoading(true);
-    var timer = setTimeout(function () {
-      var result = calculateQuota();
-      setPostData(result.posts);
-      setEstimatedQuota(result.quota);
-      setLoading(false);
-    }, 1000);
-    return function () { clearTimeout(timer); };
-  }, [configKey, calculateQuota]);
-
-  // 判断是否有任一平台选择了"前10页"
-  var hasMaxCollect = Object.values(platformPageConfig).some(function (v) { return v === '10'; });
-  var quotaColor = hasMaxCollect ? '#FA8C16' : '#1890FF';
-
-  // 取得每日抓取轮数
-  var timesPerDay = 12;
-  if (frequency) {
-    if (frequency.mode === 'hour') {
-      var h = parseInt(frequency.value, 10) || 2;
-      timesPerDay = Math.ceil(24 / h);
-    } else if (frequency.mode === 'day') {
-      timesPerDay = 1;
-    } else if (frequency.mode === 'custom' && frequency.customRules && frequency.customRules.length > 0) {
-      var totalRounds = 0;
-      var minStart: any = null;
-      var maxEnd: any = null;
-      
-      frequency.customRules.forEach(function (rule: any) {
-        if (rule.dateRange && rule.dateRange[0] && rule.dateRange[1]) {
-          var start = rule.dateRange[0];
-          var end = rule.dateRange[1];
-          var days = end.diff(start, 'day') + 1;
-          
-          if (!minStart || start.isBefore(minStart)) minStart = start;
-          if (!maxEnd || end.isAfter(maxEnd)) maxEnd = end;
-          
-          var rPerDay = 1;
-          if (rule.mode === 'hour') {
-            var h = parseInt(rule.value, 10) || 2;
-            rPerDay = Math.ceil(24 / h);
-          }
-          totalRounds += days * rPerDay;
-        }
-      });
-      
-      var totalDays = 1;
-      if (minStart && maxEnd) {
-        totalDays = (maxEnd as any).diff(minStart, 'day') + 1;
-      }
-      timesPerDay = Math.ceil(totalRounds / totalDays);
-    }
-  }
-
-  return (
-    <div className={'ct-quota-panel' + (hasMaxCollect ? ' ct-quota-panel--warning' : '')}>
-      <div className="ct-quota-panel-title">
-        <span>额度预估</span>
-      </div>
-      <div className="ct-quota-panel-body">
-        {loading ? (
-          <div className="ct-quota-loading">
-            <div className="ct-quota-loading-bar">
-              <div className="ct-quota-loading-bar-inner" />
-            </div>
-            <span className="ct-quota-loading-text">正在计算预估额度...</span>
-          </div>
-        ) : (
-          <>
-            <div className="ct-quota-info">
-              {scopeLabel === '链接' ? (
-                <span className="ct-quota-info-text">
-                  当前已导入 <strong>{linkCount}</strong> 条待采集链接，每天进行 <strong>{timesPerDay}</strong> 轮次抓取，基于{Object.keys(platformPageConfig).length === 0 ? '单链接互动量更新' : '各平台评论采集页数配置'}，当前配置预计：
-                </span>
-              ) : (
-                <span className="ct-quota-info-text">
-                  该{scopeLabel}近7天累计收录 <strong>{postData.toLocaleString()}</strong> 条帖子，每天进行 <strong>{timesPerDay}</strong> 轮次抓取，基于{taskType === 'interaction' ? '各平台互动量更新配置' : '各平台评论采集页数配置'}，当前配置预计：
-                </span>
-              )}
-            </div>
-            <div className="ct-quota-result">
-              <span className="ct-quota-result-label">预计消耗额度：</span>
-              <span className="ct-quota-result-value" style={{ color: quotaColor }}>
-                {estimatedQuota.toLocaleString()} 次/天
-              </span>
-              {hasMaxCollect && (
-                <Tooltip title="单次采集页数较多（前10页），消耗额度相对较快">
-                  <WarningOutlined className="ct-quota-warning-icon" />
-                </Tooltip>
-              )}
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  );
-};
 
 // ============ 平台多选复选框（含全选） ============
 
@@ -638,6 +434,15 @@ const TaskFormContent: React.FC<{
   setLinksTableData: React.Dispatch<React.SetStateAction<any[]>>;
   selectedDataCount: number | null;
   setSelectedDataCount: (v: number | null) => void;
+  truncationStrategy: 'all' | 'top_n';
+  setTruncationStrategy: React.Dispatch<React.SetStateAction<'all' | 'top_n'>>;
+  topNCount: number;
+  setTopNCount: React.Dispatch<React.SetStateAction<number>>;
+  customTopN: number;
+  setCustomTopN: React.Dispatch<React.SetStateAction<number>>;
+  isOverLimit: boolean;
+  blockedPlatform?: string;
+  onValidationChange: (res: ValidationResult) => void;
 }> = function ({
   form,
   scopeType,
@@ -665,7 +470,16 @@ const TaskFormContent: React.FC<{
   linksTableData,
   setLinksTableData,
   selectedDataCount,
-  setSelectedDataCount
+  setSelectedDataCount,
+  truncationStrategy,
+  setTruncationStrategy,
+  topNCount,
+  setTopNCount,
+  customTopN,
+  setCustomTopN,
+  isOverLimit,
+  blockedPlatform,
+  onValidationChange,
 }) {
   const [trackDaysError, setTrackDaysError] = useState(false);
   const [editingId, setEditingId] = useState<string>('');
@@ -972,6 +786,70 @@ const TaskFormContent: React.FC<{
         {/* 专题/重点源 - 二级配置区 */}
         {hasSelectedScopeItem && (
           <div className="ct-scope-secondary">
+            {/* 采集数据截取策略 (Data Truncation Strategy) */}
+            <div style={{ marginBottom: 20, padding: '12px 14px', background: '#fafafa', border: '1px solid #f0f0f0', borderRadius: '6px' }}>
+              <div style={{ fontWeight: 600, fontSize: '13px', marginBottom: '8px', color: 'var(--text-main)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span>采集数据截取策略 (Data Truncation Strategy)</span>
+                <span style={{ fontSize: '12px', color: '#8c8c8c', fontWeight: 'normal' }}>平台日配额风控优化</span>
+              </div>
+              <Radio.Group
+                value={truncationStrategy}
+                onChange={(e) => setTruncationStrategy(e.target.value)}
+                style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}
+              >
+                <Radio value="top_n" style={{ alignItems: 'flex-start' }}>
+                  <div style={{ marginTop: '-2px' }}>
+                    <div style={{ fontWeight: 500, color: '#1890ff', fontSize: '13px' }}>
+                      按互动量优先采集 Top N 帖文 <Tag color="blue" style={{ marginLeft: 6, fontSize: 10 }}>推荐</Tag>
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#8c8c8c', marginTop: '3px' }}>
+                      针对所选范围内各平台的存量帖文，按总互动量（点赞+评论+转发）降序排序
+                    </div>
+                    {truncationStrategy === 'top_n' && (
+                      <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>单平台上限：</span>
+                        <Select
+                          size="small"
+                          value={topNCount}
+                          onChange={(v) => setTopNCount(v)}
+                          style={{ width: '110px' }}
+                          options={[
+                            { value: 20, label: '前 20 条' },
+                            { value: 50, label: '前 50 条' },
+                            { value: 100, label: '前 100 条' },
+                            { value: 200, label: '前 200 条' },
+                            { value: -1, label: '自定义数值' },
+                          ]}
+                        />
+                        {topNCount === -1 && (
+                          <InputNumber
+                            size="small"
+                            min={1}
+                            max={5000}
+                            placeholder="条数"
+                            value={customTopN}
+                            onChange={(v) => setCustomTopN(v || 100)}
+                            style={{ width: '80px' }}
+                          />
+                        )}
+                        <span style={{ fontSize: '11px', color: '#52c41a' }}>
+                          ✓ 已优化小红书/抖音等高风控平台的日并发负荷
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </Radio>
+                <Radio value="all" style={{ alignItems: 'flex-start' }}>
+                  <div style={{ marginTop: '-2px' }}>
+                    <span style={{ fontSize: '13px', color: 'var(--text-main)' }}>采集全量帖文</span>
+                    <span style={{ fontSize: '12px', color: '#fa8c16', marginLeft: '6px' }}>
+                      (可能超出特定平台单日并发负荷)
+                    </span>
+                  </div>
+                </Radio>
+              </Radio.Group>
+            </div>
+
             <div className="ct-scope-secondary-title">采集配置</div>
 
             <Form.Item label="追踪天数" required style={{ marginBottom: 20 }}>
@@ -1070,14 +948,18 @@ const TaskFormContent: React.FC<{
               </div>
             )}
 
-            {/* 额度预估看板 */}
+            {/* 额度预估与单日风控校验看板 */}
             {scopePlatforms.length > 0 && (
               <QuotaEstimatePanel
                 scopeLabel={scopeLabel}
+                taskType={taskTypeValue}
                 platformPageConfig={taskTypeValue === 'comment' ? scopePlatformPages : {}}
                 frequency={frequency}
-                taskType={taskTypeValue}
                 platforms={scopePlatforms}
+                selectedScopeId={scopeType === 'topic' ? relatedTopicValue : relatedSourceValue}
+                truncationStrategy={truncationStrategy}
+                topNCount={topNCount === -1 ? customTopN : topNCount}
+                onValidationChange={onValidationChange}
               />
             )}
           </div>
@@ -1121,6 +1003,17 @@ const TaskFormContent: React.FC<{
                       onClick={function () { document.getElementById('collect-link-file-import')?.click(); }}
                     >
                       导入文件
+                    </Button>
+                    <Button
+                      type="link"
+                      size="small"
+                      style={{ padding: 0, height: 'auto', fontSize: 12, color: '#fa8c16' }}
+                      onClick={function () {
+                        const mock20 = Array.from({ length: 20 }, (_, i) => `https://www.xiaohongshu.com/explore/item_test_${i + 1}`).join('\n');
+                        setLinkText(mock20);
+                      }}
+                    >
+                      快速填入20条小红书链接
                     </Button>
                   </Space>
                   <Button
@@ -1184,9 +1077,19 @@ const TaskFormContent: React.FC<{
                       title: '平台',
                       dataIndex: 'platform',
                       key: 'platform',
-                      width: 90,
+                      width: 150,
                       render: function (platform: string) {
-                        return <Tag color={platform === '其他' ? 'default' : 'blue'} style={{ margin: 0 }}>{platform}</Tag>;
+                        const isBlockedXhs = isOverLimit && (blockedPlatform === '小红书' || blockedPlatform === 'xhs') && (platform === '小红书' || platform === 'xhs');
+                        return (
+                          <Space size={4} wrap>
+                            <Tag color={platform === '其他' ? 'default' : 'blue'} style={{ margin: 0 }}>{platform}</Tag>
+                            {isBlockedXhs && (
+                              <Tag color="warning" style={{ margin: 0, fontSize: 11, border: '1px solid #ffd591', color: '#d46b08', background: '#fff7e6' }}>
+                                小红书 · 待调减
+                              </Tag>
+                            )}
+                          </Space>
+                        );
                       }
                     },
                     {
@@ -1260,17 +1163,18 @@ const TaskFormContent: React.FC<{
               </div>
             )}
 
-            {/* 额度预估看板（包含评论区采集与互动量更新） */}
+            {/* 额度预估与单日风控校验看板（包含评论区采集与互动量更新） */}
             {((taskTypeValue === 'comment' && linkPlatforms && linkPlatforms.length > 0) || 
               (taskTypeValue === 'interaction' && validateResult && validateResult.validCount > 0)) && (
               <QuotaEstimatePanel
                 scopeLabel="链接"
+                taskType={taskTypeValue}
                 platformPageConfig={taskTypeValue === 'comment' ? linkPlatformPages : {}}
                 linkCount={validateResult?.validCount || 0}
-                frequency={frequency}
                 platformCounts={validateResult?.platformCounts}
-                taskType={taskTypeValue}
+                frequency={frequency}
                 platforms={linkPlatforms}
+                onValidationChange={onValidationChange}
               />
             )}
           </div>
@@ -1310,6 +1214,18 @@ const CollectTaskDrawer: React.FC<CollectTaskDrawerProps> = function ({ open, ti
   const [linkPlatforms, setLinkPlatforms] = useState<string[]>([]);
   const [linksTableData, setLinksTableData] = useState<any[]>([]);
   const [selectedDataCount, setSelectedDataCount] = useState<number | null>(null);
+
+  // 新增：单日限额风控与截取策略状态
+  const [truncationStrategy, setTruncationStrategy] = useState<'all' | 'top_n'>('top_n');
+  const [topNCount, setTopNCount] = useState<number>(100);
+  const [customTopN, setCustomTopN] = useState<number>(100);
+  const [isOverLimit, setIsOverLimit] = useState<boolean>(false);
+  const [blockedPlatform, setBlockedPlatform] = useState<string | undefined>(undefined);
+
+  const handleValidationChange = useCallback((res: ValidationResult) => {
+    setIsOverLimit(!res.isValid);
+    setBlockedPlatform(res.blockedPlatform);
+  }, []);
 
   // open 变为 true 时，如果有 initialValues 则填充
   useEffect(function () {
@@ -1541,6 +1457,12 @@ const CollectTaskDrawer: React.FC<CollectTaskDrawerProps> = function ({ open, ti
       });
     };
 
+    // 单日限额风控拦截校验
+    if (isOverLimit) {
+      message.error(`该任务在【${blockedPlatform || '小红书'}】平台的预计日采集频次已超出当前系统单日并发配额，无法提交`);
+      return;
+    }
+
     if ((scopeType === 'topic' || scopeType === 'source') && selectedDataCount === 0) {
       Modal.confirm({
         title: '确认创建任务？',
@@ -1555,7 +1477,7 @@ const CollectTaskDrawer: React.FC<CollectTaskDrawerProps> = function ({ open, ti
     }
 
     executeSubmit();
-  }, [form, onSubmit, onClose, drawerFrequency, linkPlatformPages, scopePlatformPages, linkPlatforms, linksTableData, selectedDataCount]);
+  }, [form, onSubmit, onClose, drawerFrequency, linkPlatformPages, scopePlatformPages, linkPlatforms, linksTableData, selectedDataCount, isOverLimit, blockedPlatform]);
 
   return (
     <Drawer
@@ -1575,8 +1497,21 @@ const CollectTaskDrawer: React.FC<CollectTaskDrawerProps> = function ({ open, ti
       footer={
         <div className="ct-drawer-footer">
           <Button onClick={handleClose}>关闭</Button>
-          <Button type="primary" loading={submitting} onClick={handleSubmit} style={{ backgroundColor: '#1890FF', borderColor: '#1890FF' }}>
-            提交
+          <Button
+            type="primary"
+            loading={submitting}
+            disabled={isOverLimit}
+            onClick={handleSubmit}
+            style={{
+              backgroundColor: isOverLimit ? '#f5f5f5' : '#1890FF',
+              borderColor: isOverLimit ? '#d9d9d9' : '#1890FF',
+              color: isOverLimit ? 'rgba(0, 0, 0, 0.25)' : '#fff',
+              cursor: isOverLimit ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {isOverLimit
+              ? `无法提交：${blockedPlatform || '小红书'}超出单日配额`
+              : (isEditMode ? '保存修改' : '确定创建任务')}
           </Button>
         </div>
       }
@@ -1609,6 +1544,15 @@ const CollectTaskDrawer: React.FC<CollectTaskDrawerProps> = function ({ open, ti
         setLinksTableData={setLinksTableData}
         selectedDataCount={selectedDataCount}
         setSelectedDataCount={setSelectedDataCount}
+        truncationStrategy={truncationStrategy}
+        setTruncationStrategy={setTruncationStrategy}
+        topNCount={topNCount}
+        setTopNCount={setTopNCount}
+        customTopN={customTopN}
+        setCustomTopN={setCustomTopN}
+        isOverLimit={isOverLimit}
+        blockedPlatform={blockedPlatform}
+        onValidationChange={handleValidationChange}
       />
     </Drawer>
   );

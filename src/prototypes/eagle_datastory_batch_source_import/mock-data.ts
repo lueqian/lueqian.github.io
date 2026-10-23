@@ -502,3 +502,101 @@ export const MOCK_CRAWLED_SUCCESS_ACCOUNTS = [
     originUrl: 'https://v.kuaishou.com/user/ks_untracked_88',
   },
 ];
+
+// ============ 单日采集配额风控 Mock 与映射规范 ============
+
+/** 平台中英文 Key 与标准名称双向映射 */
+export const PLATFORM_KEY_MAP: Record<string, string> = {
+  xhs: '小红书',
+  xiaohongshu: '小红书',
+  小红书: 'xhs',
+  weibo: '微博',
+  微博: 'weibo',
+  douyin: '抖音',
+  抖音: 'douyin',
+  kuaishou: '快手',
+  快手: 'kuaishou',
+  bilibili: 'B站',
+  B站: 'bilibili',
+  toutiao: '今日头条',
+  今日头条: 'toutiao',
+  zhihu: '知乎',
+  知乎: 'zhihu',
+  tieba: '百度贴吧',
+  百度贴吧: 'tieba',
+};
+
+/** 客户各平台单日限额配置（模拟后台 CustomerConfig 同步结果） */
+export interface ClientPlatformLimit {
+  mode: 'unlimited' | 'combined' | 'split';
+  combinedLimit?: number;
+  interactionLimit?: number;
+  commentLimit?: number;
+}
+
+export const MOCK_CLIENT_PLATFORM_LIMITS: Record<string, ClientPlatformLimit> = {
+  xhs: { mode: 'combined', combinedLimit: 1000 }, // 小红书严格合并限制 1000 次/天
+  小红书: { mode: 'combined', combinedLimit: 1000 },
+  weibo: { mode: 'unlimited' }, // 微博不限
+  微博: { mode: 'unlimited' },
+  douyin: { mode: 'combined', combinedLimit: 5000 }, // 抖音合并限制 5000 次/天
+  抖音: { mode: 'combined', combinedLimit: 5000 },
+  kuaishou: { mode: 'unlimited' },
+  快手: { mode: 'unlimited' },
+  bilibili: { mode: 'unlimited' },
+  B站: { mode: 'unlimited' },
+  toutiao: { mode: 'unlimited' },
+  今日头条: { mode: 'unlimited' },
+  zhihu: { mode: 'unlimited' },
+  知乎: { mode: 'unlimited' },
+};
+
+/** 模拟当前客户已有的进行中和未开始任务，每天在各平台已经预占的日消耗 (E_p) */
+export interface OccupiedDailyUsage {
+  interaction: number;
+  comment: number;
+  total: number;
+}
+
+export const MOCK_CURRENT_OCCUPIED_DAILY_USAGE: Record<string, OccupiedDailyUsage> = {
+  xhs: { interaction: 400, comment: 250, total: 650 }, // 小红书已预占 650 次/天，新任务最多只剩 350 次/天的空间
+  小红书: { interaction: 400, comment: 250, total: 650 },
+  weibo: { interaction: 1200, comment: 800, total: 2000 },
+  微博: { interaction: 1200, comment: 800, total: 2000 },
+  douyin: { interaction: 800, comment: 600, total: 1400 },
+  抖音: { interaction: 800, comment: 600, total: 1400 },
+  bilibili: { interaction: 300, comment: 150, total: 450 },
+  B站: { interaction: 300, comment: 150, total: 450 },
+  kuaishou: { interaction: 200, comment: 100, total: 300 },
+  快手: { interaction: 200, comment: 100, total: 300 },
+};
+
+/** 专题/重点源在各平台的存量帖文分布 Mock（用于 Top N 截取与全量计算） */
+export const MOCK_SCOPE_PLATFORM_POST_COUNTS: Record<string, Record<string, number>> = {
+  topic_001: {
+    // 汽车行业专题 / 汽车行业品牌声量监控（总计 1,420 条）
+    小红书: 500,
+    xhs: 500,
+    微博: 600,
+    weibo: 600,
+    抖音: 320,
+    douyin: 320,
+  },
+  liyutong: {
+    // 李雨桐专题
+    微博: 850,
+    weibo: 850,
+    抖音: 420,
+    douyin: 420,
+    今日头条: 150,
+    toutiao: 150,
+  },
+  src_cat: {
+    // 猫咪日常Bot
+    小红书: 80,
+    xhs: 80,
+    微博: 120,
+    weibo: 120,
+  },
+};
+
