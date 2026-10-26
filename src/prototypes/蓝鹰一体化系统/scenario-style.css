@@ -3229,38 +3229,474 @@
   border-top: 1px solid #f1f5f9;
 }
 
-/* 场景 6：应急处置二级 Tab 待反馈右上角红色叹号提醒标签 */
-.failure-exclamation-badge {
+/* ==================== 场景 7 & 场景 8：源头防控总声量统计看板专属样式 ==================== */
+
+/* 看板整体容器 */
+.buzz-scenario-page-container {
+  padding: 16px 20px;
+  background: #f4f6f9;
+  min-height: calc(100vh - 64px);
+  box-sizing: border-box;
+}
+
+/* 顶部场景快速切换卡片 */
+.buzz-scenario-switch-card {
+  background: #ffffff;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  padding: 12px 18px;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.buzz-scenario-switch-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.buzz-scenario-switch-tag {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.buzz-scenario-criteria-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.buzz-scenario-criteria-badge.eligible {
+  background: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+}
+
+.buzz-scenario-criteria-badge.ineligible {
+  background: #fff7ed;
+  color: #ea580c;
+  border: 1px solid #fed7aa;
+}
+
+/* 任务头部信息横幅 */
+.buzz-task-header-banner {
+  background: #ffffff;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  padding: 14px 20px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.buzz-task-meta-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.buzz-task-shield-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #10b981;
+  color: #ffffff;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 17px;
-  height: 17px;
-  background-color: #ef4444;
-  color: #ffffff;
-  border-radius: 50%;
-  font-size: 11px;
-  font-weight: 900;
-  margin-left: 6px;
-  line-height: 1;
-  box-shadow: 0 0 0 1.5px #fff, 0 1px 4px rgba(239, 68, 68, 0.45);
-  animation: exclamationPulse 2s infinite ease-in-out;
+  font-size: 13px;
+  font-weight: bold;
 }
 
-@keyframes exclamationPulse {
-  0% {
-    transform: scale(1);
-    box-shadow: 0 0 0 1.5px #fff, 0 0 0 0 rgba(239, 68, 68, 0.6);
-  }
-  50% {
-    transform: scale(1.15);
-    box-shadow: 0 0 0 2px #fff, 0 0 0 4px rgba(239, 68, 68, 0.25);
-  }
-  100% {
-    transform: scale(1);
-    box-shadow: 0 0 0 1.5px #fff, 0 0 0 0 rgba(239, 68, 68, 0);
-  }
+.buzz-task-title-text {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e293b;
 }
+
+.buzz-task-time-pill {
+  font-size: 12px;
+  color: #64748b;
+  background: #f1f5f9;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.buzz-task-region-pill {
+  font-size: 12px;
+  color: #0284c7;
+  background: #e0f2fe;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+/* 综述摘要卡片 */
+.buzz-summary-box {
+  background: #f8fafc;
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+  padding: 10px 16px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #475569;
+  line-height: 1.6;
+}
+
+/* ==================== 场景 7：加权声量模型（上下双层结构） ==================== */
+.scenario-buzz-card.weighted-card {
+  background: #ffffff;
+  border-radius: 4px;
+  border: 1px solid #ebeef5;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+/* 上层：高度 86px */
+.scenario-buzz-upper {
+  height: 86px;
+  display: flex;
+  align-items: center;
+  padding: 12px 24px;
+  box-sizing: border-box;
+  background: #ffffff;
+}
+
+/* 【总声量主展示区（左侧宽 200px）】 */
+.scenario-buzz-main-col {
+  width: 200px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.scenario-buzz-circle-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background-color: #1677ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(22, 119, 255, 0.25);
+}
+
+.scenario-buzz-main-info {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.scenario-buzz-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1;
+}
+
+.scenario-buzz-title-text {
+  font-size: 14px;
+  color: #606266;
+  font-weight: 500;
+}
+
+.scenario-buzz-info-icon {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background-color: #f2f3f5;
+  color: #909399;
+  font-size: 10px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  line-height: 1;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.scenario-buzz-info-icon:hover {
+  background-color: #e4e7ed;
+  color: #303133;
+}
+
+.scenario-buzz-main-val {
+  font-size: 24px;
+  font-weight: 700;
+  color: #303133;
+  line-height: 28px;
+  margin-top: 2px;
+  letter-spacing: -0.2px;
+}
+
+.scenario-buzz-main-desc {
+  font-size: 11px;
+  color: #909399;
+  line-height: 14px;
+}
+
+/* 垂直分割线（高 48px） */
+.scenario-buzz-v-divider {
+  height: 48px;
+  width: 1px;
+  background-color: #e4e7ed;
+  margin: 0 16px;
+  flex-shrink: 0;
+}
+
+/* 中间新闻细化区 / 右侧自媒体细化区（各占比约 45%） */
+.scenario-buzz-sub-col {
+  flex: 0.45;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.scenario-buzz-sub-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.scenario-buzz-sub-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #303133;
+}
+
+.scenario-buzz-ratio-tag {
+  font-size: 12px;
+  padding: 1px 6px;
+  border-radius: 2px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+.scenario-buzz-ratio-tag.news {
+  color: #67c23a;
+  background-color: #f0f9eb;
+  border: 1px solid #e1f3d8;
+}
+
+.scenario-buzz-ratio-tag.social {
+  color: #e6a23c;
+  background-color: #fdf6ec;
+  border: 1px solid #faecd8;
+}
+
+/* 等级发文平铺网格（5个并排小项，字号 12px） */
+.scenario-level-grid {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  overflow-x: auto;
+}
+
+.scenario-level-item {
+  font-size: 12px;
+  color: #606266;
+  background: #f8fafc;
+  padding: 3px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
+  border: 1px solid #f1f5f9;
+  line-height: 16px;
+}
+
+.scenario-level-item .level-cnt {
+  font-weight: 700;
+  color: #303133;
+  margin: 0 2px;
+}
+
+.scenario-level-item .level-weight {
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+/* 下层：平台渠道发文分布带（高度 44px，背景色 #FAFAFA，边框顶线 1px solid #F0F0F0） */
+.scenario-buzz-lower {
+  height: 44px;
+  background-color: #fafafa;
+  border-top: 1px solid #f0f0f0;
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  box-sizing: border-box;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.scenario-buzz-lower-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #606266;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.scenario-buzz-channel-strip {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 1;
+  gap: 12px;
+  overflow-x: auto;
+}
+
+.scenario-buzz-channel-cell {
+  font-size: 12px;
+  color: #606266;
+  white-space: nowrap;
+}
+
+.scenario-buzz-channel-cell strong {
+  color: #303133;
+  font-weight: 700;
+  margin-left: 2px;
+}
+
+.scenario-buzz-channel-divider {
+  color: #dcdfe6;
+  font-size: 11px;
+}
+
+/* ==================== 场景 8：基础篇数统计（单层 80px 结构） ==================== */
+.scenario-buzz-card.basic-card {
+  height: 80px;
+  background: #ffffff;
+  border-radius: 4px;
+  border: 1px solid #ebeef5;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  padding: 12px 24px;
+  box-sizing: border-box;
+  justify-content: space-between;
+}
+
+.scenario-buzz-basic-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+}
+
+.scenario-buzz-basic-meta {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.scenario-buzz-basic-num-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.scenario-buzz-basic-label {
+  font-size: 14px;
+  color: #606266;
+  font-weight: 500;
+}
+
+.scenario-buzz-basic-val {
+  font-size: 24px;
+  font-weight: 700;
+  color: #303133;
+  line-height: 28px;
+}
+
+.scenario-buzz-basic-subtext {
+  font-size: 11px;
+  color: #909399;
+  line-height: 16px;
+  margin-top: 2px;
+}
+
+.scenario-buzz-basic-divider {
+  height: 36px;
+  width: 1px;
+  background-color: #e4e7ed;
+  margin: 0 20px;
+  flex-shrink: 0;
+}
+
+.scenario-buzz-basic-channels {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  flex: 1;
+  overflow-x: auto;
+  gap: 8px;
+}
+
+.scenario-buzz-basic-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 50px;
+}
+
+.scenario-buzz-basic-item .item-val {
+  font-size: 15px;
+  font-weight: 700;
+  color: #303133;
+  line-height: 1.2;
+}
+
+.scenario-buzz-basic-item .item-name {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 2px;
+}
+
+/* Tooltip 暗色半透明气泡 #303133 */
+.weighted-buzz-pop-dark {
+  transition: opacity 150ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+  animation-duration: 150ms !important;
+}
+
+.weighted-buzz-pop-dark .ant-tooltip-inner {
+  background-color: #303133 !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 6px !important;
+  padding: 12px 16px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3) !important;
+  color: #ffffff !important;
+  max-width: 480px !important;
+  font-size: 12px !important;
+  line-height: 1.6 !important;
+}
+
+.weighted-buzz-pop-dark .ant-tooltip-arrow-before {
+  background-color: #303133 !important;
+}
+
 
 
 

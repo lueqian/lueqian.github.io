@@ -27,6 +27,7 @@ import ScenarioCrossTenantInstruction from './pages/ScenarioCrossTenantInstructi
 import ScenarioSecondaryDispatch from './pages/ScenarioSecondaryDispatch';
 import ScenarioCrossTenantConfig from './pages/ScenarioCrossTenantConfig';
 import ScenarioJointDisposalFailure from './pages/ScenarioJointDisposalFailure';
+import ScenarioSourceControlBuzz from './pages/ScenarioSourceControlBuzz';
 import ScenarioLayout from './components/ScenarioLayout';
 import { AnnotationProvider, AnnotationBoard } from '@/common/Annotation';
 import { DirectiveProvider, useDirectiveState } from './context/DirectiveStateContext';
@@ -51,6 +52,8 @@ export type PageKey =
   | 'scenario-secondary-dispatch'
   | 'scenario-cross-tenant-config'
   | 'scenario-joint-disposal-failure'
+  | 'scenario-weighted-buzz'
+  | 'scenario-basic-buzz'
   | 'police-opinion-joint'
   | 'manual-report'
   | 'source-control'
@@ -142,6 +145,18 @@ const BlueEagleIntegratedSystem = forwardRef<AxureHandle, AxureProps>(function B
         return (
           <ScenarioLayout scenarioKey="scenario-joint-disposal-failure">
             <ScenarioJointDisposalFailure />
+          </ScenarioLayout>
+        );
+      case 'scenario-weighted-buzz':
+        return (
+          <ScenarioLayout scenarioKey="scenario-weighted-buzz">
+            <ScenarioSourceControlBuzz initialScenario="weighted" />
+          </ScenarioLayout>
+        );
+      case 'scenario-basic-buzz':
+        return (
+          <ScenarioLayout scenarioKey="scenario-basic-buzz">
+            <ScenarioSourceControlBuzz initialScenario="basic" />
           </ScenarioLayout>
         );
       case 'police-opinion-joint':

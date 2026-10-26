@@ -24,6 +24,8 @@ import {
   DownOutlined,
   AppstoreOutlined,
   SyncOutlined,
+  LineChartOutlined,
+  BarChartOutlined,
 } from '@ant-design/icons';
 import { Tooltip } from 'antd';
 
@@ -78,6 +80,12 @@ const scenarioMenuItems: MenuItem[] = [
     label: '联合处置与容灾',
     icon: <SyncOutlined style={{ color: '#ef4444' }} />,
     tag: '场景 6',
+  },
+  {
+    key: 'scenario-weighted-buzz',
+    label: '加权声量模型（符合条件）',
+    icon: <LineChartOutlined style={{ color: '#1677ff' }} />,
+    tag: '场景 7',
   },
 ];
 

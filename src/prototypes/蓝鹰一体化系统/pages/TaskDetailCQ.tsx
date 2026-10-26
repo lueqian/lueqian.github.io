@@ -20,6 +20,7 @@ import {
   Popover,
   TimePicker,
   InputNumber,
+  Tooltip,
 } from 'antd';
 import {
   LeftOutlined,
@@ -4253,10 +4254,10 @@ const TaskDetailCQ: React.FC<TaskDetailCQProps> = ({ taskId, onBack, schedules: 
             {/* 文字综述卡片 */}
             <div className="analysis-summary-card">
               <div className="summary-left">
-                <span className="time-badge">监测区间：2026-06-21 15:09:3 到 2026-06-22 15:09:3</span>
+                <span className="time-badge">监测区间：2026-10-25 10:41:43 至 2026-10-26 10:41:43</span>
                 <p className="summary-text">
-                  06月21日15时09分39秒 - 06月22日15时09分39秒，共检测相关数据27篇，其中新闻13篇，今日头条10篇，APP2篇，微信2篇，境外0篇，长视频0篇，论坛0篇，短视频0篇，小红书0篇，抖音0篇，微博0篇。
-                  正面占比3.70%，中性占比96.30%。主要为今日头条，懂车帝，网易等平台网友扩散舆情。共抓取评论0篇。
+                  10月25日10时41分43秒 - 10月26日10时41分43秒，共检测到相关数据23篇，其中今日头条9篇，APP8篇，新闻3篇，微信2篇，小红书1篇，境外0篇，长视频0篇，论坛0篇，短视频0篇，抖音0篇，微博0篇。
+                  负面占比30.43%，正面占比4.35%，中性占比65.22%。主要为今日头条，微信，网易等平台网友扩散舆情。共抓取评论0篇。
                 </p>
               </div>
               <Button
@@ -4272,53 +4273,163 @@ const TaskDetailCQ: React.FC<TaskDetailCQProps> = ({ taskId, onBack, schedules: 
 
             {/* 双行核心指标面板 */}
             <div className="analysis-metrics-container">
-              {/* 第一行：总声量与平台 breakdown */}
-              <div className="metric-row-box">
-                <div className="metric-primary-card">
-                  <div className="primary-title">
-                    总声量 <ExclamationCircleOutlined className="info-icon-small" />
-                  </div>
-                  <div className="primary-val">27</div>
-                </div>
-                <div className="metric-breakdown-cards">
-                  {[
-                    { name: '微博', value: 0 },
-                    { name: '抖音', value: 0 },
-                    { name: '今日头条', value: 10 },
-                    { name: '小红书', value: 0 },
-                    { name: '其他短视频', value: 0 },
-                    { name: '微信', value: 2 },
-                    { name: '新闻', value: 13 },
-                    { name: '论坛', value: 0 },
-                    { name: '长视频', value: 0 },
-                    { name: 'APP', value: 2 },
-                    { name: '境外', value: 0 }
-                  ].map((plat) => (
-                    <div key={plat.name} className="breakdown-card">
-                      <div className="breakdown-val">{plat.value}</div>
-                      <div className="breakdown-lbl">{plat.name}</div>
+              {/* 核心统计卡片：基于最新业务规则重构（上下两层结构：上层86px权威矩阵 + 下层44px平台发文带） */}
+              <div className="scenario-buzz-card weighted-card">
+                {/* 上层：加权声量与权威度分解矩阵（高度 86px） */}
+                <div className="scenario-buzz-upper">
+                  {/* 【总声量主展示区（左侧宽 200px）】 */}
+                  <div className="scenario-buzz-main-col">
+                    <div className="scenario-buzz-circle-icon">
+                      <svg
+                        viewBox="0 0 24 24"
+                        width="22"
+                        height="22"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor" stroke="none" />
+                        <path d="M15.5 8.5a5 5 0 0 1 0 7" />
+                        <path d="M19 5a9 9 0 0 1 0 14" />
+                      </svg>
                     </div>
-                  ))}
+                    <div className="scenario-buzz-main-info">
+                      <div className="scenario-buzz-title-row">
+                        <span className="scenario-buzz-title-text">总声量</span>
+                        <Tooltip
+                          placement="bottomLeft"
+                          overlayClassName="weighted-buzz-pop-dark"
+                          mouseEnterDelay={0.05}
+                          mouseLeaveDelay={0.1}
+                          title={
+                            <div>
+                              <div style={{ fontWeight: 600, borderBottom: '1px solid rgba(255,255,255,0.15)', paddingBottom: 4, marginBottom: 6 }}>
+                                【声量值计算规则说明】
+                              </div>
+                              <div style={{ marginBottom: 6, color: '#e5e7eb' }}>
+                                本任务当前采用 <strong style={{ color: '#60a5fa' }}>政务加权声量统计模型</strong> 进行实时计算：
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 6, color: '#d1d5db' }}>
+                                <div>1. <strong>新闻声量</strong>：央媒(×100) + 省级(×75) + 都市级(×50) + 商业(×25) + 其他(×5)</div>
+                                <div>2. <strong>自媒体声量</strong>：央媒官号(×100) + 省级官号(×75) + 都市官号(×50) + 大V认证(×25) + 普通用户(×5)</div>
+                              </div>
+                              <div style={{ borderTop: '1px dashed rgba(255,255,255,0.15)', paddingTop: 6, fontSize: 11, color: '#9ca3af' }}>
+                                * 提示：仅针对 14 天内且属于本辖区地域的任务启用加权计算，超期或跨地域自动按原始发文篇数统计。
+                              </div>
+                            </div>
+                          }
+                        >
+                          <span className="scenario-buzz-info-icon" role="button" tabIndex={0} aria-label="声量计算规则说明">i</span>
+                        </Tooltip>
+                      </div>
+                      <div className="scenario-buzz-main-val">12,850</div>
+                      <div className="scenario-buzz-main-desc">权威加权分值</div>
+                    </div>
+                  </div>
+
+                  {/* 垂直分割线（高 48px） */}
+                  <div className="scenario-buzz-v-divider" />
+
+                  {/* 【新闻声量细化区（中间占比 45%）】 */}
+                  <div className="scenario-buzz-sub-col news-col">
+                    <div className="scenario-buzz-sub-header">
+                      <span className="scenario-buzz-sub-title">新闻声量 7,200</span>
+                      <span className="scenario-buzz-ratio-tag news">占比 56.0%</span>
+                    </div>
+                    <div className="scenario-level-grid">
+                      <div className="scenario-level-item">
+                        央媒：<span className="level-cnt">30</span> 篇 <span className="level-weight">(×100)</span>
+                      </div>
+                      <div className="scenario-level-item">
+                        省级：<span className="level-cnt">40</span> 篇 <span className="level-weight">(×75)</span>
+                      </div>
+                      <div className="scenario-level-item">
+                        都市级：<span className="level-cnt">20</span> 篇 <span className="level-weight">(×50)</span>
+                      </div>
+                      <div className="scenario-level-item">
+                        商业：<span className="level-cnt">7</span> 篇 <span className="level-weight">(×25)</span>
+                      </div>
+                      <div className="scenario-level-item">
+                        其他：<span className="level-cnt">5</span> 篇 <span className="level-weight">(×5)</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 垂直分割线（高 48px） */}
+                  <div className="scenario-buzz-v-divider" />
+
+                  {/* 【自媒体声量细化区（右侧占比 45%）】 */}
+                  <div className="scenario-buzz-sub-col social-col">
+                    <div className="scenario-buzz-sub-header">
+                      <span className="scenario-buzz-sub-title">自媒体声量 5,650</span>
+                      <span className="scenario-buzz-ratio-tag social">占比 44.0%</span>
+                    </div>
+                    <div className="scenario-level-grid">
+                      <div className="scenario-level-item">
+                        央媒官号：<span className="level-cnt">20</span> 篇 <span className="level-weight">(×100)</span>
+                      </div>
+                      <div className="scenario-level-item">
+                        省级官号：<span className="level-cnt">30</span> 篇 <span className="level-weight">(×75)</span>
+                      </div>
+                      <div className="scenario-level-item">
+                        都市官号：<span className="level-cnt">20</span> 篇 <span className="level-weight">(×50)</span>
+                      </div>
+                      <div className="scenario-level-item">
+                        认证大V：<span className="level-cnt">14</span> 篇 <span className="level-weight">(×25)</span>
+                      </div>
+                      <div className="scenario-level-item">
+                        普通网民：<span className="level-cnt">10</span> 篇 <span className="level-weight">(×5)</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 下层：平台渠道发文分布带（高度 44px，背景色 #FAFAFA，边框顶线 1px solid #F0F0F0） */}
+                <div className="scenario-buzz-lower">
+                  <span className="scenario-buzz-lower-label">各平台实际发文（共 23 篇）</span>
+                  <div className="scenario-buzz-channel-strip">
+                    <span className="scenario-buzz-channel-cell">今日头条<strong>(9)</strong></span>
+                    <span className="scenario-buzz-channel-divider">|</span>
+                    <span className="scenario-buzz-channel-cell">APP<strong>(8)</strong></span>
+                    <span className="scenario-buzz-channel-divider">|</span>
+                    <span className="scenario-buzz-channel-cell">新闻<strong>(3)</strong></span>
+                    <span className="scenario-buzz-channel-divider">|</span>
+                    <span className="scenario-buzz-channel-cell">微信<strong>(2)</strong></span>
+                    <span className="scenario-buzz-channel-divider">|</span>
+                    <span className="scenario-buzz-channel-cell">小红书<strong>(1)</strong></span>
+                    <span className="scenario-buzz-channel-divider">|</span>
+                    <span className="scenario-buzz-channel-cell">微博<strong>(0)</strong></span>
+                    <span className="scenario-buzz-channel-divider">|</span>
+                    <span className="scenario-buzz-channel-cell">抖音<strong>(0)</strong></span>
+                    <span className="scenario-buzz-channel-divider">|</span>
+                    <span className="scenario-buzz-channel-cell">论坛<strong>(0)</strong></span>
+                    <span className="scenario-buzz-channel-divider">|</span>
+                    <span className="scenario-buzz-channel-cell">长视频<strong>(0)</strong></span>
+                    <span className="scenario-buzz-channel-divider">|</span>
+                    <span className="scenario-buzz-channel-cell">境外<strong>(0)</strong></span>
+                  </div>
                 </div>
               </div>
 
               {/* 第二行：总互动量与详情 breakdown */}
-              <div className="metric-row-box">
+              <div className="metric-row-box interaction-row-box">
                 <div className="metric-primary-card interactive-primary">
                   <div className="primary-title">
-                    总互动量 <ExclamationCircleOutlined className="info-icon-small" />
+                    总互动量 <Tooltip title="所选时间范围内全网抓取的舆情文章互动总量（含转发、评论、点赞、阅读等）"><ExclamationCircleOutlined className="info-icon-small" /></Tooltip>
                   </div>
-                  <div className="primary-val">100</div>
-                  <div className="sub-primary-val">不含阅读数 2</div>
+                  <div className="primary-val">163</div>
+                  <div className="sub-primary-val">不含阅读数 64</div>
                 </div>
                 <div className="metric-breakdown-cards">
                   {[
-                    { name: '总发文数', value: 0 },
+                    { name: '总转推数', value: 12 },
                     { name: '总分享数', value: 0 },
-                    { name: '总评论数', value: 0 },
-                    { name: '总阅读数', value: 98 },
-                    { name: '总点赞数', value: 1 },
-                    { name: '其他互动量之和', value: 1 }
+                    { name: '总评论数', value: 3 },
+                    { name: '总阅读数', value: 99 },
+                    { name: '总点赞数', value: 34 },
+                    { name: '其他互动量之和', value: 15 }
                   ].map((detail) => (
                     <div key={detail.name} className="breakdown-card">
                       <div className="breakdown-val">{detail.value}</div>
