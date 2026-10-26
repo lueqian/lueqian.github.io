@@ -4311,9 +4311,9 @@ const TaskDetailCQ: React.FC<TaskDetailCQProps> = ({ taskId, onBack, schedules: 
                               <div style={{ marginBottom: 6, color: '#e5e7eb' }}>
                                 本任务当前采用 <strong style={{ color: '#60a5fa' }}>政务加权声量统计模型</strong> 进行实时计算：
                               </div>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 6, color: '#d1d5db' }}>
-                                <div>1. <strong>新闻声量</strong>：央媒(×100) + 省级(×75) + 都市级(×50) + 商业(×25) + 其他(×5)</div>
-                                <div>2. <strong>自媒体声量</strong>：央媒官号(×100) + 省级官号(×75) + 都市官号(×50) + 大V认证(×25) + 普通用户(×5)</div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 6, color: '#d1d5db', fontSize: 12 }}>
+                                <div>1. <strong>新闻声量</strong>：央媒(×100) + 党媒(×100) + 军事(×50) + 政府(×75) + 地方(×75) + 其他(×5)</div>
+                                <div>2. <strong>自媒体声量</strong>：央媒官号(×100) + 党媒官号(×100) + 军事官号(×50) + 政府官号(×75) + 地方官号(×75) + 大V认证(×25) + 普通用户(×5)</div>
                               </div>
                               <div style={{ borderTop: '1px dashed rgba(255,255,255,0.15)', paddingTop: 6, fontSize: 11, color: '#9ca3af' }}>
                                 * 提示：仅针对 14 天内且属于本辖区地域的任务启用加权计算，超期或跨地域自动按原始发文篇数统计。

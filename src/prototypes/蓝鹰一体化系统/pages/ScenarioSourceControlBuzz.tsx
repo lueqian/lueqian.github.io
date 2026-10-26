@@ -24,6 +24,49 @@ import {
 import * as echarts from 'echarts';
 import '../scenario-style.css';
 
+// 权威等级加权配置与数据结构
+interface BuzzWeightItem {
+  key: string;
+  label: string;
+  weight: number;
+  count: number;
+}
+
+// 1. 新闻声量加权细项（按最新政务模型公式：央媒(×100) + 党媒(×100) + 军事(×50) + 政府(×75)+ 地方(×75) + 其他(×5)）
+const initialNewsData: BuzzWeightItem[] = [
+  { key: 'central', label: '央媒', weight: 100, count: 10 },
+  { key: 'party', label: '党媒', weight: 100, count: 20 },
+  { key: 'military', label: '军事', weight: 50, count: 20 },
+  { key: 'gov', label: '政府', weight: 75, count: 10 },
+  { key: 'local', label: '地方', weight: 75, count: 30 },
+  { key: 'other', label: '其他', weight: 5, count: 30 },
+];
+
+// 2. 自媒体声量加权细项（按最新政务模型公式：央媒官号(×100) + 党媒官号(×100) + 军事官号(×50) + 政府官号(×75) + 地方官号(×75) + 大V认证(×25) + 普通用户(×5)）
+const initialSocialData: BuzzWeightItem[] = [
+  { key: 'central_official', label: '央媒官号', weight: 100, count: 10 },
+  { key: 'party_official', label: '党媒官号', weight: 100, count: 10 },
+  { key: 'military_official', label: '军事官号', weight: 50, count: 5 },
+  { key: 'gov_official', label: '政府官号', weight: 75, count: 10 },
+  { key: 'local_official', label: '地方官号', weight: 75, count: 5 },
+  { key: 'verified_v', label: '认证大V', weight: 25, count: 5 },
+  { key: 'regular_user', label: '普通用户', weight: 5, count: 5 },
+];
+
+// 3. 各平台客观总文章量分布（各平台求和严格自洽等于 114,514）
+const initialPlatformArticles = [
+  { name: '今日头条', count: 38420 },
+  { name: '抖音', count: 29150 },
+  { name: '微博', count: 16830 },
+  { name: '微信', count: 12410 },
+  { name: '新闻', count: 8240 },
+  { name: 'APP', count: 5320 },
+  { name: '小红书', count: 2480 },
+  { name: '论坛', count: 920 },
+  { name: '长视频', count: 530 },
+  { name: '境外', count: 214 },
+];
+
 interface ScenarioSourceControlBuzzProps {
   initialScenario?: 'weighted' | 'basic';
 }
@@ -33,6 +76,12 @@ const ScenarioSourceControlBuzz: React.FC<ScenarioSourceControlBuzzProps> = ({
 }) => {
   const [activeScenario, setActiveScenario] = useState<'weighted' | 'basic'>(initialScenario);
   const [trendDimension, setTrendDimension] = useState<'volume' | 'interaction' | 'sentiment'>('volume');
+
+  // 动态加权声量计算
+  const newsScore = initialNewsData.reduce((acc, curr) => acc + curr.count * curr.weight, 0); // 7,150
+  const socialScore = initialSocialData.reduce((acc, curr) => acc + curr.count * curr.weight, 0); // 3,525
+  const totalBuzzScore = newsScore + socialScore; // 10,675
+  const totalPlatformArticles = initialPlatformArticles.reduce((acc, curr) => acc + curr.count, 0); // 114,514
 
   // 当外部传入 initialScenario 变更时同步
   useEffect(() => {
@@ -210,7 +259,7 @@ const ScenarioSourceControlBuzz: React.FC<ScenarioSourceControlBuzzProps> = ({
 
   const handleCopySummary = () => {
     const summaryText =
-      '10月25日10时41分43秒 - 10月26日10时41分43秒，共检测到相关数据23篇，其中今日头条9篇，APP8篇，新闻3篇，微信2篇，小红书1篇，境外0篇，长视频0篇，论坛0篇，短视频0篇，抖音0篇，微博0篇。负面占比30.43%，正面占比4.35%，中性占比65.22%。主要为今日头条，微信，网易等平台网友扩散舆情。共抓取评论0篇。';
+      `10月25日10时41分43秒 - 10月26日10时41分43秒，共检测到相关数据 ${totalPlatformArticles.toLocaleString()} 篇，其中今日头条 38,420 篇，抖音 29,150 篇，微博 16,830 篇，微信 12,410 篇，新闻 8,240 篇，APP 5,320 篇，小红书 2,480 篇，论坛 920 篇，长视频 530 篇，境外 214 篇。负面占比 30.43%，正面占比 4.35%，中性占比 65.22%。主要为今日头条、抖音、微博等平台网友扩散舆情。共抓取评论 3 篇。`;
     navigator.clipboard.writeText(summaryText);
     message.success('舆情简述内容已复制到剪贴板');
   };
@@ -285,7 +334,7 @@ const ScenarioSourceControlBuzz: React.FC<ScenarioSourceControlBuzzProps> = ({
       <div className="buzz-summary-box">
         <div>
           <span style={{ fontWeight: 600, color: '#0f172a', marginRight: 8 }}>监测综述：</span>
-          10月25日10时41分43秒 - 10月26日10时41分43秒，共检测到相关数据 23 篇，其中今日头条 9 篇，APP 8 篇，新闻 3 篇，微信 2 篇，小红书 1 篇，境外 0 篇，长视频 0 篇，论坛 0 篇，短视频 0 篇，抖音 0 篇，微博 0 篇。负面占比 30.43%，正面占比 4.35%，中性占比 65.22%。主要为今日头条、微信、网易等平台网友扩散舆情。共抓取评论 0 篇。
+          10月25日10时41分43秒 - 10月26日10时41分43秒，共检测到相关数据 {totalPlatformArticles.toLocaleString()} 篇，其中今日头条 38,420 篇，抖音 29,150 篇，微博 16,830 篇，微信 12,410 篇，新闻 8,240 篇，APP 5,320 篇，小红书 2,480 篇，论坛 920 篇，长视频 530 篇，境外 214 篇。负面占比 30.43%，正面占比 4.35%，中性占比 65.22%。主要为今日头条、抖音、微博等平台网友扩散舆情。共抓取评论 3 篇。
         </div>
         <Button
           type="primary"
@@ -303,148 +352,148 @@ const ScenarioSourceControlBuzz: React.FC<ScenarioSourceControlBuzzProps> = ({
       {/* 核心统计卡片：场景 7【加权声量模型】 VS 场景 8【基础篇数统计】 */}
       {/* ========================================================================= */}
       {activeScenario === 'weighted' ? (
-        /* 场景 7：加权声量模型（符合条件）- 上下双层结构 */
-        <div className="scenario-buzz-card weighted-card">
-          {/* 上层：加权声量与权威度分解矩阵（高度 86px） */}
-          <div className="scenario-buzz-upper">
-            {/* 1. 总声量主展示区（左侧宽 200px） */}
-            <div className="scenario-buzz-main-col">
-              <div className="scenario-buzz-circle-icon">
-                {/* 44*44px 蓝底内置白色声波矢量图标 */}
-                <svg
-                  viewBox="0 0 24 24"
-                  width="22"
-                  height="22"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor" stroke="none" />
-                  <path d="M15.5 8.5a5 5 0 0 1 0 7" />
-                  <path d="M19 5a9 9 0 0 1 0 14" />
-                </svg>
-              </div>
-              <div className="scenario-buzz-main-info">
-                <div className="scenario-buzz-title-row">
-                  <span className="scenario-buzz-title-text">总声量</span>
-                  <Tooltip
-                    placement="bottomLeft"
-                    overlayClassName="weighted-buzz-pop-dark"
-                    mouseEnterDelay={0.05}
-                    mouseLeaveDelay={0.1}
-                    title={
-                      <div>
-                        <div style={{ fontWeight: 600, borderBottom: '1px solid rgba(255,255,255,0.15)', paddingBottom: 4, marginBottom: 6 }}>
-                          【声量值计算规则说明】
-                        </div>
-                        <div style={{ marginBottom: 6, color: '#e5e7eb' }}>
-                          本任务当前采用 <strong style={{ color: '#60a5fa' }}>政务加权声量统计模型</strong> 进行实时计算：
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 6, color: '#d1d5db' }}>
-                          <div>1. <strong>新闻声量</strong>：央媒(×100) + 省级(×75) + 都市级(×50) + 商业(×25) + 其他(×5)</div>
-                          <div>2. <strong>自媒体声量</strong>：央媒官号(×100) + 省级官号(×75) + 都市官号(×50) + 大V认证(×25) + 普通用户(×5)</div>
-                        </div>
-                        <div style={{ borderTop: '1px dashed rgba(255,255,255,0.15)', paddingTop: 6, fontSize: 11, color: '#9ca3af' }}>
-                          * 提示：仅针对 14 天内且属于本辖区地域的任务启用加权计算，超期或跨地域自动按原始发文篇数统计。
-                        </div>
-                      </div>
-                    }
+        /* 场景 7：加权声量模型（符合条件）- 上下分层 + 左右通栏结构 */
+        <>
+          {/* 上半部分：总声量与政务加权声量矩阵卡片 */}
+          <div className="scenario-buzz-card weighted-card">
+            <div className="scenario-buzz-upper-v2">
+              {/* 【总声量主展示区（左侧垂直贯通）】 */}
+              <div className="scenario-buzz-main-col buzz-main-tall">
+                <div className="scenario-buzz-circle-icon">
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="22"
+                    height="22"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
                   >
-                    <span className="scenario-buzz-info-icon" role="button" tabIndex={0} aria-label="声量计算规则说明">i</span>
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor" stroke="none" />
+                    <path d="M15.5 8.5a5 5 0 0 1 0 7" />
+                    <path d="M19 5a9 9 0 0 1 0 14" />
+                  </svg>
+                </div>
+                <div className="scenario-buzz-main-info">
+                  <div className="scenario-buzz-title-row">
+                    <span className="scenario-buzz-title-text">总声量</span>
+                    <Tooltip
+                      placement="bottomLeft"
+                      overlayClassName="weighted-buzz-pop-dark"
+                      mouseEnterDelay={0.05}
+                      mouseLeaveDelay={0.1}
+                      title={
+                        <div>
+                          <div style={{ fontWeight: 600, borderBottom: '1px solid rgba(255,255,255,0.15)', paddingBottom: 4, marginBottom: 6 }}>
+                            【声量值计算规则说明】
+                          </div>
+                          <div style={{ marginBottom: 6, color: '#e5e7eb' }}>
+                            本任务当前采用 <strong style={{ color: '#60a5fa' }}>政务加权声量统计模型</strong> 进行实时计算：
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 6, color: '#d1d5db', fontSize: 12 }}>
+                            <div>1. <strong>新闻声量</strong>：央媒(×100) + 党媒(×100) + 军事(×50) + 政府(×75) + 地方(×75) + 其他(×5)</div>
+                            <div>2. <strong>自媒体声量</strong>：央媒官号(×100) + 党媒官号(×100) + 军事官号(×50) + 政府官号(×75) + 地方官号(×75) + 大V认证(×25) + 普通用户(×5)</div>
+                          </div>
+                          <div style={{ borderTop: '1px dashed rgba(255,255,255,0.15)', paddingTop: 6, fontSize: 11, color: '#9ca3af' }}>
+                            * 提示：仅针对 14 天内且属于本辖区地域的任务启用加权计算，超期或跨地域自动按原始发文篇数统计。
+                          </div>
+                        </div>
+                      }
+                    >
+                      <span className="scenario-buzz-info-icon" role="button" tabIndex={0} aria-label="声量计算规则说明">i</span>
+                    </Tooltip>
+                  </div>
+                  <div className="scenario-buzz-main-val">{totalBuzzScore.toLocaleString()}</div>
+                  <div className="scenario-buzz-main-desc">权威加权分值</div>
+                </div>
+              </div>
+
+              {/* 垂直分割线（通栏贯通） */}
+              <div className="scenario-buzz-v-divider buzz-v-divider-tall" />
+
+              {/* 右侧上下两行区域 */}
+              <div className="scenario-buzz-right-two-rows">
+                {/* 第 1 行：新闻声量 */}
+                <div className="scenario-buzz-row-item">
+                  <div className="scenario-buzz-row-title">
+                    <span className="row-label">新闻声量值</span>
+                    <span className="row-val">{newsScore.toLocaleString()}</span>
+                  </div>
+                  <div className="scenario-buzz-items-wrap">
+                    {initialNewsData.map((item, idx) => (
+                      <React.Fragment key={item.key}>
+                        <div className="scenario-buzz-badge-item">
+                          <span className="badge-name">{item.label}</span>
+                          <span className="badge-cnt">{item.count}</span>
+                          <span className="badge-unit">篇</span>
+                          <span className="badge-weight">(×{item.weight})</span>
+                        </div>
+                        {idx < initialNewsData.length - 1 && <span className="scenario-buzz-pipe-divider">|</span>}
+                      </React.Fragment>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 行间细分割线 */}
+                <div className="scenario-buzz-h-divider" />
+
+                {/* 第 2 行：自媒体声量 */}
+                <div className="scenario-buzz-row-item">
+                  <div className="scenario-buzz-row-title">
+                    <span className="row-label">自媒体声量</span>
+                    <span className="row-val">{socialScore.toLocaleString()}</span>
+                  </div>
+                  <div className="scenario-buzz-items-wrap">
+                    {initialSocialData.map((item, idx) => (
+                      <React.Fragment key={item.key}>
+                        <div className="scenario-buzz-badge-item">
+                          <span className="badge-name">{item.label}</span>
+                          <span className="badge-cnt">{item.count}</span>
+                          <span className="badge-unit">篇</span>
+                          <span className="badge-weight">(×{item.weight})</span>
+                        </div>
+                        {idx < initialSocialData.length - 1 && <span className="scenario-buzz-pipe-divider">|</span>}
+                      </React.Fragment>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 下半部分：各平台总文章量卡片（参考总互动量板块已实现的效果） */}
+          <div className="buzz-platform-card">
+            <div className="buzz-platform-primary">
+              <div className="buzz-platform-icon">
+                <GlobalOutlined style={{ fontSize: 20 }} />
+              </div>
+              <div className="buzz-platform-info">
+                <div className="buzz-platform-title-row">
+                  <span className="buzz-platform-title-text">各平台总文章量</span>
+                  <Tooltip title="全网各监测渠道客观抓取文章篇数汇总">
+                    <InfoCircleOutlined style={{ fontSize: 12, color: '#909399', cursor: 'pointer', marginLeft: 4 }} />
                   </Tooltip>
                 </div>
-                <div className="scenario-buzz-main-val">12,850</div>
-                <div className="scenario-buzz-main-desc">权威加权分值</div>
+                <div className="buzz-platform-val">{totalPlatformArticles.toLocaleString()}</div>
+                <div className="buzz-platform-desc">全网各渠道发文客观篇数汇总</div>
               </div>
             </div>
 
-            {/* 垂直分割线（高 48px） */}
-            <div className="scenario-buzz-v-divider" />
+            <div className="buzz-platform-divider" />
 
-            {/* 2. 新闻声量细化区（中间占比 45%） */}
-            <div className="scenario-buzz-sub-col news-col">
-              <div className="scenario-buzz-sub-header">
-                <span className="scenario-buzz-sub-title">新闻声量 7,200</span>
-                <span className="scenario-buzz-ratio-tag news">占比 56.0%</span>
-              </div>
-              <div className="scenario-level-grid">
-                <div className="scenario-level-item">
-                  央媒：<span className="level-cnt">30</span> 篇 <span className="level-weight">(×100)</span>
+            <div className="buzz-platform-breakdown-cards">
+              {initialPlatformArticles.map((platform) => (
+                <div key={platform.name} className="breakdown-card">
+                  <div className="breakdown-val">{platform.count.toLocaleString()}</div>
+                  <div className="breakdown-lbl">{platform.name}</div>
                 </div>
-                <div className="scenario-level-item">
-                  省级：<span className="level-cnt">40</span> 篇 <span className="level-weight">(×75)</span>
-                </div>
-                <div className="scenario-level-item">
-                  都市级：<span className="level-cnt">20</span> 篇 <span className="level-weight">(×50)</span>
-                </div>
-                <div className="scenario-level-item">
-                  商业：<span className="level-cnt">7</span> 篇 <span className="level-weight">(×25)</span>
-                </div>
-                <div className="scenario-level-item">
-                  其他：<span className="level-cnt">5</span> 篇 <span className="level-weight">(×5)</span>
-                </div>
-              </div>
-            </div>
-
-            {/* 垂直分割线（高 48px） */}
-            <div className="scenario-buzz-v-divider" />
-
-            {/* 3. 自媒体声量细化区（右侧占比 45%） */}
-            <div className="scenario-buzz-sub-col social-col">
-              <div className="scenario-buzz-sub-header">
-                <span className="scenario-buzz-sub-title">自媒体声量 5,650</span>
-                <span className="scenario-buzz-ratio-tag social">占比 44.0%</span>
-              </div>
-              <div className="scenario-level-grid">
-                <div className="scenario-level-item">
-                  央媒官号：<span className="level-cnt">20</span> 篇 <span className="level-weight">(×100)</span>
-                </div>
-                <div className="scenario-level-item">
-                  省级官号：<span className="level-cnt">30</span> 篇 <span className="level-weight">(×75)</span>
-                </div>
-                <div className="scenario-level-item">
-                  都市官号：<span className="level-cnt">20</span> 篇 <span className="level-weight">(×50)</span>
-                </div>
-                <div className="scenario-level-item">
-                  认证大V：<span className="level-cnt">14</span> 篇 <span className="level-weight">(×25)</span>
-                </div>
-                <div className="scenario-level-item">
-                  普通网民：<span className="level-cnt">10</span> 篇 <span className="level-weight">(×5)</span>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
-
-          {/* 下层：平台渠道发文分布带（高度 44px，背景色 #FAFAFA，边框顶线 1px solid #F0F0F0） */}
-          <div className="scenario-buzz-lower">
-            <span className="scenario-buzz-lower-label">各平台实际发文（共 23 篇）</span>
-            <div className="scenario-buzz-channel-strip">
-              <span className="scenario-buzz-channel-cell">今日头条<strong>(9)</strong></span>
-              <span className="scenario-buzz-channel-divider">|</span>
-              <span className="scenario-buzz-channel-cell">APP<strong>(8)</strong></span>
-              <span className="scenario-buzz-channel-divider">|</span>
-              <span className="scenario-buzz-channel-cell">新闻<strong>(3)</strong></span>
-              <span className="scenario-buzz-channel-divider">|</span>
-              <span className="scenario-buzz-channel-cell">微信<strong>(2)</strong></span>
-              <span className="scenario-buzz-channel-divider">|</span>
-              <span className="scenario-buzz-channel-cell">小红书<strong>(1)</strong></span>
-              <span className="scenario-buzz-channel-divider">|</span>
-              <span className="scenario-buzz-channel-cell">微博<strong>(0)</strong></span>
-              <span className="scenario-buzz-channel-divider">|</span>
-              <span className="scenario-buzz-channel-cell">抖音<strong>(0)</strong></span>
-              <span className="scenario-buzz-channel-divider">|</span>
-              <span className="scenario-buzz-channel-cell">论坛<strong>(0)</strong></span>
-              <span className="scenario-buzz-channel-divider">|</span>
-              <span className="scenario-buzz-channel-cell">长视频<strong>(0)</strong></span>
-              <span className="scenario-buzz-channel-divider">|</span>
-              <span className="scenario-buzz-channel-cell">境外<strong>(0)</strong></span>
-            </div>
-          </div>
-        </div>
+        </>
       ) : (
-        /* 场景 8：基础篇数统计（不符合条件/降级）- 紧凑单层横条（高度 80px） */
+        /* 场景 8：基础篇数统计（不符合条件/降级）- 紧凑单层横条（保持原始效果，仅展示文章总量和各平台分布） */
         <div className="scenario-buzz-card basic-card">
           {/* 【左侧总声量区】 */}
           <div className="scenario-buzz-basic-left">
@@ -467,7 +516,7 @@ const ScenarioSourceControlBuzz: React.FC<ScenarioSourceControlBuzzProps> = ({
             <div className="scenario-buzz-basic-meta">
               <div className="scenario-buzz-basic-num-row">
                 <span className="scenario-buzz-basic-label">总声量</span>
-                <span className="scenario-buzz-basic-val">23</span>
+                <span className="scenario-buzz-basic-val">{totalPlatformArticles.toLocaleString()}</span>
               </div>
               <div className="scenario-buzz-basic-subtext">
                 按基础发文篇数统计（任务周期超14天或跨地域）
@@ -478,22 +527,11 @@ const ScenarioSourceControlBuzz: React.FC<ScenarioSourceControlBuzzProps> = ({
           {/* 垂直分割线 */}
           <div className="scenario-buzz-basic-divider" />
 
-          {/* 【右侧渠道发文平铺区】（隐藏新闻与自媒体加权矩阵） */}
+          {/* 【右侧渠道发文平铺区】（仅展示文章总量和各平台分布，隐藏加权矩阵） */}
           <div className="scenario-buzz-basic-channels">
-            {[
-              { name: '今日头条', val: 9 },
-              { name: 'APP', val: 8 },
-              { name: '新闻', val: 3 },
-              { name: '微信', val: 2 },
-              { name: '小红书', val: 1 },
-              { name: '微博', val: 0 },
-              { name: '抖音', val: 0 },
-              { name: '论坛', val: 0 },
-              { name: '长视频', val: 0 },
-              { name: '境外', val: 0 },
-            ].map((ch) => (
+            {initialPlatformArticles.map((ch) => (
               <div key={ch.name} className="scenario-buzz-basic-item">
-                <span className="item-val">{ch.val}</span>
+                <span className="item-val">{ch.count.toLocaleString()}</span>
                 <span className="item-name">{ch.name}</span>
               </div>
             ))}

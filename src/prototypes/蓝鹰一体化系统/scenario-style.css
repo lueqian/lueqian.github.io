@@ -3357,6 +3357,7 @@
 }
 
 /* ==================== 场景 7：加权声量模型（上下双层结构） ==================== */
+/* ==================== 场景 7：加权声量模型（优化版上下分层 + 左右通栏） ==================== */
 .scenario-buzz-card.weighted-card {
   background: #ffffff;
   border-radius: 4px;
@@ -3366,7 +3367,215 @@
   overflow: hidden;
 }
 
-/* 上层：高度 86px */
+/* 上层：左右通栏结构（总声量通栏贯通，右侧上下两行） */
+.scenario-buzz-upper-v2 {
+  display: flex;
+  align-items: stretch;
+  padding: 16px 24px;
+  box-sizing: border-box;
+  background: #ffffff;
+  min-height: 110px;
+}
+
+/* 【总声量主展示区（左侧垂直贯通）】 */
+.scenario-buzz-main-col.buzz-main-tall {
+  width: 200px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.scenario-buzz-v-divider.buzz-v-divider-tall {
+  width: 1px;
+  background-color: #e4e7ed;
+  margin: 0 20px;
+  flex-shrink: 0;
+  align-self: stretch;
+}
+
+/* 右侧上下两行区域 */
+.scenario-buzz-right-two-rows {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.scenario-buzz-row-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.scenario-buzz-row-title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-shrink: 0;
+  min-width: 155px;
+}
+
+.scenario-buzz-row-title .row-label {
+  font-size: 13px;
+  color: #475569;
+  font-weight: 600;
+}
+
+.scenario-buzz-row-title .row-val {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e293b;
+  letter-spacing: -0.2px;
+}
+
+.scenario-buzz-items-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.scenario-buzz-badge-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  font-size: 12px;
+  color: #64748b;
+  background: #f8fafc;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid #f1f5f9;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.scenario-buzz-badge-item:hover {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+}
+
+.scenario-buzz-badge-item .badge-name {
+  color: #475569;
+  margin-right: 2px;
+}
+
+.scenario-buzz-badge-item .badge-cnt {
+  font-weight: 700;
+  color: #0f172a;
+  font-size: 13px;
+}
+
+.scenario-buzz-badge-item .badge-unit {
+  color: #64748b;
+  font-size: 11px;
+  margin-right: 2px;
+}
+
+.scenario-buzz-badge-item .badge-weight {
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+.scenario-buzz-pipe-divider {
+  color: #cbd5e1;
+  font-size: 11px;
+  margin: 0 1px;
+  user-select: none;
+}
+
+.scenario-buzz-h-divider {
+  height: 1px;
+  background-color: #f1f5f9;
+  width: 100%;
+}
+
+/* 各平台总文章量卡片（参考总互动量板块设计） */
+.buzz-platform-card {
+  background: #ffffff;
+  border-radius: 4px;
+  border: 1px solid #ebeef5;
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.buzz-platform-primary {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+  min-width: 195px;
+}
+
+.buzz-platform-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background-color: #0284c7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.25);
+  flex-shrink: 0;
+}
+
+.buzz-platform-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.buzz-platform-title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.buzz-platform-title-text {
+  font-size: 14px;
+  color: #606266;
+  font-weight: 500;
+}
+
+.buzz-platform-val {
+  font-size: 22px;
+  font-weight: 700;
+  color: #303133;
+  line-height: 26px;
+}
+
+.buzz-platform-desc {
+  font-size: 11px;
+  color: #909399;
+  margin-top: 2px;
+}
+
+.buzz-platform-divider {
+  height: 36px;
+  width: 1px;
+  background-color: #e4e7ed;
+  margin: 0 20px;
+  flex-shrink: 0;
+}
+
+.buzz-platform-breakdown-cards {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  gap: 8px;
+  overflow-x: auto;
+}
+
+/* 兼容原有上层类名（如有其他页面调用） */
 .scenario-buzz-upper {
   height: 86px;
   display: flex;
