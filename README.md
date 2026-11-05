@@ -14,7 +14,7 @@
 - 🦅 **核心主系统**：[蓝鹰一体化系统](https://lueqian.github.io/prototypes/蓝鹰一体化系统.html)（面向公安超管与值班员的智控舆情及事件处置系统）
 - 🔄 **业务协同**：[跨租户全流程业务协同](https://lueqian.github.io/prototypes/cross-tenant-flow.html)
 - 🛡️ **管控指挥**：[政务智控协同平台](https://lueqian.github.io/prototypes/gov_control_platform.html)
-- 📡 **专项处置**：[广州国安 TG 群组管控系统](https://lueqian.github.io/prototypes/eagle_datastory_TGManagementForGuangZhouGuoAn.html)
+- 📡 **专项处置**：[广州TG群组管控系统](https://lueqian.github.io/prototypes/eagle_datastory_TGManagementForGuangZhou.html)
 - 📊 **后台管理**：[数据故事后端管理系统](https://lueqian.github.io/prototypes/DataStory_Backend_Management_System.html)
 
 ---

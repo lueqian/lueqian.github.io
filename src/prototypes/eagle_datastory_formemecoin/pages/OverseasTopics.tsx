@@ -1,6 +1,6 @@
 /**
  * @name 海外专题页面
- * @description 广州国安定制版 - 海外信息检索与专题分析，已升级为 Memecoin 多模态风险研判版
+ * @description 广州定制版 - 海外信息检索与专题分析，已升级为 Memecoin 多模态风险研判版
  *
  */
 

@@ -127,8 +127,8 @@ const PROTOTYPE_META = {
     desc: '涉外舆情监测预警与跨部门管控指挥调度系统。',
     badge: '管控指挥',
   },
-  'eagle_datastory_TGManagementForGuangZhouGuoAn': {
-    title: '广州国安 TG 群组管控系统',
+  'eagle_datastory_TGManagementForGuangZhou': {
+    title: '广州TG群组管控系统',
     desc: 'Telegram 重点群组监控、采集限额风控校验及专项处置工单管理。',
     badge: '专项处置',
   },
