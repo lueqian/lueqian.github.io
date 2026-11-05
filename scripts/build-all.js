@@ -36,7 +36,8 @@ for (const key of entryKeys) {
   const result = spawnSync('npx', ['vite', 'build'], {
     cwd: workspaceRoot,
     env: { ...process.env, ENTRY_KEY: key },
-    stdio: 'inherit'
+    stdio: 'inherit',
+    shell: true,
   });
 
   if (result.status !== 0) {
