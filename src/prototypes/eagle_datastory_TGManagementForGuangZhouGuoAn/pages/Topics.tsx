@@ -87,7 +87,7 @@ type ArticleData = {
   fans?: string;
   time: string;
   platform: string;
-  location: string;
+  location?: string;
   tags: string[];
   title?: string;
   content?: string;

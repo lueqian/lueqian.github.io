@@ -101,3 +101,32 @@ export interface DisposalTaskItem {
   opinionIndex: number; // 35.0 / 28.5 / 42.5
   assignedToDistrict?: string; // 转派区县，如 姑苏分局
 }
+
+export interface DepartmentNode {
+  key: string;
+  title: string;
+  phone?: string;
+  location?: string;
+  isSubordinate?: boolean; // 开关：开启后为下级单位，未开启为上级部门
+  unitType?: '市局单位' | '区县单位';
+  requireAudit?: boolean; // 开关：上报需审核
+  targetAuditDept?: string; // 审核目标部门
+  superiorAuditDept?: string;
+  requireCityAudit?: boolean;
+  children?: DepartmentNode[];
+}
+
+
+export interface DeptUserItem {
+  id: string;
+  serialNumber: number;
+  userName: string;
+  department: string;
+  role: string;
+  wechatNick: string;
+  idCard: string;
+  phone: string;
+  activeStatus: '已激活' | '未激活';
+  inviteCode: string;
+}
+

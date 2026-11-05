@@ -5,17 +5,25 @@
   "description": "Axhub Make（AI 辅助生成原型工具）",
   "type": "module",
   "scripts": {
+    "clean:junk": "node scripts/clean-root-junk.mjs",
     "vendor:sync": "node scripts/sync-vendor-package.mjs",
-    "dev": "pnpm vendor:sync && vite",
-    "start": "pnpm vendor:sync && vite",
-    "build": "pnpm vendor:sync && node scripts/scan-entries.js && node scripts/build-all.js && node scripts/generate-dist-html.js",
+    "dev": "node scripts/clean-root-junk.mjs && pnpm vendor:sync && vite",
+    "start": "node scripts/clean-root-junk.mjs && pnpm vendor:sync && vite",
+    "build": "node scripts/clean-root-junk.mjs && pnpm vendor:sync && node scripts/scan-entries.js && node scripts/build-all.js && node scripts/generate-dist-html.js",
     "preview": "vite preview",
     "typecheck": "pnpm vendor:sync && tsc --noEmit -p tsconfig.typecheck.json",
     "test": "vitest --run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "check-ready": "node scripts/check-app-ready.mjs",
-    "sync:skills": "node scripts/sync-third-party-skills.mjs"
+    "backup": "node scripts/backup-to-onedrive.mjs",
+    "restore": "node scripts/restore-from-backup.mjs",
+    "sync:skills": "node scripts/sync-third-party-skills.mjs",
+    "pack:dist": "pnpm build && node scripts/export-zip.mjs --dist",
+    "pack:source": "node scripts/export-zip.mjs --source",
+    "pack:lanying": "node scripts/export-zip.mjs --prototype 蓝鹰一体化系统",
+    "pack:lanying:dist": "ENTRY_KEY=prototypes/蓝鹰一体化系统 node node_modules/vite/bin/vite.js build && node scripts/export-zip.mjs --prototype 蓝鹰一体化系统 --dist",
+    "pack": "pnpm pack:dist"
   },
   "devDependencies": {
     "@ant-design/cssinjs": "^2.1.0",
@@ -66,7 +74,8 @@
     "lucide-react": "^0.562.0",
     "motion": "^12.38.0",
     "papaparse": "^5.5.3",
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.0",
+    "xlsx": "^0.18.5"
   },
   "optionalDependencies": {
     "@rollup/rollup-linux-arm64-gnu": "^4.60.1"

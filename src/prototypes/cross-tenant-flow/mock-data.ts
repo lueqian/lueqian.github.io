@@ -1,4 +1,4 @@
-import { OpinionItem, DisposalTaskItem } from './types';
+import { OpinionItem, DisposalTaskItem, DepartmentNode, DeptUserItem } from './types';
 
 export const INITIAL_OPINIONS: OpinionItem[] = [
   {
@@ -452,4 +452,229 @@ export const INITIAL_THIRD_PARTY_LIST = [
     time: '2026-09-10 15:10:45'
   }
 ];
+
+export const INITIAL_DEPARTMENT_TREE: DepartmentNode[] = [
+  {
+    key: 'dept-wangan',
+    title: '网安',
+    phone: '023-63960000',
+    location: '重庆市',
+    isSubordinate: false,
+    unitType: '市局单位',
+    requireAudit: false,
+    targetAuditDept: '市局网安支队',
+    superiorAuditDept: '市局网安支队',
+    requireCityAudit: false,
+    children: [
+      {
+        key: 'dept-headquarters',
+        title: '总公司',
+        phone: '023-63892110',
+        location: '渝中区',
+        isSubordinate: false,
+        unitType: '市局单位',
+        requireAudit: false,
+        targetAuditDept: '网安支队',
+        superiorAuditDept: '网安支队',
+        requireCityAudit: false
+      },
+      {
+        key: 'dept-branch',
+        title: '区县分公司',
+        phone: '023-63892120',
+        location: '渝中区',
+        isSubordinate: false,
+        unitType: '市局单位',
+        requireAudit: false,
+        targetAuditDept: '网安支队',
+        superiorAuditDept: '网安支队',
+        requireCityAudit: false,
+        children: [
+          { key: 'dept-zhongxian', title: '忠县', phone: '023-54232110', location: '忠县', isSubordinate: true, unitType: '区县单位', requireAudit: true, targetAuditDept: '网安支队', superiorAuditDept: '网安支队', requireCityAudit: true },
+          { key: 'dept-changshou', title: '长寿区', phone: '023-40242110', location: '长寿区', isSubordinate: true, unitType: '区县单位', requireAudit: true, targetAuditDept: '网安支队', superiorAuditDept: '网安支队', requireCityAudit: true },
+          { key: 'dept-yunyang', title: '云阳县', phone: '023-55122110', location: '云阳县', isSubordinate: true, unitType: '区县单位', requireAudit: true, targetAuditDept: '网安支队', superiorAuditDept: '网安支队', requireCityAudit: true },
+          { key: 'dept-yuzhong', title: '渝中区', phone: '023-63842110', location: '渝中区', isSubordinate: true, unitType: '区县单位', requireAudit: true, targetAuditDept: '网安支队', superiorAuditDept: '网安支队', requireCityAudit: true },
+          { key: 'dept-yubei', title: '渝北区', phone: '023-67802110', location: '渝北区', isSubordinate: true, unitType: '区县单位', requireAudit: true, targetAuditDept: '网安支队', superiorAuditDept: '网安支队', requireCityAudit: true },
+          { key: 'dept-youyang', title: '酉阳县', phone: '023-75552110', location: '酉阳县', isSubordinate: true, unitType: '区县单位', requireAudit: true, targetAuditDept: '网安支队', superiorAuditDept: '网安支队', requireCityAudit: true },
+          { key: 'dept-yongchuan', title: '永川区', phone: '023-49812110', location: '永川区', isSubordinate: true, unitType: '区县单位', requireAudit: true, targetAuditDept: '网安支队', superiorAuditDept: '网安支队', requireCityAudit: true },
+          { key: 'dept-xiushan', title: '秀山县', phone: '023-76662110', location: '秀山县', isSubordinate: true, unitType: '区县单位', requireAudit: true, targetAuditDept: '网安支队', superiorAuditDept: '网安支队', requireCityAudit: true },
+          { key: 'dept-wuxi', title: '巫溪县', phone: '023-51522110', location: '巫溪县', isSubordinate: true, unitType: '区县单位', requireAudit: true, targetAuditDept: '网安支队', superiorAuditDept: '网安支队', requireCityAudit: true },
+          { key: 'dept-wushan', title: '巫山县', phone: '023-57682110', location: '巫山县', isSubordinate: true, unitType: '区县单位', requireAudit: true, targetAuditDept: '网安支队', superiorAuditDept: '网安支队', requireCityAudit: true },
+          { key: 'dept-wanzhou', title: '万州区', phone: '023-58122110', location: '万州区', isSubordinate: true, unitType: '区县单位', requireAudit: true, targetAuditDept: '网安支队', superiorAuditDept: '网安支队', requireCityAudit: true },
+          { key: 'dept-wansheng', title: '万盛区', phone: '023-48272110', location: '万盛区', isSubordinate: true, unitType: '区县单位', requireAudit: true, targetAuditDept: '网安支队', superiorAuditDept: '网安支队', requireCityAudit: true },
+          { key: 'dept-tongnan', title: '潼南区', phone: '023-44552110', location: '潼南区', isSubordinate: true, unitType: '区县单位', requireAudit: true, targetAuditDept: '网安支队', superiorAuditDept: '网安支队', requireCityAudit: true },
+          { key: 'dept-tongliang', title: '铜梁区', phone: '023-45692110', location: '铜梁区', isSubordinate: true, unitType: '区县单位', requireAudit: true, targetAuditDept: '网安支队', superiorAuditDept: '网安支队', requireCityAudit: true },
+          { key: 'dept-shizhu', title: '石柱县', phone: '023-73332110', location: '石柱县', isSubordinate: true, unitType: '区县单位', requireAudit: true, targetAuditDept: '网安支队', superiorAuditDept: '网安支队', requireCityAudit: true },
+          { key: 'dept-shapingba', title: '沙坪坝区', phone: '023-65312110', location: '沙坪坝区', isSubordinate: true, unitType: '区县单位', requireAudit: true, targetAuditDept: '网安支队', superiorAuditDept: '网安支队', requireCityAudit: true },
+          { key: 'dept-rongchang', title: '荣昌区', phone: '023-46782110', location: '荣昌区', isSubordinate: true, unitType: '区县单位', requireAudit: true, targetAuditDept: '网安支队', superiorAuditDept: '网安支队', requireCityAudit: true },
+          { key: 'dept-qianjiang', title: '黔江区', phone: '023-79222110', location: '黔江区', isSubordinate: true, unitType: '区县单位', requireAudit: true, targetAuditDept: '网安支队', superiorAuditDept: '网安支队', requireCityAudit: true },
+          { key: 'dept-qijiang', title: '綦江区', phone: '023-48662110', location: '綦江区', isSubordinate: true, unitType: '区县单位', requireAudit: true, targetAuditDept: '网安支队', superiorAuditDept: '网安支队', requireCityAudit: true },
+          { key: 'dept-pengshui', title: '彭水县', phone: '023-78442110', location: '彭水县', isSubordinate: true, unitType: '区县单位', requireAudit: true, targetAuditDept: '网安支队', superiorAuditDept: '网安支队', requireCityAudit: true }
+        ]
+      }
+    ]
+  }
+];
+
+
+
+export const INITIAL_DEPT_USERS: DeptUserItem[] = [
+  {
+    id: 'user-1',
+    serialNumber: 1,
+    userName: '李林华',
+    department: '忠县',
+    role: '区县一体化角色',
+    wechatNick: '',
+    idCard: '500233199709110759',
+    phone: '18166367197',
+    activeStatus: '已激活',
+    inviteCode: 'l53775'
+  },
+  {
+    id: 'user-2',
+    serialNumber: 2,
+    userName: '陈航',
+    department: '忠县',
+    role: '区县一体化角色',
+    wechatNick: '',
+    idCard: '500233199701152534',
+    phone: '18716243447',
+    activeStatus: '已激活',
+    inviteCode: '873n7z'
+  },
+  {
+    id: 'user-3',
+    serialNumber: 3,
+    userName: '刘周',
+    department: '忠县',
+    role: '区县一体化角色',
+    wechatNick: '',
+    idCard: '500233198810020111',
+    phone: '15023431229',
+    activeStatus: '已激活',
+    inviteCode: 'o566q1'
+  },
+  {
+    id: 'user-4',
+    serialNumber: 4,
+    userName: '丁国耀',
+    department: '忠县',
+    role: '区县一体化角色',
+    wechatNick: '',
+    idCard: '500233198310030217',
+    phone: '15923888212',
+    activeStatus: '已激活',
+    inviteCode: '9j60jb'
+  },
+  {
+    id: 'user-5',
+    serialNumber: 5,
+    userName: '乐勤炼',
+    department: '忠县',
+    role: '区县一体化角色',
+    wechatNick: '伯拓',
+    idCard: '500233197911296999',
+    phone: '13896294911',
+    activeStatus: '已激活',
+    inviteCode: 'c0zb88'
+  },
+  {
+    id: 'user-6',
+    serialNumber: 6,
+    userName: '王莺晓',
+    department: '忠县',
+    role: '区县一体化角色',
+    wechatNick: 'W-apq10',
+    idCard: '500233199312111429',
+    phone: '13668402660',
+    activeStatus: '已激活',
+    inviteCode: '329fi2'
+  },
+  {
+    id: 'user-7',
+    serialNumber: 7,
+    userName: '冉尧',
+    department: '忠县',
+    role: '区县民警、区县一体化角色',
+    wechatNick: '没教养的牛，',
+    idCard: '500233198907210114',
+    phone: '13628237926',
+    activeStatus: '已激活',
+    inviteCode: '35fwpd'
+  },
+  {
+    id: 'user-8',
+    serialNumber: 8,
+    userName: '胡晓波',
+    department: '忠县',
+    role: '区县民警、区县一体化角色',
+    wechatNick: '淼沛霖',
+    idCard: '500233198710075131',
+    phone: '18166367522',
+    activeStatus: '已激活',
+    inviteCode: '160bud'
+  },
+  {
+    id: 'user-9',
+    serialNumber: 9,
+    userName: '陈文华',
+    department: '忠县',
+    role: '区县民警、区县一体化角色',
+    wechatNick: '晨晨',
+    idCard: '500233198906301719',
+    phone: '18166367209',
+    activeStatus: '已激活',
+    inviteCode: '5lum8v'
+  },
+  {
+    id: 'user-10',
+    serialNumber: 10,
+    userName: '黄琼慧',
+    department: '忠县',
+    role: '区县民警、区县一体化角色',
+    wechatNick: '幸运的粉星星',
+    idCard: '500233198904060122',
+    phone: '16602382225',
+    activeStatus: '已激活',
+    inviteCode: 'j8br3p'
+  },
+  {
+    id: 'user-11',
+    serialNumber: 11,
+    userName: '张丽',
+    department: '忠县',
+    role: '区县民警、区县一体化角色',
+    wechatNick: '考拉▰▰▰',
+    idCard: '500233198506134085',
+    phone: '1389627993',
+    activeStatus: '已激活',
+    inviteCode: 'hii43b'
+  },
+  {
+    id: 'user-12',
+    serialNumber: 12,
+    userName: '汪锋',
+    department: '忠县',
+    role: '区县民警、区县一体化角色',
+    wechatNick: '社会主义接班人',
+    idCard: '500233198809126792',
+    phone: '18166367212',
+    activeStatus: '已激活',
+    inviteCode: 'o7llpf'
+  },
+  {
+    id: 'user-13',
+    serialNumber: 13,
+    userName: '李倩',
+    department: '忠县',
+    role: '区县民警、区县一体化角色',
+    wechatNick: 'honey倩',
+    idCard: '500221198803182467',
+    phone: '18166367217',
+    activeStatus: '已激活',
+    inviteCode: 'l3743a'
+  }
+];
+
 

@@ -39,6 +39,16 @@ import {
   CheckCircleFilled,
   ExportOutlined,
   LockOutlined,
+  UserSwitchOutlined,
+  BellOutlined,
+  CloseCircleOutlined,
+  ExclamationCircleOutlined,
+  LoadingOutlined,
+  SafetyCertificateFilled,
+  AuditOutlined,
+  UserAddOutlined,
+  KeyOutlined,
+  SolutionOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { Annotated } from '@/common/Annotation';
@@ -47,6 +57,57 @@ import '../scenario-style.css';
 
 const { TextArea } = Input;
 const { Option } = Select;
+
+// ==================== 跨网鉴权与演练人员接口 ====================
+
+export interface SimulationUser {
+  id: 'zhangsan' | 'lisi' | 'wangwu';
+  name: string;
+  phone: string;
+  policeNo: string;
+  role: string;
+  org: string;
+  hasReportPerm: boolean; // 是否拥有 eagle:gph:CrossTenant:report_to_provincial 权限
+  provincialStatus: 'ACTIVATED' | 'PENDING_BOOTSTRAP' | 'REJECTED'; // 省厅内网账号状态
+  endorserName?: string;
+  endorserPhone?: string;
+}
+
+const DEFAULT_SIMULATION_USERS: Record<string, SimulationUser> = {
+  zhangsan: {
+    id: 'zhangsan',
+    name: '张三',
+    phone: '13800000001',
+    policeNo: '045801',
+    role: '支队值班长 (老民警/已在省厅建档)',
+    org: '淮安市公安局网安支队',
+    hasReportPerm: true,
+    provincialStatus: 'ACTIVATED',
+  },
+  lisi: {
+    id: 'lisi',
+    name: '李四',
+    phone: '13900000002',
+    policeNo: '045892',
+    role: '大队新警员 (已获直报培训授权)',
+    org: '淮安市公安局清江浦分局网安大队',
+    hasReportPerm: true,
+    provincialStatus: 'PENDING_BOOTSTRAP', // 首次上报待背书
+    endorserName: '张三 (支队值班长)',
+    endorserPhone: '13800000001',
+  },
+  wangwu: {
+    id: 'wangwu',
+    name: '王五',
+    phone: '13700000003',
+    policeNo: '045999',
+    role: '基层常规民警 (未获直报培训资质)',
+    org: '淮安市公安局清江浦分局城南派出所',
+    hasReportPerm: false, // 无权限
+    provincialStatus: 'PENDING_BOOTSTRAP',
+  },
+};
+
 
 // ==================== 字典数据定义 ====================
 
@@ -140,6 +201,27 @@ export const ScenarioDirectProvincial: React.FC = () => {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [submitTimestamp, setSubmitTimestamp] = useState<string>('');
 
+  // 跨网直报人员身份与鉴权状态演练
+  const [simUsers, setSimUsers] = useState<Record<string, SimulationUser>>(DEFAULT_SIMULATION_USERS);
+  const [currentUserKey, setCurrentUserKey] = useState<'zhangsan' | 'lisi' | 'wangwu'>('lisi');
+  const currentUser = simUsers[currentUserKey];
+
+  // 驳回原因状态
+  const [rejectReason, setRejectReason] = useState<string>('非网安在编直报专员');
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+
+  // 鉴权失败排查诊断抽屉
+  const [authFailureDrawerOpen, setAuthFailureDrawerOpen] = useState(false);
+
+  // 省厅新人员开户通知状态
+  const [hasNewAccountApplication, setHasNewAccountApplication] = useState(false);
+  const [provincialNoticeOpen, setProvincialNoticeOpen] = useState(false);
+
+  // GA网指令回执等待权限控制 (eagle:gph:Instruction:dispatch_receipt_wait)
+  const [hasReceiptWaitPerm, setHasReceiptWaitPerm] = useState(true);
+  const [instructionWaitState, setInstructionWaitState] = useState<'idle' | 'waiting' | 'success'>('idle');
+  const [waitProgress, setWaitProgress] = useState(0);
+
   // 省厅端数据状态
   const [provincialAdopted, setProvincialAdopted] = useState(false);
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
@@ -163,8 +245,8 @@ export const ScenarioDirectProvincial: React.FC = () => {
       link: 'https://v.douyin.com/kP8a2L1/ 某海滨港区外运物流集聚区货车司机聚集讨要运费视频...',
       topic: '关于连云港某海滨港区物流集聚区网络舆情线索协查',
       eventTime: dayjs(),
-      collector: '张华 (警号: 082163)',
-      collectionUnit: '淮安市公安局清江浦分局网安大队',
+      collector: `${currentUser.name} (警号: ${currentUser.policeNo})`,
+      collectionUnit: currentUser.org,
       infoSource: '抖音短视频平台',
       author: '苏北沿海观察员',
       authorPlatformId: 'DY_8829103821',
@@ -178,7 +260,24 @@ export const ScenarioDirectProvincial: React.FC = () => {
       notifyDistricts: ['清江浦区'],
       notifyCities: [],
     });
-  }, [form]);
+  }, [form, currentUser]);
+
+  // 切换当前值班填报人员
+  const handleUserChange = (userKey: 'zhangsan' | 'lisi' | 'wangwu') => {
+    setCurrentUserKey(userKey);
+    const u = simUsers[userKey];
+    form.setFieldsValue({
+      collector: `${u.name} (警号: ${u.policeNo})`,
+      collectionUnit: u.org,
+    });
+    if (!u.hasReportPerm && reportTargets.includes('provincial')) {
+      // 未获培训授权人员，自动收回总队上报
+      setReportTargets(['branch']);
+      message.warning(`已切换为【${u.name}】：未获直报省厅权限 (eagle:gph:CrossTenant:report_to_provincial)，已收回上报总队勾选`);
+    } else {
+      message.info(`已切换当前值班填报人员为：【${u.name}】(${u.role})`);
+    }
+  };
 
   // 处理报送目标勾选变动及字典切换
   const handleTargetChange = (checkedValues: string[]) => {
@@ -189,6 +288,12 @@ export const ScenarioDirectProvincial: React.FC = () => {
 
     const wasProvincialChecked = reportTargets.includes('provincial');
     const isProvincialChecked = checkedValues.includes('provincial');
+
+    // 权限校验拦截：未授权人员禁止勾选
+    if (isProvincialChecked && !currentUser.hasReportPerm) {
+      message.error('当前用户未拥有 eagle:gph:CrossTenant:report_to_provincial 权限，仅限指定培训认证专员开放！');
+      return;
+    }
 
     setReportTargets(checkedValues);
 
@@ -223,7 +328,7 @@ export const ScenarioDirectProvincial: React.FC = () => {
     }
   };
 
-  // 提交手工上报表单
+  // 提交手工上报表单（含双手机号背书与硬丢弃拦截闭环）
   const handleSubmitReport = async () => {
     try {
       if (reportTargets.length === 0) {
@@ -231,9 +336,43 @@ export const ScenarioDirectProvincial: React.FC = () => {
         return;
       }
 
+      const isReportingProvincial = reportTargets.includes('provincial');
+
+      // 权限前置强校验
+      if (isReportingProvincial && !currentUser.hasReportPerm) {
+        message.error('当前人员未拥有直报权限 eagle:gph:CrossTenant:report_to_provincial！');
+        return;
+      }
+
       setSubmitting(true);
+
+      // 分支 1：省厅账号已被超管驳回 -> 网闸硬丢弃数据！不落库省厅！
+      if (isReportingProvincial && currentUser.provincialStatus === 'REJECTED') {
+        message.loading({
+          content: '正在跨网传输数据包... 省厅内网前置机正在进行手机号鉴权校验...',
+          key: 'submittingKey',
+          duration: 0.6,
+        });
+
+        setTimeout(() => {
+          setSubmitting(false);
+          message.error({
+            content: '【省厅网关鉴权拒绝】数据包已被网闸硬丢弃！',
+            key: 'submittingKey',
+            duration: 4,
+          });
+          setAuthFailureDrawerOpen(true);
+        }, 600);
+        return;
+      }
+
+      // 分支 2：首次上报背书放行流程 (BOOTSTRAP 模式)
+      const isBootstrap = isReportingProvincial && currentUser.provincialStatus === 'PENDING_BOOTSTRAP';
+
       message.loading({
-        content: '正在校验免审直通策略并调用前置机跨网摆渡落库...',
+        content: isBootstrap
+          ? `首次直报：已自动关联同组值班长 [${currentUser.endorserName}] 提供信任背书放行...`
+          : '正在校验免审直通策略并调用前置机跨网摆渡落库...',
         key: 'submittingKey',
         duration: 0.6,
       });
@@ -243,11 +382,21 @@ export const ScenarioDirectProvincial: React.FC = () => {
         setIsSubmitted(true);
         const nowStr = dayjs().format('YYYY-MM-DD HH:mm:ss');
         setSubmitTimestamp(nowStr);
-        message.success({
-          content: '上报成功！',
-          key: 'submittingKey',
-          duration: 3,
-        });
+
+        if (isBootstrap) {
+          setHasNewAccountApplication(true);
+          message.success({
+            content: `上报成功！已由【${currentUser.endorserName}】信任背书放行，并已向省厅内网推送开户申请通知！`,
+            key: 'submittingKey',
+            duration: 4,
+          });
+        } else {
+          message.success({
+            content: '上报成功！省厅前置机独立手机号鉴权放行！',
+            key: 'submittingKey',
+            duration: 3,
+          });
+        }
         // 自动跳转到“监测预警-本地上报”
         setCityASubTab('list');
       }, 500);
@@ -256,15 +405,66 @@ export const ScenarioDirectProvincial: React.FC = () => {
     }
   };
 
-  // 省厅端下达指令并转为【已采纳】
+  // 省厅超管一键开通李四账号
+  const handleApproveLisiAccount = () => {
+    setSimUsers((prev) => ({
+      ...prev,
+      lisi: {
+        ...prev.lisi,
+        provincialStatus: 'ACTIVATED',
+      },
+    }));
+    setHasNewAccountApplication(false);
+    setProvincialNoticeOpen(false);
+    message.success('【省厅账号开通成功】已在省厅账号体系创建该用户并加入鉴权白名单！李四下次直报将免背书独立通行。');
+  };
+
+  // 省厅超管驳回李四账号
+  const handleRejectLisiAccount = () => {
+    setSimUsers((prev) => ({
+      ...prev,
+      lisi: {
+        ...prev.lisi,
+        provincialStatus: 'REJECTED',
+      },
+    }));
+    setHasNewAccountApplication(false);
+    setRejectModalOpen(false);
+    setProvincialNoticeOpen(false);
+    message.warning(`已驳回该人员直报开通申请（原因：${rejectReason}）。该人员后续直报将被省厅网关直接硬丢弃！`);
+  };
+
+  // 省厅端下达指令并转为【已采纳】（支持 GA网指令下达回执等待权限）
   const handleDispatchInstruction = () => {
-    setInstructionSubmitting(true);
-    setTimeout(() => {
-      setInstructionSubmitting(false);
-      setInstructionModalOpen(false);
-      setProvincialAdopted(true);
-      message.success('指令下达成功！');
-    }, 400);
+    if (hasReceiptWaitPerm) {
+      // 拥有 eagle:gph:Instruction:dispatch_receipt_wait 权限：同步阻塞等待回执
+      setInstructionSubmitting(true);
+      setInstructionWaitState('waiting');
+      setWaitProgress(25);
+
+      setTimeout(() => setWaitProgress(65), 500);
+      setTimeout(() => setWaitProgress(95), 1100);
+      setTimeout(() => {
+        setWaitProgress(100);
+        setInstructionWaitState('success');
+        setTimeout(() => {
+          setInstructionSubmitting(false);
+          setInstructionWaitState('idle');
+          setInstructionModalOpen(false);
+          setProvincialAdopted(true);
+          message.success('指令投递成功！已接收到淮安与连云港两地公安网前置机签收回执 (ACK)！');
+        }, 600);
+      }, 1600);
+    } else {
+      // 未拥有该权限：按照既往流程直接异步发送
+      setInstructionSubmitting(true);
+      setTimeout(() => {
+        setInstructionSubmitting(false);
+        setInstructionModalOpen(false);
+        setProvincialAdopted(true);
+        message.success('指令已异步下达成功（既往直接传送流程）！');
+      }, 300);
+    }
   };
 
   // 地市 B (连云港) 转为本地处置
@@ -323,7 +523,7 @@ export const ScenarioDirectProvincial: React.FC = () => {
             淮安市局
           </span>
           <span className="scenario-env-subtitle">
-            （当前账号：张华）
+            （当前值班填报人员：{currentUser.name} · {currentUser.role}）
           </span>
         </div>
         <Space>
@@ -348,7 +548,78 @@ export const ScenarioDirectProvincial: React.FC = () => {
         <div className="std-form-card">
           <div className="std-form-card-header">
             <h2 className="std-form-main-title">监测预警 - 手工上报（淮安市局）</h2>
-            <p className="std-form-subtitle">免审直通省厅 · 地市字典切换与跨地市通报</p>
+            <p className="std-form-subtitle">免审直通省厅 · 跨安全网手机号鉴权与无感背书放行</p>
+          </div>
+
+          {/* 值班民警身份登记与跨网鉴权状态演练卡片 (符合 User UI Guidelines 规范) */}
+          <div
+            style={{
+              background: '#F8FAFC',
+              border: '1px solid #E2E8F0',
+              borderRadius: 8,
+              padding: '16px 20px',
+              marginBottom: 20,
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <SolutionOutlined style={{ color: '#2563EB', fontSize: 16 }} />
+                <span style={{ fontSize: 14, fontWeight: 600, color: '#1E293B' }}>
+                  值班人员信息登记与跨网鉴权资质
+                </span>
+                <Tag color={currentUser.hasReportPerm ? 'blue' : 'default'} style={{ margin: 0, fontSize: 12 }}>
+                  {currentUser.hasReportPerm ? '已授权直报权限' : '未授权直报权限'}
+                </Tag>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 13, color: '#64748B' }}>切换演练人员：</span>
+                <Select
+                  value={currentUserKey}
+                  onChange={(val) => handleUserChange(val as 'zhangsan' | 'lisi' | 'wangwu')}
+                  style={{ width: 280 }}
+                  size="small"
+                >
+                  <Option value="lisi">
+                    李四 (新警员 · 首次直报待背书)
+                  </Option>
+                  <Option value="zhangsan">
+                    张三 (支队值班长 · 省厅已在籍)
+                  </Option>
+                  <Option value="wangwu">
+                    王五 (基层常规民警 · 无直报权限)
+                  </Option>
+                </Select>
+              </div>
+            </div>
+
+            <Row gutter={16} style={{ fontSize: 13, color: '#475569' }}>
+              <Col span={6}>
+                <div>• 当前登记民警：<strong style={{ color: '#0F172A' }}>{currentUser.name}</strong>（警号：{currentUser.policeNo}）</div>
+              </Col>
+              <Col span={6}>
+                <div>• 鉴权手机号：<code style={{ background: '#E2E8F0', padding: '2px 6px', borderRadius: 4 }}>{currentUser.phone}</code></div>
+              </Col>
+              <Col span={6}>
+                <div>• 直报省厅权限：
+                  <span style={{ color: currentUser.hasReportPerm ? '#16A34A' : '#DC2626', fontWeight: 600 }}>
+                    {currentUser.hasReportPerm ? 'eagle:gph:CrossTenant:report_to_provincial' : '未赋权'}
+                  </span>
+                </div>
+              </Col>
+              <Col span={6}>
+                <div>• 省厅账号状态：
+                  {currentUser.provincialStatus === 'ACTIVATED' && (
+                    <Tag color="success" style={{ margin: 0 }}>已在籍放行 (独立鉴权)</Tag>
+                  )}
+                  {currentUser.provincialStatus === 'PENDING_BOOTSTRAP' && (
+                    <Tag color="processing" style={{ margin: 0 }}>待首报背书开通</Tag>
+                  )}
+                  {currentUser.provincialStatus === 'REJECTED' && (
+                    <Tag color="error" style={{ margin: 0 }}>省厅已驳回 (丢弃数据)</Tag>
+                  )}
+                </div>
+              </Col>
+            </Row>
           </div>
 
           <Form
@@ -365,12 +636,12 @@ export const ScenarioDirectProvincial: React.FC = () => {
             {/* 1. 报送目标 [col-12 全宽] - 纯净呈现，杜绝虚线框与彩色底色装饰 */}
             <Annotated
               pin={1}
-              title="报送目标与字典切换"
-              note="未勾选总队展示淮安区县；勾选总队后自动切换为省厅地市字典。"
-              tag="省厅字典"
+              title="报送目标与跨网手机号鉴权"
+              note="拥有 eagle:gph:CrossTenant:report_to_provincial 权限方可勾选总队；新警员首次上报自动由值班长张三提供信任背书并推送省厅开通。"
+              tag="手机号鉴权"
               placement="top-right"
             >
-              <Form.Item label="报送目标" required style={{ marginBottom: 20 }}>
+              <Form.Item label="报送目标" required style={{ marginBottom: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16, height: 40 }}>
                   <Checkbox.Group
                     value={reportTargets}
@@ -381,12 +652,37 @@ export const ScenarioDirectProvincial: React.FC = () => {
                         <span>上报支队（锁定）</span>
                       </Tooltip>
                     </Checkbox>
-                    <Checkbox value="provincial" style={{ marginLeft: 16 }}>
-                      <span style={{ fontWeight: 600, color: '#2563EB' }}>
+                    <Checkbox
+                      value="provincial"
+                      disabled={!currentUser.hasReportPerm}
+                      style={{ marginLeft: 16 }}
+                    >
+                      <span
+                        style={{
+                          fontWeight: 600,
+                          color: currentUser.hasReportPerm ? '#2563EB' : '#94A3B8',
+                        }}
+                      >
                         上报总队
                       </span>
                     </Checkbox>
                   </Checkbox.Group>
+
+                  {!currentUser.hasReportPerm && (
+                    <span
+                      style={{
+                        borderRadius: 4,
+                        padding: '3px 10px',
+                        fontSize: 12,
+                        background: '#F1F5F9',
+                        color: '#64748B',
+                        border: '1px solid #E2E8F0',
+                      }}
+                    >
+                      <LockOutlined style={{ marginRight: 4 }} />
+                      仅限通过实训认证并持有 eagle:gph:CrossTenant:report_to_provincial 权限人员开放
+                    </span>
+                  )}
 
                   {reportTargets.includes('provincial') && (
                     <span
@@ -412,6 +708,86 @@ export const ScenarioDirectProvincial: React.FC = () => {
                   )}
                 </div>
               </Form.Item>
+
+              {/* 核心新增：跨网手机号鉴权凭证反馈栏 (仅在勾选上报总队时呈现) */}
+              {reportTargets.includes('provincial') && (
+                <div style={{ marginBottom: 20 }}>
+                  {/* 情况 A：在籍已激活独立鉴权 (如张三) */}
+                  {currentUser.provincialStatus === 'ACTIVATED' && (
+                    <div
+                      style={{
+                        background: '#EFF6FF',
+                        border: '1px solid #BFDBFE',
+                        borderRadius: 6,
+                        padding: '10px 14px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        fontSize: 13,
+                        color: '#1E40AF',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <SafetyCertificateFilled style={{ color: '#2563EB', fontSize: 16 }} />
+                        <span>
+                          <strong>跨网鉴权通道就绪</strong>：上报人手机号 <code>{currentUser.phone}</code> 已在省厅内网账号体系备案，前置网闸将独立校验放行。
+                        </span>
+                      </div>
+                      <Tag color="blue" style={{ margin: 0 }}>独立鉴权通行</Tag>
+                    </div>
+                  )}
+
+                  {/* 情况 B：新人员首次直报，信任背书自举 (如李四首次上报) */}
+                  {currentUser.provincialStatus === 'PENDING_BOOTSTRAP' && (
+                    <div
+                      style={{
+                        background: '#F0FDF4',
+                        border: '1px solid #BBF7D0',
+                        borderRadius: 6,
+                        padding: '10px 14px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        fontSize: 13,
+                        color: '#166534',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <CheckCircleFilled style={{ color: '#16A34A', fontSize: 16 }} />
+                        <span>
+                          <strong>首次直报信任背书已激活</strong>：检测到您首次直报省厅，系统已自动关联同组值班长 <strong>[{currentUser.endorserName}]</strong> 手机号 <code>{currentUser.endorserPhone}</code> 协同传输放行，并自动向省厅推送开户通知。
+                        </span>
+                      </div>
+                      <Tag color="success" style={{ margin: 0 }}>无感信任背书放行</Tag>
+                    </div>
+                  )}
+
+                  {/* 情况 C：省厅超管驳回，网闸硬丢弃预警 (如李四被驳回) */}
+                  {currentUser.provincialStatus === 'REJECTED' && (
+                    <div
+                      style={{
+                        background: '#FEF2F2',
+                        border: '1px solid #FECACA',
+                        borderRadius: 6,
+                        padding: '10px 14px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        fontSize: 13,
+                        color: '#991B1B',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <CloseCircleOutlined style={{ color: '#DC2626', fontSize: 16 }} />
+                        <span>
+                          <strong>跨网鉴权受阻</strong>：上报人手机号 <code>{currentUser.phone}</code> 的省厅开户已被超管驳回（原因：{rejectReason}）。继续提交将被省厅网闸直接丢弃！
+                        </span>
+                      </div>
+                      <Tag color="error" style={{ margin: 0 }}>鉴权拦截预警</Tag>
+                    </div>
+                  )}
+                </div>
+              )}
             </Annotated>
 
             {/* 2. 舆情链接 [col-12 全宽] */}
@@ -731,20 +1107,75 @@ export const ScenarioDirectProvincial: React.FC = () => {
   // ==================== 视图 B：省厅总队内网端页面 ====================
   const renderProvincialView = () => (
     <div className="provincial-view-wrapper">
-      {/* 顶部公安内网环境标识 */}
+      {/* 顶部公安内网环境标识与协同工作台 */}
       <div className="scenario-env-header env-intranet">
         <div className="scenario-env-info">
           <span className="env-tag-badge">
-            <SafetyCertificateOutlined /> 公安内网 · 省厅
+            <SafetyCertificateOutlined /> 公安内网 (GA网) · 省厅
           </span>
           <span className="scenario-env-title" style={{ color: '#fff' }}>
-            省厅总队
+            江苏省公安厅网安总队
           </span>
           <span className="scenario-env-subtitle" style={{ color: '#bae0ff' }}>
-            （当前账号：李警官）
+            （值班研判调度岗 · 超管权限）
           </span>
         </div>
-        <Space>
+        <Space size={12}>
+          {/* GA网指令回执等待权限控制演练小工具 */}
+          <div
+            style={{
+              background: 'rgba(255,255,255,0.12)',
+              borderRadius: 4,
+              padding: '2px 8px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              fontSize: 12,
+              color: '#E0F2FE',
+            }}
+          >
+            <KeyOutlined />
+            <span>GA网指令下达回执等待:</span>
+            <Button
+              size="small"
+              type={hasReceiptWaitPerm ? 'primary' : 'default'}
+              style={{
+                fontSize: 11,
+                height: 22,
+                padding: '0 6px',
+                background: hasReceiptWaitPerm ? '#16A34A' : '#475569',
+                borderColor: 'transparent',
+              }}
+              onClick={() => {
+                setHasReceiptWaitPerm(!hasReceiptWaitPerm);
+                message.info(
+                  !hasReceiptWaitPerm
+                    ? '已赋予当前账号 eagle:gph:Instruction:dispatch_receipt_wait 权限（下发指令时将同步等待网闸回执）'
+                    : '已取消该权限（下发指令将按既往流程直接异步发送，不等待回执）'
+                );
+              }}
+            >
+              {hasReceiptWaitPerm ? '已拥有 (等待回执)' : '未拥有 (直接传送)'}
+            </Button>
+          </div>
+
+          {/* 跨网直报新账号开通待办通知入口 */}
+          <Badge count={hasNewAccountApplication ? 1 : 0} offset={[-2, 4]}>
+            <Button
+              size="small"
+              icon={<BellOutlined />}
+              style={{
+                background: hasNewAccountApplication ? '#EF4444' : 'rgba(255,255,255,0.18)',
+                color: '#fff',
+                borderColor: 'transparent',
+                fontWeight: hasNewAccountApplication ? 600 : 400,
+              }}
+              onClick={() => setProvincialNoticeOpen(true)}
+            >
+              开户待办 {hasNewAccountApplication && '(新申请)'}
+            </Button>
+          </Badge>
+
           <Button
             size="small"
             onClick={() => setCurrentView('cityA')}
@@ -761,6 +1192,28 @@ export const ScenarioDirectProvincial: React.FC = () => {
           </Button>
         </Space>
       </div>
+
+      {/* 状态通知横幅：联动展示新人员开户待办 */}
+      {hasNewAccountApplication && (
+        <Alert
+          message={
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span>
+                <strong>【跨网直报新账号开户待办】：</strong>
+                淮安市局新民警 <strong>李四 (13900000002)</strong> 首次提报舆情，已由值班长 <strong>张三 (13800000001)</strong> 背书跨网放行入库。请研判是否开通其在省厅账号体系的同手机号账号。
+              </span>
+              <Space>
+                <Button size="small" type="primary" onClick={() => setProvincialNoticeOpen(true)}>
+                  立即审批开通
+                </Button>
+              </Space>
+            </div>
+          }
+          type="warning"
+          showIcon
+          style={{ marginBottom: 12, border: '1px solid #FCD34D' }}
+        />
+      )}
 
       {/* 状态通知横幅 */}
       <Alert
@@ -1519,28 +1972,93 @@ export const ScenarioDirectProvincial: React.FC = () => {
 
       {/* 3. 省厅下达处置指令弹窗 */}
       <Modal
-        title="省厅网安总队 - 下达处置指令"
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span>省厅网安总队 - 下达处置指令</span>
+            {hasReceiptWaitPerm && (
+              <Tag color="green" style={{ fontSize: 11 }}>
+                已激活GA网回执等待 (eagle:gph:Instruction:dispatch_receipt_wait)
+              </Tag>
+            )}
+          </div>
+        }
         open={instructionModalOpen}
         confirmLoading={instructionSubmitting}
         onOk={handleDispatchInstruction}
-        onCancel={() => setInstructionModalOpen(false)}
-        okText="确认下发指令（确认采纳）"
+        onCancel={() => {
+          if (!instructionSubmitting) setInstructionModalOpen(false);
+        }}
+        okText={
+          instructionSubmitting
+            ? '正在等待回执...'
+            : hasReceiptWaitPerm
+            ? '确认下发指令（等待回执）'
+            : '确认下发指令（直接传送）'
+        }
+        okButtonProps={{ disabled: instructionSubmitting }}
       >
-        <Form layout="vertical" initialValues={{ target: '淮安市公安局清江浦大队 / 连云港市公安局', hours: 4 }}>
-          <Form.Item label="协同指令接收单位" name="target">
-            <Input disabled />
-          </Form.Item>
-          <Form.Item label="指令反馈时限 (小时)" name="hours">
-            <Select>
-              <Option value={2}>2 小时（紧急）</Option>
-              <Option value={4}>4 小时（常规）</Option>
-              <Option value={12}>12 小时</Option>
-            </Select>
-          </Form.Item>
-          <Form.Item label="总队处置要求" initialValue="请淮安查人、连云港查事，4小时内分别反馈源头与事发地核处专报。">
-            <TextArea rows={3} />
-          </Form.Item>
-        </Form>
+        {instructionWaitState === 'waiting' ? (
+          <div style={{ textAlign: 'center', padding: '28px 16px' }}>
+            <Spin size="large" />
+            <div style={{ marginTop: 16, fontSize: 15, fontWeight: 600, color: '#1E293B' }}>
+              正在向淮安市局与连云港市局前置机投递指令...
+            </div>
+            <div style={{ marginTop: 8, fontSize: 13, color: '#64748B' }}>
+              当前处于公安内网 (GA网)，正在等待接收端网闸签收回执 (ACK)...
+            </div>
+            <div style={{ width: '85%', margin: '20px auto 0' }}>
+              <div style={{ height: 6, background: '#E2E8F0', borderRadius: 3, overflow: 'hidden' }}>
+                <div
+                  style={{
+                    width: `${waitProgress}%`,
+                    height: '100%',
+                    background: '#2563EB',
+                    transition: 'width 0.4s ease',
+                  }}
+                />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#94A3B8', marginTop: 4 }}>
+                <span>指令打包出网闸</span>
+                <span>目标前置机解包</span>
+                <span>回传签收回执</span>
+              </div>
+            </div>
+          </div>
+        ) : instructionWaitState === 'success' ? (
+          <div style={{ textAlign: 'center', padding: '28px 16px' }}>
+            <CheckCircleFilled style={{ fontSize: 44, color: '#16A34A' }} />
+            <div style={{ marginTop: 12, fontSize: 15, fontWeight: 600, color: '#166534' }}>
+              指令投递成功！已接收到两地公安网签收回执 (ACK: 0x8F21)
+            </div>
+            <p style={{ fontSize: 13, color: '#64748B', marginTop: 6 }}>
+              舆情已转为【已采纳】，淮安与连云港两地值班岗位已实时生成工单。
+            </p>
+          </div>
+        ) : (
+          <Form layout="vertical" initialValues={{ target: '淮安市公安局清江浦大队 / 连云港市公安局', hours: 4 }}>
+            {!hasReceiptWaitPerm && (
+              <Alert
+                message="提示：当前账号未开启 GA网指令回执同步等待权限，下发后将按既往流程直接异步发送，不阻塞等待回执。"
+                type="info"
+                showIcon
+                style={{ marginBottom: 16 }}
+              />
+            )}
+            <Form.Item label="协同指令接收单位" name="target">
+              <Input disabled />
+            </Form.Item>
+            <Form.Item label="指令反馈时限 (小时)" name="hours">
+              <Select>
+                <Option value={2}>2 小时（紧急）</Option>
+                <Option value={4}>4 小时（常规）</Option>
+                <Option value={12}>12 小时</Option>
+              </Select>
+            </Form.Item>
+            <Form.Item label="总队处置要求" initialValue="请淮安查人、连云港查事，4小时内分别反馈源头与事发地核处专报。">
+              <TextArea rows={3} />
+            </Form.Item>
+          </Form>
+        )}
       </Modal>
 
       {/* 4. 地市 B (连云港) 转本地处置弹窗 */}
@@ -1570,6 +2088,165 @@ export const ScenarioDirectProvincial: React.FC = () => {
           </Form.Item>
         </Form>
       </Modal>
+
+      {/* 5. 省厅网安总队 - 跨网直报人员开户审批弹窗 (核心闭环) */}
+      <Modal
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <UserAddOutlined style={{ color: '#2563EB' }} />
+            <span>省厅网安总队 - 跨网直报新账号开户审批</span>
+          </div>
+        }
+        open={provincialNoticeOpen}
+        onCancel={() => setProvincialNoticeOpen(false)}
+        footer={[
+          <Button key="cancel" onClick={() => setProvincialNoticeOpen(false)}>
+            稍后处理
+          </Button>,
+          <Button
+            key="reject"
+            danger
+            onClick={() => {
+              setRejectModalOpen(true);
+            }}
+          >
+            拒绝驳回开户
+          </Button>,
+          <Button
+            key="approve"
+            type="primary"
+            icon={<CheckCircleOutlined />}
+            onClick={handleApproveLisiAccount}
+          >
+            同意开通并授权
+          </Button>,
+        ]}
+        width={560}
+      >
+        <Alert
+          message="首报信任背书已放行：本次舆情数据已由在籍值班长 [张三] 手机号背书成功放行并落库省厅。现申请在省厅内网账号体系中建立对应账号。"
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+        />
+
+        <div style={{ background: '#F8FAFC', borderRadius: 8, padding: '16px 20px', border: '1px solid #E2E8F0' }}>
+          <Row gutter={[16, 12]} style={{ fontSize: 13 }}>
+            <Col span={12}>
+              <div>• 申报民警姓名：<strong style={{ color: '#0F172A' }}>李四</strong></div>
+            </Col>
+            <Col span={12}>
+              <div>• 民警警号：<code>045892</code></div>
+            </Col>
+            <Col span={12}>
+              <div>• 申报认证手机号：<strong style={{ color: '#2563EB' }}>13900000002</strong></div>
+            </Col>
+            <Col span={12}>
+              <div>• 来源单位：<span>淮安市局清江浦网安大队</span></div>
+            </Col>
+            <Col span={12}>
+              <div>• 信任背书人：<strong style={{ color: '#16A34A' }}>张三</strong> (13800000001)</div>
+            </Col>
+            <Col span={12}>
+              <div>• 背书人岗位：<span>淮安市公安局网安支队值班长</span></div>
+            </Col>
+            <Col span={24}>
+              <div>• 关联直报线索：<span>关于连云港某海滨港区物流集聚区网络舆情线索协查</span></div>
+            </Col>
+          </Row>
+        </div>
+
+        <div style={{ marginTop: 16, fontSize: 12, color: '#64748B', lineHeight: 1.6 }}>
+          <strong>审批规则说明：</strong>
+          <br />
+          1. <strong>同意开通</strong>：系统将自动在省厅账号体系创建该手机号账号，并赋予直报白名单；李四下次上报将实现免背书独立通行。
+          <br />
+          2. <strong>拒绝驳回</strong>：李四下次上报将无法再享受信任背书，跨网数据将被省厅网关直接丢弃。
+        </div>
+      </Modal>
+
+      {/* 6. 省厅超管驳回原因输入 Modal */}
+      <Modal
+        title="驳回直报人员开户申请"
+        open={rejectModalOpen}
+        onOk={handleRejectLisiAccount}
+        onCancel={() => setRejectModalOpen(false)}
+        okText="确认驳回"
+        okButtonProps={{ danger: true }}
+      >
+        <p style={{ fontSize: 13, color: '#475569' }}>
+          驳回后，该人员（李四 13900000002）后续直报省厅的数据将被省厅网闸直接丢弃！
+        </p>
+        <Form layout="vertical">
+          <Form.Item label="驳回原因说明" required>
+            <Input
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="请输入驳回原因，如：非网安在编直报专员"
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* 7. 地市端：省厅网闸鉴权失败硬丢弃排查抽屉 (核心异常闭环) */}
+      <Drawer
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#DC2626' }}>
+            <CloseCircleOutlined />
+            <span>省厅数据接收失败警告 · 跨安全网手机号鉴权拦截</span>
+          </div>
+        }
+        open={authFailureDrawerOpen}
+        onClose={() => setAuthFailureDrawerOpen(false)}
+        width={520}
+      >
+        <Alert
+          message="数据已被物理丢弃"
+          description="本次跨网舆情上报数据已被省厅内网安全隔离网闸前置机直接丢弃，未进入省厅任何业务流转数据库。"
+          type="error"
+          showIcon
+          style={{ marginBottom: 20 }}
+        />
+
+        <div style={{ background: '#FFF1F2', border: '1px solid #FECDD3', borderRadius: 8, padding: '16px 20px', marginBottom: 20 }}>
+          <h4 style={{ color: '#9F1239', margin: '0 0 12px', fontSize: 14 }}>拦截安全审计诊断详情</h4>
+          <Row gutter={[12, 10]} style={{ fontSize: 13, color: '#4C0519' }}>
+            <Col span={8}>• 拦截网关：</Col>
+            <Col span={16}><code>省厅内网安全隔离前置网闸 (SecGate-01)</code></Col>
+            <Col span={8}>• 提交上报人：</Col>
+            <Col span={16}><strong>{currentUser.name}</strong>（警号：{currentUser.policeNo}）</Col>
+            <Col span={8}>• 传输鉴权手机号：</Col>
+            <Col span={16}><strong style={{ color: '#E11D48' }}>{currentUser.phone}</strong></Col>
+            <Col span={8}>• 鉴权错误代码：</Col>
+            <Col span={16}><Tag color="error">ERR_AUTH_PHONE_REJECTED</Tag></Col>
+            <Col span={8}>• 拦截原因说明：</Col>
+            <Col span={16}><span style={{ color: '#BE123C' }}>省厅账号申请已被超管驳回（原因：{rejectReason}）</span></Col>
+            <Col span={8}>• 拦截发生时间：</Col>
+            <Col span={16}>{dayjs().format('YYYY-MM-DD HH:mm:ss')}</Col>
+          </Row>
+        </div>
+
+        <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 8, padding: '16px 20px', marginBottom: 20 }}>
+          <h4 style={{ color: '#1E293B', margin: '0 0 10px', fontSize: 14 }}>业务排查与解决建议</h4>
+          <ol style={{ fontSize: 13, color: '#475569', paddingLeft: 18, margin: 0, lineHeight: 1.7 }}>
+            <li>
+              <strong>核对上报人员编制资质</strong>：确认该民警是否属于本单位拥有 <code>eagle:gph:CrossTenant:report_to_provincial</code> 资质的直报人员。
+            </li>
+            <li>
+              <strong>联系省厅超管开通账号</strong>：请地市管理员联系省厅管理员，在省厅内网统一认证账号体系中为手机号 <code>{currentUser.phone}</code> 录入并激活账号。
+            </li>
+            <li>
+              <strong>账号生效后重试</strong>：省厅完成账号开通后，返回本页面重新点击【确认上报】，即可正常放行。
+            </li>
+          </ol>
+        </div>
+
+        <div style={{ textAlign: 'right' }}>
+          <Button type="primary" onClick={() => setAuthFailureDrawerOpen(false)}>
+            知悉并关闭诊断
+          </Button>
+        </div>
+      </Drawer>
     </div>
   );
 };

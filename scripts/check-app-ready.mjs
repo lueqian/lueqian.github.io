@@ -687,6 +687,7 @@ function getEntryKeyFromPath(pagePath) {
 
 /* ================= 主流程 ================= */
 async function main() {
+  let viteProcess = null
   try {
     // 获取服务器信息
     const serverInfo = getServerInfo()
@@ -695,7 +696,7 @@ async function main() {
     if (!serverInfo) {
       logs.push('Waiting for server to start...')
       // 启动服务器并等待
-      const viteProcess = startOrAttachVite()
+      viteProcess = startOrAttachVite()
       
       // 等待 .axhub/make/.dev-server-info.json 文件生成
       const maxWait = 10000 // 10秒
@@ -709,6 +710,10 @@ async function main() {
       }
       
       if (!newServerInfo) {
+        if (viteProcess) {
+          viteProcess.kill()
+          viteProcess = null
+        }
         return jsonExit(addUrls({
           status: 'ERROR',
           phase: 'server',
@@ -739,6 +744,10 @@ async function main() {
       await continueWithServerInfo(serverInfo, pageUrl, null)
     }
   } catch (err) {
+    if (viteProcess) {
+      viteProcess.kill()
+      viteProcess = null
+    }
     const serverInfo = getServerInfo()
     jsonExit(addUrls({
       status: 'ERROR',
@@ -752,10 +761,12 @@ async function main() {
 }
 
 async function continueWithServerInfo(serverInfo, pageUrl, viteProcess) {
+  let viteChild = viteProcess
   try {
     // 步骤 1: 执行 lint 检查
     const lintResult = await runLintCheck()
     if (lintResult.status === 'FAILED') {
+      if (viteChild) viteChild.kill()
       return jsonExit(addUrls({
         status: 'ERROR',
         phase: 'lint',
@@ -771,6 +782,7 @@ async function continueWithServerInfo(serverInfo, pageUrl, viteProcess) {
     // 步骤 2: 执行 typecheck 检查
     const typeCheckResult = await runTypeCheck()
     if (typeCheckResult.status === 'FAILED') {
+      if (viteChild) viteChild.kill()
       return jsonExit(addUrls({
         status: 'ERROR',
         phase: 'typecheck',
@@ -793,6 +805,7 @@ async function continueWithServerInfo(serverInfo, pageUrl, viteProcess) {
       
       // 如果构建失败，直接返回错误
       if (buildResult.status === 'FAILED') {
+        if (viteChild) viteChild.kill()
         return jsonExit(addUrls({
           status: 'ERROR',
           phase: 'build',
@@ -822,7 +835,6 @@ async function continueWithServerInfo(serverInfo, pageUrl, viteProcess) {
     // 检查服务器是否已经在运行
     const serverAlreadyRunning = await isServerAlive(`http://${accessibleHost}:${serverInfo.port}`)
     
-    let viteChild = viteProcess
     if (!serverAlreadyRunning && !viteChild) {
       logs.push('Server not running, starting Vite...')
       viteChild = startOrAttachVite()
@@ -865,13 +877,12 @@ async function continueWithServerInfo(serverInfo, pageUrl, viteProcess) {
     
     jsonExit(addUrls(finalResult, serverInfo), result.status === 'READY' ? 0 : 1)
   } catch (err) {
+    if (viteChild) viteChild.kill()
     jsonExit(addUrls({
       status: 'ERROR',
       phase: 'server',
       message: err.message,
       url: CONFIG.pagePath,
-      errors: [String(err)],
-      logs
     }, serverInfo), 1)
   }
 }

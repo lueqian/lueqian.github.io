@@ -79,7 +79,7 @@ const TicketManagement: React.FC<TicketManagementProps> = ({ tickets, onUpdateTi
 
   // ============ 渲染配置 ============
 
-  const STATUS_MAP = {
+  const STATUS_MAP: Record<TicketStatus, { label: string; color: string; icon: React.ReactNode }> = {
     pending: { label: '待处理', color: 'blue', icon: <ClockCircleOutlined /> },
     resolved: { label: '已完成', color: 'success', icon: <CheckCircleOutlined /> },
     rejected: { label: '已驳回', color: 'red', icon: <CloseCircleOutlined /> },

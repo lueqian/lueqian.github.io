@@ -8,6 +8,7 @@ import archiver from 'archiver';
 import { allowedItemKeysByTab, scanEntries, type SidebarTreeTab } from './utils/entryScanner';
 import { createSidebarTreeStore, type SidebarTreeNode, type ResourceOrderType } from './utils/sidebarTreeStore';
 import { buildAttachmentContentDisposition } from './utils/contentDisposition';
+import { filterCleanZipEntry } from './utils/zipUtils';
 import { ensureTemplatesDirMigrated, getTemplatesDir } from './utils/docUtils';
 import { getInstallSkillTargetDir } from './utils/installSkillTargets';
 import { runCommand, runCommandSync } from '../scripts/utils/command-runtime.mjs';
@@ -2304,7 +2305,26 @@ ${filePaths.map(p => `- \`${p}\``).join('\n')}
             });
 
             archive.pipe(res);
-            archive.directory(srcDir, false);
+            archive.directory(srcDir, false, filterCleanZipEntry);
+
+            // 如果打包的是原型（如 prototypes/蓝鹰一体化系统），自动扫描并随包附带其引用的公共依赖（如 Annotation 套件）
+            if (targetPath.startsWith('prototypes/')) {
+              try {
+                const commonDeps = scanDirectoryCommonImports(srcDir);
+                for (const dep of commonDeps) {
+                  const depDir = path.join(projectRoot, 'src', 'common', dep);
+                  if (fs.existsSync(depDir)) {
+                    archive.directory(depDir, `_dependencies/src/common/${dep}`, filterCleanZipEntry);
+                  }
+                }
+                if (commonDeps.length > 0) {
+                  const readme = `【依赖说明】\n本原型引用了项目公共组件模块：${commonDeps.join(', ')}。\n如果导入到缺少对应模块的新电脑或全新工程中，请将 _dependencies/src/common/ 目录下的模块复制到目标工程的 src/common/ 对应路径下即可正常运行。\n`;
+                  archive.append(readme, { name: '_dependencies/README.txt' });
+                }
+              } catch (scanErr) {
+                console.warn('[文件系统 API] 扫描公共依赖失败:', scanErr);
+              }
+            }
 
             await new Promise<void>((resolve) => {
               res.on('close', resolve);
@@ -2415,3 +2435,32 @@ ${filePaths.map(p => `- \`${p}\``).join('\n')}
     }
   };
 }
+
+/**
+ * 递归扫描目录内代码引用的公共模块 (@/common/*)
+ */
+function scanDirectoryCommonImports(dir: string): string[] {
+  const commonDeps = new Set<string>();
+  if (!fs.existsSync(dir)) return [];
+  try {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        const sub = scanDirectoryCommonImports(full);
+        sub.forEach((d) => commonDeps.add(d));
+      } else if (/\.(tsx?|jsx?)$/.test(entry.name)) {
+        try {
+          const content = fs.readFileSync(full, 'utf8');
+          const regex = /(?:import|from)\s+['"]@\/common\/([^/'"]+)/g;
+          let match;
+          while ((match = regex.exec(content)) !== null) {
+            commonDeps.add(match[1]);
+          }
+        } catch {}
+      }
+    }
+  } catch {}
+  return Array.from(commonDeps);
+}
+

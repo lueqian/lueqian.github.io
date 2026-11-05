@@ -412,7 +412,6 @@ const TaskListView: React.FC<{
               cancelText="取消"
               okButtonProps={{ danger: true }}
               icon={null}
-              animation={false}
             >
               <a className="ct-action-delete">删除</a>
             </Popconfirm>

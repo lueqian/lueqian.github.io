@@ -1,5 +1,6 @@
 # Dependencies
 node_modules/
+package-lock.json
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -14,10 +15,19 @@ vite-plugins/**/*.test.ts
 !vendor/**/dist/
 !vendor/**/dist/**
 *.tsbuildinfo
+*.zip
+axhub-*.zip
+*.tar.gz
 
-# Vite
+
+# Vite & Bundler build caches
 .vite/
 vite.config.*.timestamp-*
+vitest.config.*.timestamp-*
+*.timestamp-*.mjs
+*.timestamp-*.js
+*.timestamp-*.cjs
+
 
 # Environment variables
 .env
@@ -53,11 +63,18 @@ entries.json
 .DS_Store
 .DS_Store?
 ._*
+**/.DS_Store
+**/.DS_Store?
+**/._*
+**/__MACOSX/
 .Spotlight-V100
 .Trashes
 ehthumbs.db
 Thumbs.db
 Desktop.ini
+**/Thumbs.db
+**/ehthumbs.db
+**/Desktop.ini
 
 # Logs
 logs/
@@ -115,8 +132,11 @@ out/
 storybook-static/
 
 # Temporary folders
-tmp/
-temp/
+/tmp/*
+/temp/*
+!/temp/.gitkeep
+/*.cjs.tmp
+*.bak
 
 # Git version management temporary files
 .git-versions/
@@ -124,3 +144,20 @@ temp/
 # Database files (keep directory structure and initial data)
 # assets/database/*.json
 # !assets/database/.gitkeep
+
+# ==============================================================================
+# Root Directory Firewall: 根目录离散文件防线
+# 强制文档必须存放于 src/docs/，数据表存放于 src/database/，脚本存放于 scripts/
+# 禁止外部工具或 AI 随手在项目根目录下生成临时办公文档或离散脚本
+# ==============================================================================
+/*.docx
+/*.doc
+/*.xlsx
+/*.xls
+/*.csv
+/*.pptx
+/*_test.*
+/*_temp.*
+/test-*.js
+/create_doc.*
+

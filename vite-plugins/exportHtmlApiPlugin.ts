@@ -6,6 +6,7 @@ import archiver from 'archiver';
 
 import { getRequestPathname } from './utils/httpUtils';
 import { buildAttachmentContentDisposition } from './utils/contentDisposition';
+import { filterCleanZipEntry } from './utils/zipUtils';
 import { scanProjectEntries, writeEntriesManifestAtomic, readEntriesManifest } from './utils/entriesManifest';
 import { generateAxureExportCode } from './utils/axureExportCode';
 import { buildExportIndexBundle } from './utils/exportIndexBundle';
@@ -642,7 +643,7 @@ export function exportHtmlApiPlugin(): Plugin {
 
           const mediaDir = path.join(projectRoot, 'src', 'media');
           if (fs.existsSync(mediaDir)) {
-            archive.directory(mediaDir, 'media');
+            archive.directory(mediaDir, 'media', filterCleanZipEntry);
           }
 
           await archive.finalize();

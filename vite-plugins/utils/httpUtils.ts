@@ -2,6 +2,7 @@ import { networkInterfaces } from 'os';
 import archiver from 'archiver';
 
 import { buildAttachmentContentDisposition } from './contentDisposition';
+import { filterCleanZipEntry } from './zipUtils';
 
 export function getLocalIP(): string {
   const interfaces = networkInterfaces();
@@ -120,6 +121,6 @@ export function streamDirectoryAsZip(res: any, sourceDir: string, fileName: stri
   });
 
   archive.pipe(res);
-  archive.directory(sourceDir, false);
+  archive.directory(sourceDir, false, filterCleanZipEntry);
   void archive.finalize();
 }

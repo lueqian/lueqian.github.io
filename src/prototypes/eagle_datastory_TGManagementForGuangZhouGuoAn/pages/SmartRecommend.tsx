@@ -476,10 +476,13 @@ const SmartRecommend: React.FC = function SmartRecommend() {
             setHighNegativeOnly={setHighNegativeOnly}
             selectedInfoTypes={selectedInfoTypes}
             toggleInfoType={toggleInfoType}
+            setSelectedInfoTypes={setSelectedInfoTypes}
             selectedEmotions={selectedEmotions}
             toggleEmotion={toggleEmotion}
+            setSelectedEmotions={setSelectedEmotions}
             selectedFerments={selectedFerments}
             toggleFerment={toggleFerment}
+            setSelectedFerments={setSelectedFerments}
           />
         ) : (
           <UnDevelopedPlaceholder tabName={SECOND_LEVEL_TABS.find(function (t) { return t.key === activeSecondTab; })?.label || ''} />
@@ -537,10 +540,13 @@ const GZOverseasSensitivePanel: React.FC<{
   setHighNegativeOnly: (v: boolean) => void;
   selectedInfoTypes: string[];
   toggleInfoType: (key: string) => void;
+  setSelectedInfoTypes: (v: string[]) => void;
   selectedEmotions: string[];
   toggleEmotion: (key: string) => void;
+  setSelectedEmotions: (v: string[]) => void;
   selectedFerments: string[];
   toggleFerment: (key: string) => void;
+  setSelectedFerments: (v: string[]) => void;
 }> = function ({
   filterExpanded,
   setFilterExpanded,
@@ -552,10 +558,13 @@ const GZOverseasSensitivePanel: React.FC<{
   setHighNegativeOnly,
   selectedInfoTypes,
   toggleInfoType,
+  setSelectedInfoTypes,
   selectedEmotions,
   toggleEmotion,
+  setSelectedEmotions,
   selectedFerments,
   toggleFerment,
+  setSelectedFerments,
 }) {
   return (
     <div className="sr-panel">

@@ -1,20 +1,33 @@
 import React from 'react';
-import { Select, Badge, Tooltip } from 'antd';
+import { Select, Badge, Tooltip, message } from 'antd';
 import {
+  RightOutlined,
   SearchOutlined,
   BellOutlined,
   SkinOutlined,
   LogoutOutlined,
-  RightOutlined
+  CopyOutlined
 } from '@ant-design/icons';
 import { useAppStore } from '../store';
 import { PostType } from '../types';
 
 export const GlobalHeader: React.FC = () => {
-  const { activeNav, currentPost, switchPost } = useAppStore();
+  const {
+    activeNav,
+    currentPost,
+    switchPost,
+    selectedDeptName
+  } = useAppStore();
+
+  const handleCopyGreeting = () => {
+    navigator.clipboard?.writeText('杨吉');
+    message.success('已复制姓名至剪贴板');
+  };
 
   const getBreadcrumb = () => {
     switch (activeNav) {
+      case 'dept_management':
+        return ['部门管理', `${selectedDeptName || '忠县'} - 用户列表`];
       case 'monitor_warning':
         return ['监测预警', '舆情列表'];
       case 'manual_report':
@@ -26,15 +39,15 @@ export const GlobalHeader: React.FC = () => {
       case 'situation_awareness':
         return ['态势感知', '实战大盘'];
       default:
-        return ['监测预警', '舆情列表'];
+        return ['部门管理', '用户列表'];
     }
   };
 
   const breadcrumbs = getBreadcrumb();
 
   return (
-    <header className="w-full h-[52px] bg-white border-b border-[#e5e7eb] px-5 flex items-center justify-between select-none z-30 sticky top-0 shadow-2xs">
-      {/* 左侧：当前模块面包屑路径与网络环境 */}
+    <header className="w-full h-[56px] bg-white border-b border-[#f0f0f0] px-5 flex items-center justify-between select-none z-30 sticky top-0 shadow-2xs">
+      {/* 1. 左侧：当前模块面包屑路径与网络环境标识 */}
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-1.5 text-xs text-slate-500">
           <span className="text-slate-400 font-medium">{breadcrumbs[0]}</span>
@@ -65,15 +78,15 @@ export const GlobalHeader: React.FC = () => {
         </span>
       </div>
 
-      {/* 中右侧：搜索区与政务人员控制区 */}
-      <div className="flex items-center gap-6">
-        {/* 原胶囊搜索框 */}
-        <div className="hidden md:flex items-center bg-[#f5f7fa] border border-[#d9d9d9] hover:border-blue-400 rounded-full pl-3 pr-1 py-0.5 transition-all w-72">
+      {/* 2. 居中偏右全局搜索与右侧用户信息辅助栏 */}
+      <div className="flex items-center gap-5">
+        {/* 胶囊圆角搜索框 */}
+        <div className="hidden lg:flex items-center bg-[#ffffff] border border-[#d9d9d9] hover:border-blue-400 rounded-full pl-3 pr-1 py-0.5 transition-all w-76 shadow-2xs">
           <Select
             defaultValue="all"
             variant="borderless"
             size="small"
-            className="text-xs text-slate-600 w-20"
+            className="text-xs text-slate-600 w-18"
             options={[
               { value: 'all', label: '全网' },
               { value: 'douyin', label: '抖音' },
@@ -81,63 +94,97 @@ export const GlobalHeader: React.FC = () => {
               { value: 'toutiao', label: '头条' }
             ]}
           />
-          <div className="w-px h-3.5 bg-slate-300 mx-1" />
+          <div className="w-px h-3.5 bg-slate-200 mx-1" />
           <input
             type="text"
             placeholder="请输入关键词搜索"
-            className="bg-transparent border-0 text-xs text-slate-700 outline-hidden flex-1 px-1"
+            className="bg-transparent border-0 text-xs text-slate-700 outline-hidden flex-1 px-1 placeholder:text-slate-400"
           />
-          <button className="w-6 h-6 bg-transparent hover:bg-slate-200 rounded-full flex items-center justify-center text-slate-500 hover:text-blue-600 transition-colors">
+          <button
+            onClick={() => message.info('正在全网舆情库检索...')}
+            className="w-6 h-6 bg-transparent hover:bg-slate-100 rounded-full flex items-center justify-center text-slate-500 hover:text-blue-600 transition-colors cursor-pointer"
+          >
             <SearchOutlined className="text-xs" />
           </button>
         </div>
 
-        {/* 用户与岗位 */}
-        <div className="flex items-center gap-4 text-xs text-slate-600">
-          <span className="text-slate-700 font-medium">
-            欢迎 {currentPost === 'municipal_post' ? '李警官' : currentPost === 'province_post' ? '陈总指挥' : (currentPost === 'district_shuyang_post' || currentPost === 'district_susong_post') ? '王警官' : '张警官'}！
-          </span>
-
-          <span className="text-blue-600 hover:underline cursor-pointer">修改密码</span>
-
-          <span className="text-blue-600 hover:underline cursor-pointer">值班表</span>
-
-          {/* 角色模拟切换下拉框 */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-slate-500 whitespace-nowrap">岗位切换:</span>
-            <Select
-              value={
-                currentPost === 'district_guichi_post'
-                  ? 'district_gusu_post'
-                  : currentPost === 'district_susong_post'
-                  ? 'district_shuyang_post'
-                  : currentPost
-              }
-              onChange={(val) => switchPost(val as PostType)}
-              size="small"
-              className="w-64 text-xs"
-              options={[
-                { value: 'municipal_post', label: '市局网安支队 - 审核岗 (内网协同视角)' },
-                { value: 'province_post', label: '省厅网安总队 - 指挥岗 (公安内网版)' },
-                { value: 'district_gusu_post', label: '姑苏分局网安大队 - 经办岗 (互联网独立版)' },
-                { value: 'district_shuyang_post', label: '沭阳县局网安大队 - 经办岗 (公安内网未采购版)' }
-              ]}
+        {/* 右侧用户信息与辅助工具 */}
+        <div className="flex items-center gap-3.5 text-xs text-slate-600">
+          {/* 用户问候 + 蓝色剪贴板图标 */}
+          <div className="flex items-center gap-1 text-slate-700 font-medium">
+            <span>欢迎 杨吉！</span>
+            <CopyOutlined
+              onClick={handleCopyGreeting}
+              className="text-blue-500 hover:text-blue-700 cursor-pointer text-xs ml-0.5"
+              title="复制姓名"
             />
           </div>
 
-          <div className="flex items-center gap-3 text-slate-500 pl-1 border-l border-slate-200">
+          <span
+            onClick={() => message.info('已开启密码修改面板')}
+            className="text-blue-600 hover:underline cursor-pointer"
+          >
+            修改密码
+          </span>
+
+          <span className="text-slate-300">|</span>
+
+          <span
+            onClick={() => message.info('已调取本周值班安排表')}
+            className="text-blue-600 hover:underline cursor-pointer"
+          >
+            值班表
+          </span>
+
+          {/* 岗位模拟切换下拉框 */}
+          <div className="flex items-center gap-1 text-blue-600 font-medium">
+            <span className="whitespace-nowrap">岗位:</span>
+            <Select
+              defaultValue="cailiao"
+              variant="borderless"
+              size="small"
+              className="text-xs text-blue-600 font-medium !p-0 w-32"
+              popupMatchSelectWidth={false}
+              options={[
+                { value: 'cailiao', label: '材料汇编岗' },
+                { value: 'municipal_post', label: '市局网安支队-审核岗' },
+                { value: 'province_post', label: '省厅网安总队-指挥岗' },
+                { value: 'district_gusu_post', label: '姑苏分局-经办岗' },
+                { value: 'district_shuyang_post', label: '沭阳县局-经办岗' }
+              ]}
+              onChange={(val) => {
+                if (val !== 'cailiao') {
+                  switchPost(val as PostType);
+                } else {
+                  message.success('已切换工作岗位：材料汇编岗');
+                }
+              }}
+            />
+          </div>
+
+          {/* 快捷图标组 */}
+          <div className="flex items-center gap-3 text-slate-500 pl-2 border-l border-slate-200">
             <Tooltip title="换肤">
-              <SkinOutlined className="text-sm cursor-pointer hover:text-blue-600" />
+              <SkinOutlined
+                onClick={() => message.info('已切换实战高保真政务蓝白主题')}
+                className="text-sm cursor-pointer hover:text-blue-600 transition-colors"
+              />
             </Tooltip>
 
-            <Tooltip title="消息通知">
-              <Badge dot color="#1677ff">
-                <BellOutlined className="text-sm cursor-pointer hover:text-blue-600" />
+            <Tooltip title="消息通知 (2条新待办)">
+              <Badge count={2} size="small" offset={[-2, 2]}>
+                <BellOutlined
+                  onClick={() => message.info('当前有 2 条重点预警待研判')}
+                  className="text-sm cursor-pointer hover:text-blue-600 transition-colors"
+                />
               </Badge>
             </Tooltip>
 
             <Tooltip title="退出系统">
-              <LogoutOutlined className="text-sm cursor-pointer hover:text-rose-600" />
+              <LogoutOutlined
+                onClick={() => message.warning('已安全退出蓝鹰一体化智控系统')}
+                className="text-sm cursor-pointer hover:text-rose-600 transition-colors"
+              />
             </Tooltip>
           </div>
         </div>

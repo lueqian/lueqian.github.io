@@ -1,9 +1,15 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { message, notification } from 'antd';
-import { PostType, OpinionItem, DisposalTaskItem, SnapshotRecord } from './types';
-import { INITIAL_OPINIONS, INITIAL_DISPOSAL_TASKS } from './mock-data';
+import { PostType, OpinionItem, DisposalTaskItem, SnapshotRecord, DepartmentNode, DeptUserItem } from './types';
+import { INITIAL_OPINIONS, INITIAL_DISPOSAL_TASKS, INITIAL_DEPARTMENT_TREE, INITIAL_DEPT_USERS } from './mock-data';
 
-export type MainNavType = 'source_control' | 'monitor_warning' | 'emergency_response' | 'situation_awareness' | 'manual_report';
+export type MainNavType =
+  | 'source_control'
+  | 'monitor_warning'
+  | 'emergency_response'
+  | 'situation_awareness'
+  | 'manual_report'
+  | 'dept_management';
 
 interface AppContextType {
   activeNav: MainNavType;
@@ -28,6 +34,27 @@ interface AppContextType {
     issuerDept: string;
     currentProgress: string;
   } | null;
+
+  // 部门管理与用户管理状态
+  deptTreeData: DepartmentNode[];
+  selectedDeptKey: string;
+  selectedDeptName: string;
+  deptUsers: DeptUserItem[];
+  editDeptModalOpen: boolean;
+  editingDeptData: Partial<DepartmentNode> | null;
+  editDeptMode: 'edit' | 'add';
+
+  // 部门与用户业务动作
+  setSelectedDept: (key: string, name: string) => void;
+  openEditDeptModal: (dept?: Partial<DepartmentNode>, mode?: 'edit' | 'add') => void;
+  closeEditDeptModal: () => void;
+  saveDepartment: (data: Partial<DepartmentNode>) => void;
+  deleteDepartment: (deptKey: string) => void;
+  toggleAllUsersStatus: (status: '已激活' | '未激活') => void;
+  deleteUser: (id: string) => void;
+  resetUserPassword: (id: string) => void;
+  addUser: (userData: Partial<DeptUserItem>) => void;
+  exportInviteCodeUsers: () => void;
 
   // 业务动作
   submitManualReport: (formData: any) => void;
@@ -58,6 +85,7 @@ interface AppContextType {
   ignoreOpinion: (id: string) => void;
 }
 
+
 export const POST_MAP: Record<PostType, string> = {
   municipal_post: '市局网安支队 - 审核岗 (内网协同视角)',
   province_post: '省厅网安总队 - 指挥岗 (公安内网版)',
@@ -70,10 +98,19 @@ export const POST_MAP: Record<PostType, string> = {
 const AppContext = createContext<AppContextType | null>(null);
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [activeNav, setActiveNav] = useState<MainNavType>('monitor_warning');
-  const [currentPost, setCurrentPost] = useState<PostType>('district_shuyang_post');
+  const [activeNav, setActiveNav] = useState<MainNavType>('dept_management');
+  const [currentPost, setCurrentPost] = useState<PostType>('municipal_post');
   const [opinions, setOpinions] = useState<OpinionItem[]>(INITIAL_OPINIONS);
   const [disposalTasks, setDisposalTasks] = useState<DisposalTaskItem[]>(INITIAL_DISPOSAL_TASKS);
+
+  // 部门与用户状态
+  const [deptTreeData, setDeptTreeData] = useState<DepartmentNode[]>(INITIAL_DEPARTMENT_TREE);
+  const [selectedDeptKey, setSelectedDeptKey] = useState<string>('dept-zhongxian');
+  const [selectedDeptName, setSelectedDeptName] = useState<string>('忠县');
+  const [deptUsers, setDeptUsers] = useState<DeptUserItem[]>(INITIAL_DEPT_USERS);
+  const [editDeptModalOpen, setEditDeptModalOpen] = useState(false);
+  const [editingDeptData, setEditingDeptData] = useState<Partial<DepartmentNode> | null>(null);
+  const [editDeptMode, setEditDeptMode] = useState<'edit' | 'add'>('edit');
 
   const [aiModalOpen, setAiModalOpen] = useState(false);
   const [currentAiOpinion, setCurrentAiOpinion] = useState<OpinionItem | null>(null);
@@ -85,6 +122,139 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     issuerDept: string;
     currentProgress: string;
   } | null>(null);
+
+  const setSelectedDept = (key: string, name: string) => {
+    setSelectedDeptKey(key);
+    setSelectedDeptName(name);
+  };
+
+  const openEditDeptModal = (dept?: Partial<DepartmentNode>, mode: 'edit' | 'add' = 'edit') => {
+    setEditDeptMode(mode);
+    setEditingDeptData(dept || {
+      title: '区县分公司',
+      phone: '',
+      location: '忠县',
+      unitType: '区县单位',
+      superiorAuditDept: '网安支队',
+      requireCityAudit: true
+    });
+    setEditDeptModalOpen(true);
+  };
+
+  const closeEditDeptModal = () => {
+    setEditDeptModalOpen(false);
+    setEditingDeptData(null);
+  };
+
+  const saveDepartment = (data: Partial<DepartmentNode>) => {
+    if (editDeptMode === 'edit' && editingDeptData?.key) {
+      const updateNode = (nodes: DepartmentNode[]): DepartmentNode[] => {
+        return nodes.map((n) => {
+          if (n.key === editingDeptData.key) {
+            return {
+              ...n,
+              title: data.title || n.title,
+              phone: data.phone !== undefined ? data.phone : n.phone,
+              location: data.location !== undefined ? data.location : n.location,
+              unitType: data.unitType || n.unitType || '区县单位',
+              superiorAuditDept: data.superiorAuditDept || n.superiorAuditDept || '网安支队',
+              requireCityAudit: data.requireCityAudit !== undefined ? data.requireCityAudit : n.requireCityAudit
+            };
+          }
+          if (n.children) {
+            return { ...n, children: updateNode(n.children) };
+          }
+          return n;
+        });
+      };
+      setDeptTreeData((prev) => updateNode(prev));
+      if (selectedDeptKey === editingDeptData.key && data.title) {
+        setSelectedDeptName(data.title);
+      }
+      message.success(`部门【${data.title}】修改成功`);
+    } else {
+      const newKey = `dept-${Date.now()}`;
+      const newNode: DepartmentNode = {
+        key: newKey,
+        title: data.title || '新部门',
+        phone: data.phone || '',
+        location: data.location || '',
+        unitType: data.unitType || '区县单位',
+        superiorAuditDept: data.superiorAuditDept || '网安支队',
+        requireCityAudit: data.requireCityAudit !== undefined ? data.requireCityAudit : true
+      };
+      const insertNode = (nodes: DepartmentNode[]): DepartmentNode[] => {
+        return nodes.map((n) => {
+          if (n.key === 'dept-branch' || n.key === selectedDeptKey) {
+            return { ...n, children: [...(n.children || []), newNode] };
+          }
+          if (n.children) {
+            return { ...n, children: insertNode(n.children) };
+          }
+          return n;
+        });
+      };
+      setDeptTreeData((prev) => insertNode(prev));
+      message.success(`部门【${data.title}】添加成功`);
+    }
+    closeEditDeptModal();
+  };
+
+
+  const deleteDepartment = (deptKey: string) => {
+    const removeNode = (nodes: DepartmentNode[]): DepartmentNode[] => {
+      return nodes
+        .filter((n) => n.key !== deptKey)
+        .map((n) => (n.children ? { ...n, children: removeNode(n.children) } : n));
+    };
+    setDeptTreeData((prev) => removeNode(prev));
+    message.success('已删除该部门');
+  };
+
+  const toggleAllUsersStatus = (status: '已激活' | '未激活') => {
+    setDeptUsers((prev) => prev.map((u) => ({ ...u, activeStatus: status })));
+    if (status === '已激活') {
+      message.success('已一键开启全部用户的激活状态');
+    } else {
+      message.warning('已一键停用全部用户的激活状态');
+    }
+  };
+
+  const deleteUser = (id: string) => {
+    setDeptUsers((prev) => prev.filter((u) => u.id !== id));
+    message.success('用户已成功删除');
+  };
+
+  const resetUserPassword = (id: string) => {
+    message.success('已重置该用户密码为初始密码 (LanYing@2026)，并已发送短信通知');
+  };
+
+  const addUser = (userData: Partial<DeptUserItem>) => {
+    const newSerial = deptUsers.length + 1;
+    const randomCode = Math.random().toString(36).slice(-6);
+    const newUser: DeptUserItem = {
+      id: `user-${Date.now()}`,
+      serialNumber: newSerial,
+      userName: userData.userName || '新民警',
+      department: userData.department || selectedDeptName,
+      role: userData.role || '区县一体化角色',
+      wechatNick: userData.wechatNick || '',
+      idCard: userData.idCard || '500233199001010000',
+      phone: userData.phone || '13800000000',
+      activeStatus: '已激活',
+      inviteCode: randomCode
+    };
+    setDeptUsers((prev) => [...prev, newUser]);
+    message.success(`用户【${newUser.userName}】添加成功`);
+  };
+
+  const exportInviteCodeUsers = () => {
+    message.loading({ content: '正在导出邀请码用户名单 (Excel)...', key: 'exporting' });
+    setTimeout(() => {
+      message.success({ content: `【${selectedDeptName}】邀请码用户名单导出完成，共 ${deptUsers.length} 条记录`, key: 'exporting' });
+    }, 600);
+  };
+
 
   const switchPost = (post: PostType) => {
     setCurrentPost(post);
@@ -327,7 +497,25 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         closeAiJudgeModal,
         repeatAlertOpen,
         setRepeatAlertOpen,
-        repeatAlertData,
+        // 部门管理
+        deptTreeData,
+        selectedDeptKey,
+        selectedDeptName,
+        deptUsers,
+        editDeptModalOpen,
+        editingDeptData,
+        editDeptMode,
+        setSelectedDept,
+        openEditDeptModal,
+        closeEditDeptModal,
+        saveDepartment,
+        deleteDepartment,
+        toggleAllUsersStatus,
+        deleteUser,
+        resetUserPassword,
+        addUser,
+        exportInviteCodeUsers,
+
         submitManualReport,
         approveAndSyncProvince,
         saveLocalOnly,

@@ -194,14 +194,16 @@ const ScenarioCrossTenantConfig: React.FC = () => {
     '市局支队值班长认领岗位，负责接收省厅下达跨租户指令并进行自办或转派'
   );
 
-  // 岗位权限树勾选项 (核心新增两项权限)
+  // 岗位权限树勾选项 (核心新增权限点)
   const [checkedPermKeys, setCheckedPermKeys] = useState<React.Key[]>([
     'platform',
     'source-ctrl',
     'roster-mgt',
     'emergency',
     'ga-access',
-    'perm-cross-tenant', // 核心新增 1：跨租户指令接收权限
+    'perm-cross-tenant', // 跨租户指令接收权限
+    'eagle:gph:CrossTenant:report_to_provincial', // 核心新增：跨网直报省厅权限
+    'eagle:gph:Instruction:dispatch_receipt_wait', // 核心新增：GA网指令下达回执等待权限
     'monitor',
     'bulletin-mgt',
   ]);
@@ -378,6 +380,20 @@ const ScenarioCrossTenantConfig: React.FC = () => {
               key: 'roster-mgt',
               children: [{ title: '全部排班可见', key: 'roster-all-visible' }],
             },
+            {
+              // 核心新增权限：直报省厅权限
+              title: (
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ color: '#0284C7', fontWeight: 600 }}>
+                    ★ 跨网直报省厅权限 (eagle:gph:CrossTenant:report_to_provincial)
+                  </span>
+                  <Tag color="cyan" style={{ fontSize: 10, margin: 0 }}>
+                    实训认证专员
+                  </Tag>
+                </div>
+              ),
+              key: 'eagle:gph:CrossTenant:report_to_provincial',
+            },
           ],
         },
         {
@@ -429,6 +445,20 @@ const ScenarioCrossTenantConfig: React.FC = () => {
                 </div>
               ),
               key: 'perm-sub-dispatch',
+            },
+            {
+              // 核心新增权限 3：GA网指令下达回执等待权限
+              title: (
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ color: '#7C3AED', fontWeight: 600 }}>
+                    ★ GA网指令下达回执等待权限 (eagle:gph:Instruction:dispatch_receipt_wait)
+                  </span>
+                  <Tag color="purple" style={{ fontSize: 10, margin: 0 }}>
+                    仅GA网生效
+                  </Tag>
+                </div>
+              ),
+              key: 'eagle:gph:Instruction:dispatch_receipt_wait',
             },
           ],
         },
@@ -1170,6 +1200,72 @@ const ScenarioCrossTenantConfig: React.FC = () => {
                   </Card>
                 </Col>
               </Row>
+
+              {/* 核心新增：跨安全网直报人员底册与手机号鉴权信任池 */}
+              <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #E2E8F0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#1E293B' }}>
+                    <SafetyCertificateOutlined style={{ color: '#0284C7', marginRight: 6 }} />
+                    跨安全网直报人员底册与手机号鉴权信任池 (Buddy Auth)
+                  </span>
+                  <span style={{ fontSize: 12, color: '#64748B' }}>
+                    受控权限：<code>eagle:gph:CrossTenant:report_to_provincial</code>
+                  </span>
+                </div>
+                <Table
+                  size="small"
+                  pagination={false}
+                  rowKey="phone"
+                  columns={[
+                    { title: '民警姓名', dataIndex: 'name', width: 90, render: (v) => <strong>{v}</strong> },
+                    { title: '所属单位', dataIndex: 'org', width: 170 },
+                    { title: '鉴权手机号', dataIndex: 'phone', width: 130, render: (v) => <code>{v}</code> },
+                    {
+                      title: '直报资质权限',
+                      dataIndex: 'perm',
+                      width: 140,
+                      render: (v) => (v ? <Tag color="blue">已获实训授权</Tag> : <Tag>未赋权</Tag>),
+                    },
+                    {
+                      title: '省厅内网账号状态',
+                      dataIndex: 'status',
+                      width: 150,
+                      render: (v) => {
+                        if (v === 'ACTIVATED') return <Tag color="success">已在籍激活 (独立鉴权)</Tag>;
+                        if (v === 'PENDING') return <Tag color="cyan">待首报背书协同开通</Tag>;
+                        return <Tag color="default">未在省厅建档</Tag>;
+                      },
+                    },
+                    { title: '信任背书人', dataIndex: 'endorser', width: 160 },
+                  ]}
+                  dataSource={[
+                    {
+                      name: '张三',
+                      org: '淮安市公安局网安支队',
+                      phone: '13800000001',
+                      perm: true,
+                      status: 'ACTIVATED',
+                      endorser: '省厅直属白名单在籍',
+                    },
+                    {
+                      name: '李四',
+                      org: '淮安市清江浦分局网安大队',
+                      phone: '13900000002',
+                      perm: true,
+                      status: 'PENDING',
+                      endorser: '张三 (13800000001)',
+                    },
+                    {
+                      name: '王五',
+                      org: '淮安市清江浦分局城南派出所',
+                      phone: '13700000003',
+                      perm: false,
+                      status: 'NONE',
+                      endorser: '无 (未获直报资质)',
+                    },
+                  ]}
+                />
+              </div>
             </div>
           </Annotated>
         </div>

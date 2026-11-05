@@ -14,7 +14,7 @@ import {
 
 // ============ 类型定义 ============
 
-type TicketStatus = 'pending' | 'resolved' | 'rejected';
+export type TicketStatus = 'pending' | 'resolved' | 'rejected';
 
 export interface Ticket {
   id: string;
