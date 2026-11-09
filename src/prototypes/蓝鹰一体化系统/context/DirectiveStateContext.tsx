@@ -4,6 +4,8 @@ import { message } from 'antd';
 export interface DirectiveItem {
   id: string;
   eventId: string;
+  postTitle?: string;
+  platform?: string;
   instructionName: string;
   targetDept: string;
   status: 'pending_sign' | 'signed' | 'failed' | 'feedback';
@@ -30,6 +32,16 @@ export interface SystemNotification {
   isResolved?: boolean;
 }
 
+export interface DispatchInfo {
+  eventId?: string;
+  postTitle?: string;
+  platform?: string;
+  targetCount: number;
+  targetDepts: string[];
+  instructionNames: string[];
+  status: 'dispatching' | 'success' | 'partial_failure';
+}
+
 interface DirectiveContextType {
   directives: DirectiveItem[];
   notifications: SystemNotification[];
@@ -46,12 +58,21 @@ interface DirectiveContextType {
     instructionNames: string[],
     departments: string[],
     requirements: string,
-    simulatePartialFailure?: boolean
+    simulatePartialFailure?: boolean,
+    postInfo?: { postTitle?: string; platform?: string }
   ) => Promise<{ success: boolean; allItems: DirectiveItem[]; failedItems: DirectiveItem[] }>;
   // 消除/解决单条消息
   resolveNotification: (id: string) => void;
   // 设为全部已读
   markAllAsRead: () => void;
+  // 右下角浮窗加载状态
+  isDispatching: boolean;
+  dispatchInfo: DispatchInfo | null;
+  dismissDispatchWidget: () => void;
+  // 指令下达失败记录弹窗管理（全局常驻入口共享）
+  failedModalVisible: boolean;
+  openFailedModal: () => void;
+  closeFailedModal: () => void;
   // 呼出AI辅助研判弹窗的状态管理（供全局共享）
   aiModalVisible: boolean;
   aiModalEvent: any;
@@ -60,10 +81,15 @@ interface DirectiveContextType {
   closeAiModal: () => void;
 }
 
+const defaultPostTitle = '#盱眙马上真的要命，真的体会到了。';
+const defaultPlatform = '抖音app';
+
 const initialDirectives: DirectiveItem[] = [
   {
     id: 'dir-follow-001',
     eventId: '202610150002',
+    postTitle: defaultPostTitle,
+    platform: defaultPlatform,
     instructionName: '持续关注',
     targetDept: '淮安市',
     status: 'pending_sign',
@@ -75,6 +101,8 @@ const initialDirectives: DirectiveItem[] = [
   {
     id: 'dir-follow-002',
     eventId: '202610150002',
+    postTitle: defaultPostTitle,
+    platform: defaultPlatform,
     instructionName: '持续关注',
     targetDept: '南京市',
     status: 'pending_sign',
@@ -86,6 +114,8 @@ const initialDirectives: DirectiveItem[] = [
   {
     id: 'dir-follow-003',
     eventId: '202610150002',
+    postTitle: defaultPostTitle,
+    platform: defaultPlatform,
     instructionName: '持续关注',
     targetDept: '徐州市',
     status: 'failed',
@@ -99,6 +129,8 @@ const initialDirectives: DirectiveItem[] = [
   {
     id: 'dir-xuyi-001',
     eventId: '202610150002',
+    postTitle: defaultPostTitle,
+    platform: defaultPlatform,
     instructionName: '帖文处置',
     targetDept: '清江浦区',
     status: 'failed',
@@ -112,6 +144,8 @@ const initialDirectives: DirectiveItem[] = [
   {
     id: 'dir-xuyi-002',
     eventId: '202610150002',
+    postTitle: defaultPostTitle,
+    platform: defaultPlatform,
     instructionName: '帖文处置',
     targetDept: '淮安区',
     status: 'pending_sign',
@@ -123,6 +157,8 @@ const initialDirectives: DirectiveItem[] = [
   {
     id: 'dir-xuyi-003',
     eventId: '202610150002',
+    postTitle: defaultPostTitle,
+    platform: defaultPlatform,
     instructionName: '帖文处置',
     targetDept: '淮阴区',
     status: 'pending_sign',
@@ -134,6 +170,8 @@ const initialDirectives: DirectiveItem[] = [
   {
     id: 'dir-xuyi-004',
     eventId: '202610150002',
+    postTitle: defaultPostTitle,
+    platform: defaultPlatform,
     instructionName: '动态监测',
     targetDept: '清江浦区',
     status: 'pending_sign',
@@ -198,6 +236,13 @@ export const DirectiveProvider: React.FC<{ children: ReactNode }> = ({ children 
   const [notifications, setNotifications] = useState<SystemNotification[]>(initialNotifications);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
 
+  // 右下角小浮窗异步加载状态
+  const [isDispatching, setIsDispatching] = useState<boolean>(false);
+  const [dispatchInfo, setDispatchInfo] = useState<DispatchInfo | null>(null);
+
+  // 指令下达失败记录管理弹窗状态
+  const [failedModalVisible, setFailedModalVisible] = useState<boolean>(false);
+
   // 全局 AI 辅助研判弹窗状态
   const [aiModalVisible, setAiModalVisible] = useState<boolean>(false);
   const [aiModalEvent, setAiModalEvent] = useState<any>(null);
@@ -211,6 +256,19 @@ export const DirectiveProvider: React.FC<{ children: ReactNode }> = ({ children 
 
   const closeAiModal = useCallback(() => {
     setAiModalVisible(false);
+  }, []);
+
+  const openFailedModal = useCallback(() => {
+    setFailedModalVisible(true);
+  }, []);
+
+  const closeFailedModal = useCallback(() => {
+    setFailedModalVisible(false);
+  }, []);
+
+  const dismissDispatchWidget = useCallback(() => {
+    setIsDispatching(false);
+    setDispatchInfo(null);
   }, []);
 
   // 重新下发单条指令
@@ -231,7 +289,7 @@ export const DirectiveProvider: React.FC<{ children: ReactNode }> = ({ children 
           })
         );
 
-        // 同步清除对应的消息提醒（按用户确认的决策，重新下达成功后，消息提醒自动结束）
+        // 同步清除对应的消息提醒（重新下达成功后，消息提醒自动结束）
         setNotifications((prev) =>
           prev.map((notif) =>
             notif.directiveId === directiveId
@@ -279,15 +337,31 @@ export const DirectiveProvider: React.FC<{ children: ReactNode }> = ({ children 
     });
   }, []);
 
-  // 下达新指令
+  // 下达新指令（触发右下角轻量非阻塞加载浮窗）
   const issueNewDirectives = useCallback(
     async (
       eventId: string,
       instructionNames: string[],
       departments: string[],
       requirements: string,
-      simulatePartialFailure: boolean = true
+      simulatePartialFailure: boolean = true,
+      postInfo?: { postTitle?: string; platform?: string }
     ) => {
+      const activePostTitle = postInfo?.postTitle || defaultPostTitle;
+      const activePlatform = postInfo?.platform || defaultPlatform;
+
+      // 启动右下角浮窗加载动画（优先级较低，不阻断前台操作）
+      setIsDispatching(true);
+      setDispatchInfo({
+        eventId,
+        postTitle: activePostTitle,
+        platform: activePlatform,
+        targetCount: departments.length * instructionNames.length,
+        targetDepts: departments,
+        instructionNames,
+        status: 'dispatching',
+      });
+
       return new Promise<{ success: boolean; allItems: DirectiveItem[]; failedItems: DirectiveItem[] }>(
         (resolve) => {
           setTimeout(() => {
@@ -314,6 +388,8 @@ export const DirectiveProvider: React.FC<{ children: ReactNode }> = ({ children 
                 const item: DirectiveItem = {
                   id,
                   eventId,
+                  postTitle: activePostTitle,
+                  platform: activePlatform,
                   instructionName: instName,
                   targetDept: dept,
                   status: isFail ? 'failed' : 'pending_sign',
@@ -337,7 +413,7 @@ export const DirectiveProvider: React.FC<{ children: ReactNode }> = ({ children 
             // 更新指令列表
             setDirectives((prev) => [...generatedItems, ...prev]);
 
-            // 如果有失败项，写入一条消息中心通知
+            // 如果有失败项，写入消息中心通知
             if (failedList.length > 0) {
               const newNotif: SystemNotification = {
                 id: `notif-failed-${Date.now()}`,
@@ -351,6 +427,20 @@ export const DirectiveProvider: React.FC<{ children: ReactNode }> = ({ children 
                 isResolved: false,
               };
               setNotifications((prev) => [newNotif, ...prev]);
+
+              // 浮窗状态转为部分失败，并自动呼出指令失败大弹窗
+              setDispatchInfo((prev) =>
+                prev ? { ...prev, status: 'partial_failure' } : null
+              );
+              setFailedModalVisible(true);
+            } else {
+              // 状态 1：全部成功，浮窗完成并由全局 Toast 提示指令下达成功，不弹出大弹窗
+              setDispatchInfo((prev) => (prev ? { ...prev, status: 'success' } : null));
+              message.success('指令下达成功');
+              setTimeout(() => {
+                setIsDispatching(false);
+                setDispatchInfo(null);
+              }, 1800);
             }
 
             resolve({
@@ -358,7 +448,7 @@ export const DirectiveProvider: React.FC<{ children: ReactNode }> = ({ children 
               allItems: generatedItems,
               failedItems: failedList,
             });
-          }, 1500);
+          }, 1600);
         }
       );
     },
@@ -391,6 +481,12 @@ export const DirectiveProvider: React.FC<{ children: ReactNode }> = ({ children 
         issueNewDirectives,
         resolveNotification,
         markAllAsRead,
+        isDispatching,
+        dispatchInfo,
+        dismissDispatchWidget,
+        failedModalVisible,
+        openFailedModal,
+        closeFailedModal,
         aiModalVisible,
         aiModalEvent,
         aiModalMode,

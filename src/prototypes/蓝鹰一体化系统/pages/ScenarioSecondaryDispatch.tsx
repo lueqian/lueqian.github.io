@@ -41,10 +41,13 @@ import {
   AppstoreOutlined,
   BarsOutlined,
   CompassOutlined,
+  ExclamationCircleFilled,
+  ExclamationCircleOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { Annotated } from '@/common/Annotation';
 import { useScenarioContext } from '../components/ScenarioLayout';
+import { useDirectiveState } from '../context/DirectiveStateContext';
 import '../scenario-style.css';
 
 const { TextArea } = Input;
@@ -70,6 +73,9 @@ interface ProvincialInstructionRecord {
 }
 
 const ScenarioSecondaryDispatch: React.FC = () => {
+  const { directives, issueNewDirectives, openFailedModal } = useDirectiveState();
+  const failedDirectivesCount = directives.filter((d) => d.status === 'failed').length;
+
   // 当前角色视角：'cityPolice' (市局张三·指令接收岗) | 'countyPolice' (区县李四·指令接收岗)
   const [currentRole, setCurrentRole] = useState<UserRoleView>('cityPolice');
 
@@ -231,18 +237,34 @@ const ScenarioSecondaryDispatch: React.FC = () => {
     setActionButton,
   ]);
 
-  // 1. 市局确认二次指派（仅指定部门，无需选择接收岗位，原封不动转派）
-  const handleConfirmDispatch = () => {
+  // 1. 市局确认二次指派（仅指定部门，无需选择接收岗位，非阻塞右下角浮窗异步流转）
+  const handleConfirmDispatch = async () => {
+    // 立即关闭转派弹窗，解除前台操作阻断
+    setDispatchModalOpen(false);
+
+    // 触发非阻塞右下角浮窗加载
+    await issueNewDirectives(
+      '202610100088',
+      ['线下核查 (转派)'],
+      [targetDept],
+      originalInstructionContent,
+      false, // 转派默认正常送达
+      {
+        postTitle: originalInstructionTopic,
+        platform: '抖音app',
+      }
+    );
+
     setIsDispatched(true);
     setCitySigned(false);
     setDispatchTimestamp(dayjs().format('YYYY-MM-DD HH:mm:ss'));
-    setDispatchModalOpen(false);
-    message.success('已转派成功！');
+    message.success('已成功转派至贾汪分局网安大队！');
+
     // 平滑引导切换至区县视角
     setTimeout(() => {
       setCurrentRole('countyPolice');
       setPrimaryTab('provincial');
-    }, 600);
+    }, 800);
   };
 
   // 2. 市局直接签收（市局自办路径）
@@ -436,6 +458,35 @@ const ScenarioSecondaryDispatch: React.FC = () => {
         {renderListTitleTabs()}
 
         <div className="emergency-list-actions-box">
+          {failedDirectivesCount > 0 ? (
+            <Badge count={failedDirectivesCount} offset={[-2, 2]}>
+              <Button
+                danger
+                type="primary"
+                size="small"
+                icon={<ExclamationCircleFilled />}
+                onClick={openFailedModal}
+                style={{
+                  background: '#dc2626',
+                  borderColor: '#dc2626',
+                  boxShadow: '0 2px 4px rgba(220, 38, 38, 0.25)',
+                  fontWeight: 500,
+                  fontSize: 12,
+                }}
+              >
+                下达与转派失败记录
+              </Button>
+            </Badge>
+          ) : (
+            <Button
+              size="small"
+              icon={<ExclamationCircleOutlined />}
+              onClick={openFailedModal}
+              style={{ fontSize: 12, color: '#64748b' }}
+            >
+              失败记录 (0)
+            </Button>
+          )}
           <Button
             type="primary"
             size="small"
@@ -721,6 +772,35 @@ const ScenarioSecondaryDispatch: React.FC = () => {
           </div>
 
           <div className="emergency-list-actions-box">
+            {failedDirectivesCount > 0 ? (
+              <Badge count={failedDirectivesCount} offset={[-2, 2]}>
+                <Button
+                  danger
+                  type="primary"
+                  size="small"
+                  icon={<ExclamationCircleFilled />}
+                  onClick={openFailedModal}
+                  style={{
+                    background: '#dc2626',
+                    borderColor: '#dc2626',
+                    boxShadow: '0 2px 4px rgba(220, 38, 38, 0.25)',
+                    fontWeight: 500,
+                    fontSize: 12,
+                  }}
+                >
+                  下达与转派失败记录
+                </Button>
+              </Badge>
+            ) : (
+              <Button
+                size="small"
+                icon={<ExclamationCircleOutlined />}
+                onClick={openFailedModal}
+                style={{ fontSize: 12, color: '#64748b' }}
+              >
+                失败记录 (0)
+              </Button>
+            )}
             <Button
               type="primary"
               size="small"

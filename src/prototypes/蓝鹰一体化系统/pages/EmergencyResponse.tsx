@@ -5,6 +5,7 @@ import {
   ReloadOutlined,
   PlayCircleFilled,
   ExclamationCircleOutlined,
+  ExclamationCircleFilled,
   SendOutlined,
   RobotOutlined,
   FireOutlined,
@@ -79,7 +80,7 @@ const filterRows = [
 ];
 
 const EmergencyResponse: React.FC = () => {
-  const { directives, retryDirective, openAiModal } = useDirectiveState();
+  const { directives, retryDirective, openAiModal, openFailedModal } = useDirectiveState();
 
   const [activeTaskTab, setActiveTaskTab] = useState('feedback');
   const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
@@ -96,8 +97,10 @@ const EmergencyResponse: React.FC = () => {
   const isQjpFailed = qjpDirective?.status === 'failed';
   const isFollowUpFailed = followUpDirective?.status === 'failed';
 
-  // 关键：检测是否存在任何指令推送失败的情况，以此在“待反馈”指令右上角显示红色“！”标签
-  const hasFailedDirectives = directives.some((d) => d.status === 'failed');
+  // 关键：检测是否存在任何指令推送失败的情况，以此在“待反馈”指令右上角显示红色“！”标签与失败入口
+  const failedDirectives = directives.filter((d) => d.status === 'failed');
+  const hasFailedDirectives = failedDirectives.length > 0;
+  const failedDirectivesCount = failedDirectives.length;
 
   const handleRetry = async (directiveId: string) => {
     setRetryingDirectiveId(directiveId);
@@ -141,6 +144,26 @@ const EmergencyResponse: React.FC = () => {
             <h2>任务列表</h2>
           </div>
           <div className="emergency-task-tools">
+            {hasFailedDirectives && (
+              <Button
+                danger
+                type="primary"
+                size="small"
+                icon={<ExclamationCircleFilled />}
+                onClick={openFailedModal}
+                style={{
+                  borderRadius: 4,
+                  fontSize: '12px',
+                  background: '#dc2626',
+                  borderColor: '#dc2626',
+                  boxShadow: '0 2px 5px rgba(220, 38, 38, 0.25)',
+                  fontWeight: 500,
+                  marginRight: 6,
+                }}
+              >
+                指令下达失败记录 ({failedDirectivesCount})
+              </Button>
+            )}
             <Switch defaultChecked />
             <span>已打开自动消息提醒</span>
             <span>排序</span>
@@ -173,9 +196,13 @@ const EmergencyResponse: React.FC = () => {
                 >
                   <span>{tab.count !== undefined ? `${tab.label}(${tab.count})` : tab.label}</span>
                   {showExclamation && (
-                    <Tooltip title="存在指令推送失败的情况，请及时排查与重新下发！">
+                    <Tooltip title="存在指令推送失败的情况，点击查看全部失败记录并重新下发">
                       <span
                         className="failure-exclamation-badge"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openFailedModal();
+                        }}
                         style={{
                           display: 'inline-flex',
                           alignItems: 'center',
@@ -190,6 +217,7 @@ const EmergencyResponse: React.FC = () => {
                           marginLeft: 6,
                           lineHeight: 1,
                           boxShadow: '0 0 0 1.5px #fff, 0 1px 3px rgba(239, 68, 68, 0.4)',
+                          cursor: 'pointer',
                         }}
                       >
                         !

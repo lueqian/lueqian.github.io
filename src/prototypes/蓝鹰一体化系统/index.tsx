@@ -32,6 +32,8 @@ import ScenarioLayout from './components/ScenarioLayout';
 import { AnnotationProvider, AnnotationBoard } from '@/common/Annotation';
 import { DirectiveProvider, useDirectiveState } from './context/DirectiveStateContext';
 import AIAnalysisModal from './components/AIAnalysisModal';
+import DirectiveProgressWidget from './components/DirectiveProgressWidget';
+import DirectiveFailureModal from './components/DirectiveFailureModal';
 
 const GlobalAIModalContainer: React.FC = () => {
   const { aiModalVisible, aiModalMode, aiModalEvent, closeAiModal } = useDirectiveState();
@@ -266,6 +268,12 @@ const BlueEagleIntegratedSystem = forwardRef<AxureHandle, AxureProps>(function B
 
           {/* 全局 AI 辅助研判综合弹窗 */}
           <GlobalAIModalContainer />
+
+          {/* 右下角非阻塞跨内网指令流转加载小浮窗 */}
+          <DirectiveProgressWidget />
+
+          {/* 全局跨内网指令失败记录管理弹窗 */}
+          <DirectiveFailureModal />
 
           {/* AxHub 全局功能与细节批注看板（场景页面已由右侧抽屉统一接管） */}
           {!activePage.startsWith('scenario-') && <AnnotationBoard />}

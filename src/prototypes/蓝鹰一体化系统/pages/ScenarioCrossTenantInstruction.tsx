@@ -18,6 +18,7 @@ import {
   Tabs,
   Avatar,
   Tooltip,
+  Switch,
 } from 'antd';
 import {
   BankOutlined,
@@ -33,6 +34,7 @@ import {
   ApartmentOutlined,
   FileTextOutlined,
   ExclamationCircleOutlined,
+  ExclamationCircleFilled,
   CloseCircleOutlined,
   CodeOutlined,
   UserOutlined,
@@ -49,14 +51,19 @@ import {
 import dayjs from 'dayjs';
 import { Annotated } from '@/common/Annotation';
 import { useScenarioContext } from '../components/ScenarioLayout';
+import { useDirectiveState } from '../context/DirectiveStateContext';
 import '../scenario-style.css';
 
 const { TextArea } = Input;
 const { Option } = Select;
 
 const ScenarioCrossTenantInstruction: React.FC = () => {
+  const { directives, issueNewDirectives, openFailedModal, isDispatching } = useDirectiveState();
+  const failedDirectivesCount = directives.filter((d) => d.status === 'failed').length;
+
   // 核心指令业务流转状态（省厅下发闭环）
   const [instructionIssued, setInstructionIssued] = useState<boolean>(false);
+  const [simulateFailure, setSimulateFailure] = useState<boolean>(false);
   const [targetTenant, setTargetTenant] = useState<string>('徐州市公安局网安支队');
   const [instructionTypes, setInstructionTypes] = useState<string[]>(['线下核查', '属地落实']);
   const [timeLimit, setTimeLimit] = useState<string>('今日 18:00 前');
@@ -125,19 +132,37 @@ const ScenarioCrossTenantInstruction: React.FC = () => {
     message.info(`已插入变量模板占位符 ${varCode}`);
   };
 
-  // 省厅端下达跨租户指令
-  const handleIssueInstruction = () => {
-    setInstructionIssued(true);
+  // 省厅端下达跨租户指令（非阻塞右下角浮窗异步流转）
+  const handleIssueInstruction = async () => {
+    // 立即关闭编辑弹窗，解除前台操作阻断
+    setIssueModalOpen(false);
+    setAiModalOpen(false);
+
+    const activeContent = supplementContent || instructionContent;
     setIssueTimestamp(dayjs().format('YYYY-MM-DD HH:mm:ss'));
     if (supplementContent) {
       setInstructionContent(supplementContent);
     }
-    setIssueModalOpen(false);
-    setAiModalOpen(false);
-    message.success({
-      content: '指令下达成功！',
-      duration: 3.5,
-    });
+
+    // 触发非阻塞右下角浮窗加载
+    const selectedDirectives =
+      detailedExecDirectives.length > 0 ? detailedExecDirectives : ['线下核查'];
+
+    const result = await issueNewDirectives(
+      '202610100088',
+      selectedDirectives,
+      [targetTenant],
+      activeContent,
+      simulateFailure,
+      {
+        postTitle: '关于徐州某工业园区因环保升级改造停产网络谣言线索排查',
+        platform: '抖音app',
+      }
+    );
+
+    if (result.success) {
+      setInstructionIssued(true);
+    }
   };
 
   // 重置演示
@@ -222,6 +247,45 @@ const ScenarioCrossTenantInstruction: React.FC = () => {
             },
             { key: 'notice', label: '通报信息' },
           ]}
+          tabBarExtraContent={{
+            right: (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                {failedDirectivesCount > 0 ? (
+                  <Badge count={failedDirectivesCount} offset={[-2, 2]}>
+                    <Button
+                      danger
+                      type="primary"
+                      size="small"
+                      icon={<ExclamationCircleFilled />}
+                      onClick={openFailedModal}
+                      style={{
+                        borderRadius: 4,
+                        fontSize: '12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 5,
+                        background: '#dc2626',
+                        borderColor: '#dc2626',
+                        boxShadow: '0 2px 5px rgba(220, 38, 38, 0.25)',
+                        fontWeight: 500,
+                      }}
+                    >
+                      指令下达失败记录
+                    </Button>
+                  </Badge>
+                ) : (
+                  <Button
+                    size="small"
+                    icon={<ExclamationCircleOutlined />}
+                    onClick={openFailedModal}
+                    style={{ fontSize: '12px', color: '#64748b' }}
+                  >
+                    指令状态记录 (0)
+                  </Button>
+                )}
+              </div>
+            ),
+          }}
         />
 
         {/* 舆情事件卡片 */}
@@ -502,9 +566,19 @@ const ScenarioCrossTenantInstruction: React.FC = () => {
           ========================================================================= */}
       <Modal
         title={
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <FileTextOutlined style={{ color: '#2563eb' }} />
-            <span>发起处置指令（详细配置）</span>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingRight: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <FileTextOutlined style={{ color: '#2563eb' }} />
+              <span>发起处置指令（详细配置）</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '12px', fontWeight: 'normal', color: '#64748b' }}>
+              <span>模拟专网网闸波动异常</span>
+              <Switch
+                size="small"
+                checked={simulateFailure}
+                onChange={setSimulateFailure}
+              />
+            </div>
           </div>
         }
         open={issueModalOpen}

@@ -22,6 +22,8 @@ import {
   DownOutlined,
   RobotOutlined,
   SendOutlined,
+  ExclamationCircleFilled,
+  ExclamationCircleOutlined,
 } from '@ant-design/icons';
 import type { TabsProps } from 'antd';
 import dayjs from 'dayjs';
@@ -255,7 +257,8 @@ const MonitorWarning: React.FC = () => {
   });
 
   // 视图和分页状态
-  const { openAiModal } = useDirectiveState();
+  const { openAiModal, directives, openFailedModal } = useDirectiveState();
+  const failedDirectivesCount = directives.filter((d) => d.status === 'failed').length;
   const [instructionModalOpen, setInstructionModalOpen] = useState(false);
   const [selectedPostForInstruction, setSelectedPostForInstruction] = useState<OpinionItem | null>(null);
   const [viewMode, setViewMode] = useState<'detail' | 'analysis' | 'simple'>('detail');
@@ -917,6 +920,45 @@ const MonitorWarning: React.FC = () => {
           onChange={setActiveCategory}
           items={categoryTabs}
           className="category-tabs"
+          tabBarExtraContent={{
+            right: (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                {failedDirectivesCount > 0 ? (
+                  <Badge count={failedDirectivesCount} offset={[-2, 2]}>
+                    <Button
+                      danger
+                      type="primary"
+                      size="small"
+                      icon={<ExclamationCircleFilled />}
+                      onClick={openFailedModal}
+                      style={{
+                        borderRadius: 4,
+                        fontSize: '12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 5,
+                        background: '#dc2626',
+                        borderColor: '#dc2626',
+                        boxShadow: '0 2px 5px rgba(220, 38, 38, 0.25)',
+                        fontWeight: 500,
+                      }}
+                    >
+                      指令下达失败记录
+                    </Button>
+                  </Badge>
+                ) : (
+                  <Button
+                    size="small"
+                    icon={<ExclamationCircleOutlined />}
+                    onClick={openFailedModal}
+                    style={{ fontSize: '12px', color: '#64748b' }}
+                  >
+                    指令状态记录 (0)
+                  </Button>
+                )}
+              </div>
+            ),
+          }}
         />
       </div>
 

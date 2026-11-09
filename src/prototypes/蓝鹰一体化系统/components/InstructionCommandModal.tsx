@@ -159,7 +159,7 @@ const InstructionCommandModal: React.FC<InstructionCommandModalProps> = ({
     });
   };
 
-  // 提交指令并触发 loading 效果
+  // 提交指令：立即关闭当前配置弹窗，转由右下角小浮窗异步加载，不阻断操作
   const handleSubmit = async () => {
     if (selectedInstructionIds.length === 0) {
       message.warning('请至少选择一项要下达的处置指令！');
@@ -178,40 +178,32 @@ const InstructionCommandModal: React.FC<InstructionCommandModalProps> = ({
       return;
     }
 
-    setSubmitting(true);
+    const instructionNames = selectedInstructionIds.map((id) => {
+      return instructionOptions.find((i) => i.id === id)?.name || id;
+    });
 
-    try {
-      const instructionNames = selectedInstructionIds.map((id) => {
-        return instructionOptions.find((i) => i.id === id)?.name || id;
-      });
-
-      // 发起跨租户指令推送（带 loading 状态）
-      const result = await issueNewDirectives(
-        eventId,
-        instructionNames,
-        Array.from(allSelectedDepts),
-        supplementContent,
-        simulateFailure
-      );
-
-      setSubmitting(false);
-
-      if (result.success) {
-        // 状态 1：全部成功时 toast 提醒指令下达成功，不弹出大弹窗
-        message.success('指令下达成功');
-        onSubmit?.();
-        onCancel();
-      } else {
-        // 状态 2：部分成功时，通过一个大的弹窗组件展示推送的目标与结果
-        setPushResults(result.allItems);
-        setFailedDirectives(result.failedItems);
-        setFailureModalOpen(true);
-        onCancel(); // 关闭当前配置弹窗，聚焦在大弹窗组件上
-      }
-    } catch (e) {
-      setSubmitting(false);
-      message.error('指令下达发生未知异常');
+    // 提取帖文标题信息
+    let postTitleStr = '#盱眙马上真的要命，真的体会到了。';
+    if (typeof targetSummary === 'string') {
+      postTitleStr = targetSummary;
     }
+
+    // 立即关闭编辑弹窗，彻底解除阻断
+    onCancel();
+    onSubmit?.();
+
+    // 启动非阻塞跨内网下达流转
+    issueNewDirectives(
+      eventId,
+      instructionNames,
+      Array.from(allSelectedDepts),
+      supplementContent,
+      simulateFailure,
+      {
+        postTitle: postTitleStr,
+        platform: '抖音app',
+      }
+    );
   };
 
   return (
@@ -234,12 +226,11 @@ const InstructionCommandModal: React.FC<InstructionCommandModalProps> = ({
         width={1060}
         onCancel={onCancel}
         onOk={handleSubmit}
-        okText={submitting ? '正在跨域推送指令...' : '确认下达'}
+        okText="确认下达"
         cancelText="取消"
-        confirmLoading={submitting}
         className="instruction-modal"
       >
-        <Spin spinning={submitting} tip="正在向目标单位内网下达指令，安全网闸数据校验中...">
+        <div>
           <div className="instruction-modal-body">
             <div className="instruction-modal-left">
               <div className="modal-field-title">
@@ -494,7 +485,7 @@ const InstructionCommandModal: React.FC<InstructionCommandModalProps> = ({
               )}
             </div>
           </div>
-        </Spin>
+        </div>
       </Modal>
 
       {/* 指令推送结果提醒大弹窗组件（展示所有目标与结果、行内重发及排查提示） */}

@@ -433,6 +433,23 @@ const ScenarioJointDisposalFailure: React.FC = () => {
               </div>
               <div style={{ display: 'flex', gap: 10 }}>
                 <Button size="middle">信息详情</Button>
+                {hasFailedDirectives && (
+                  <Button
+                    danger
+                    type="primary"
+                    size="middle"
+                    icon={<ExclamationCircleFilled />}
+                    onClick={() => setFailureModalOpen(true)}
+                    style={{
+                      background: '#dc2626',
+                      borderColor: '#dc2626',
+                      boxShadow: '0 2px 5px rgba(220, 38, 38, 0.25)',
+                      fontWeight: 500,
+                    }}
+                  >
+                    指令下达失败记录 ({directives.filter((d) => d.status === 'failed').length})
+                  </Button>
+                )}
                 <Button
                   size="middle"
                   icon={<SendOutlined />}
@@ -442,9 +459,9 @@ const ScenarioJointDisposalFailure: React.FC = () => {
                 </Button>
                 <Annotated
                   pin={1}
-                  title="下达即时感知与Loading加载"
-                  tag="Loading遮罩"
-                  note="在省厅监测预警中点击【AI辅助研判】下达指令时，提交后显示全流程加载遮罩，模拟跨域专网安全校验与签名，下发结果同步即时拦截返回。"
+                  title="右下角非阻塞小浮窗加载"
+                  tag="非阻塞浮窗"
+                  note="指令下达提交后不再采用全屏遮罩强侵入式阻塞，转为右下角低优先级小浮窗加载动画，用户可自由继续其他研判操作；加载结束后按原逻辑判断显示 Toast 或失败记录弹窗。"
                   placement="top-right"
                 >
                   <Button
@@ -517,9 +534,13 @@ const ScenarioJointDisposalFailure: React.FC = () => {
                   >
                     <span>{tab.count !== undefined ? `${tab.label}(${tab.count})` : tab.label}</span>
                     {showExclamation && (
-                      <Tooltip title="存在指令推送失败的情况，请及时排查与重新下发！">
+                      <Tooltip title="存在指令推送失败的情况，点击查看全部失败记录并重新下发">
                         <span
                           className="failure-exclamation-badge"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setFailureModalOpen(true);
+                          }}
                           style={{
                             display: 'inline-flex',
                             alignItems: 'center',
@@ -534,6 +555,7 @@ const ScenarioJointDisposalFailure: React.FC = () => {
                             marginLeft: 6,
                             lineHeight: 1,
                             boxShadow: '0 0 0 1.5px #fff, 0 1px 3px rgba(239, 68, 68, 0.4)',
+                            cursor: 'pointer',
                           }}
                         >
                           !
@@ -545,12 +567,32 @@ const ScenarioJointDisposalFailure: React.FC = () => {
               })}
             </div>
 
-            {/* 右侧业务规则备注组件 */}
-            <div className="emergency-tabs-note" title="Tab与数据标签业务说明">
-              <InfoCircleOutlined className="emergency-note-icon" />
-              <span className="emergency-note-text">
-                红色感叹号标签代表当前有未成功下达的指令，括号后的数字代表当前该类型有多少条待办指令
-              </span>
+            {/* 右侧失败记录快捷入口与业务规则备注组件 */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              {hasFailedDirectives && (
+                <Button
+                  danger
+                  type="primary"
+                  size="small"
+                  icon={<ExclamationCircleFilled />}
+                  onClick={() => setFailureModalOpen(true)}
+                  style={{
+                    background: '#dc2626',
+                    borderColor: '#dc2626',
+                    boxShadow: '0 2px 4px rgba(220, 38, 38, 0.25)',
+                    fontWeight: 500,
+                    borderRadius: 4,
+                  }}
+                >
+                  指令失败记录 ({directives.filter((d) => d.status === 'failed').length})
+                </Button>
+              )}
+              <div className="emergency-tabs-note" title="Tab与数据标签业务说明">
+                <InfoCircleOutlined className="emergency-note-icon" />
+                <span className="emergency-note-text">
+                  红色感叹号标签代表当前有未成功下达的指令，括号后的数字代表当前该类型有多少条待办指令
+                </span>
+              </div>
             </div>
           </div>
 
@@ -769,13 +811,17 @@ const ScenarioJointDisposalFailure: React.FC = () => {
                   {isQjpFailed ? (
                     <Annotated
                       pin={2}
-                      title="专网异常即刻拦截弹窗"
-                      tag="失败排查"
-                      note="若有任何协同单位专网推送超时（如清江浦区 ERR_NET_TIMEOUT），即刻呼出排查弹窗，结构化列举指令名称、目标单位与错误代码，避免下达方误以为指令已送达。"
+                      title="指令下达失败记录与全量排查"
+                      tag="失败记录"
+                      note="若协同单位跨专网超时，不仅可点击行内失败标签即刻呼出排查弹窗，还可在顶部常驻失败入口一览所有失败记录（含相关帖子、下达人、时间、状态编码等），并支持直接在此重新下达。"
                       placement="top-left"
                     >
                       <Tooltip title="目标内网网闸摆渡超时：清江浦区分局专网连接超时 (ERR_NET_TIMEOUT)，指令未能写入对方内网待办池">
-                        <Tag color="error" style={{ margin: 0, cursor: 'pointer', fontWeight: 600 }}>
+                        <Tag
+                          color="error"
+                          style={{ margin: 0, cursor: 'pointer', fontWeight: 600 }}
+                          onClick={() => setFailureModalOpen(true)}
+                        >
                           ● 下达失败 (ERR_NET_TIMEOUT)
                         </Tag>
                       </Tooltip>
@@ -899,10 +945,10 @@ const ScenarioJointDisposalFailure: React.FC = () => {
         onSubmit={() => setInstructionModalOpen(false)}
       />
 
-      {/* 指令推送结果提醒大弹窗组件 */}
+      {/* 指令下达失败记录管理大弹窗 */}
       <DirectiveFailureModal
         open={failureModalOpen}
-        results={directives.filter((d) => d.eventId === '202610150002')}
+        results={directives.filter((d) => d.status === 'failed')}
         onClose={() => setFailureModalOpen(false)}
         onRetrySingle={retryDirective}
         onRetry={batchRetryDirectives}
